@@ -12,50 +12,50 @@
 			containerPortal = 93B6983B2F1667E80099098E /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 93B698422F1667E80099098E;
-			remoteInfo = "chiaki-apple";
+			remoteInfo = Chiaki;
 		};
 		93B6985F2F1667E90099098E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 93B6983B2F1667E80099098E /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 93B698422F1667E80099098E;
-			remoteInfo = "chiaki-apple";
+			remoteInfo = Chiaki;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		93B698432F1667E80099098E /* chiaki-apple.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "chiaki-apple.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		93B698542F1667E90099098E /* chiaki-appleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "chiaki-appleTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		93B6985E2F1667E90099098E /* chiaki-appleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "chiaki-appleUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		93B698432F1667E80099098E /* Chiaki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chiaki.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		93B698542F1667E90099098E /* ChiakiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChiakiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		93B6985E2F1667E90099098E /* ChiakiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChiakiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		93B698662F1667E90099098E /* Exceptions for "chiaki-apple" folder in "chiaki-apple" target */ = {
+		93B698662F1667E90099098E /* Exceptions for "Chiaki" folder in "Chiaki" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Resources/Info.plist,
 			);
-			target = 93B698422F1667E80099098E /* chiaki-apple */;
+			target = 93B698422F1667E80099098E /* Chiaki */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		93B698452F1667E80099098E /* chiaki-apple */ = {
+		93B698452F1667E80099098E /* Chiaki */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				93B698662F1667E90099098E /* Exceptions for "chiaki-apple" folder in "chiaki-apple" target */,
+				93B698662F1667E90099098E /* Exceptions for "Chiaki" folder in "Chiaki" target */,
 			);
-			path = "chiaki-apple";
+			path = Chiaki;
 			sourceTree = "<group>";
 		};
-		93B698572F1667E90099098E /* chiaki-appleTests */ = {
+		93B698572F1667E90099098E /* ChiakiTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "chiaki-appleTests";
+			path = ChiakiTests;
 			sourceTree = "<group>";
 		};
-		93B698612F1667E90099098E /* chiaki-appleUITests */ = {
+		93B698612F1667E90099098E /* ChiakiUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "chiaki-appleUITests";
+			path = ChiakiUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -88,9 +88,9 @@
 		93B6983A2F1667E80099098E = {
 			isa = PBXGroup;
 			children = (
-				93B698452F1667E80099098E /* chiaki-apple */,
-				93B698572F1667E90099098E /* chiaki-appleTests */,
-				93B698612F1667E90099098E /* chiaki-appleUITests */,
+				93B698452F1667E80099098E /* Chiaki */,
+				93B698572F1667E90099098E /* ChiakiTests */,
+				93B698612F1667E90099098E /* ChiakiUITests */,
 				93B698442F1667E80099098E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -98,9 +98,9 @@
 		93B698442F1667E80099098E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				93B698432F1667E80099098E /* chiaki-apple.app */,
-				93B698542F1667E90099098E /* chiaki-appleTests.xctest */,
-				93B6985E2F1667E90099098E /* chiaki-appleUITests.xctest */,
+				93B698432F1667E80099098E /* Chiaki.app */,
+				93B698542F1667E90099098E /* ChiakiTests.xctest */,
+				93B6985E2F1667E90099098E /* ChiakiUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,9 +108,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		93B698422F1667E80099098E /* chiaki-apple */ = {
+		93B698422F1667E80099098E /* Chiaki */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 93B698672F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-apple" */;
+			buildConfigurationList = 93B698672F1667E90099098E /* Build configuration list for PBXNativeTarget "Chiaki" */;
 			buildPhases = (
 				93B6983F2F1667E80099098E /* Sources */,
 				93B698402F1667E80099098E /* Frameworks */,
@@ -121,18 +121,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				93B698452F1667E80099098E /* chiaki-apple */,
+				93B698452F1667E80099098E /* Chiaki */,
 			);
-			name = "chiaki-apple";
+			name = Chiaki;
 			packageProductDependencies = (
 			);
-			productName = "chiaki-apple";
-			productReference = 93B698432F1667E80099098E /* chiaki-apple.app */;
+			productName = Chiaki;
+			productReference = 93B698432F1667E80099098E /* Chiaki.app */;
 			productType = "com.apple.product-type.application";
 		};
-		93B698532F1667E90099098E /* chiaki-appleTests */ = {
+		93B698532F1667E90099098E /* ChiakiTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 93B6986C2F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-appleTests" */;
+			buildConfigurationList = 93B6986C2F1667E90099098E /* Build configuration list for PBXNativeTarget "ChiakiTests" */;
 			buildPhases = (
 				93B698502F1667E90099098E /* Sources */,
 				93B698512F1667E90099098E /* Frameworks */,
@@ -144,18 +144,18 @@
 				93B698562F1667E90099098E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				93B698572F1667E90099098E /* chiaki-appleTests */,
+				93B698572F1667E90099098E /* ChiakiTests */,
 			);
-			name = "chiaki-appleTests";
+			name = ChiakiTests;
 			packageProductDependencies = (
 			);
-			productName = "chiaki-appleTests";
-			productReference = 93B698542F1667E90099098E /* chiaki-appleTests.xctest */;
+			productName = ChiakiTests;
+			productReference = 93B698542F1667E90099098E /* ChiakiTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		93B6985D2F1667E90099098E /* chiaki-appleUITests */ = {
+		93B6985D2F1667E90099098E /* ChiakiUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 93B6986F2F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-appleUITests" */;
+			buildConfigurationList = 93B6986F2F1667E90099098E /* Build configuration list for PBXNativeTarget "ChiakiUITests" */;
 			buildPhases = (
 				93B6985A2F1667E90099098E /* Sources */,
 				93B6985B2F1667E90099098E /* Frameworks */,
@@ -167,13 +167,13 @@
 				93B698602F1667E90099098E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				93B698612F1667E90099098E /* chiaki-appleUITests */,
+				93B698612F1667E90099098E /* ChiakiUITests */,
 			);
-			name = "chiaki-appleUITests";
+			name = ChiakiUITests;
 			packageProductDependencies = (
 			);
-			productName = "chiaki-appleUITests";
-			productReference = 93B6985E2F1667E90099098E /* chiaki-appleUITests.xctest */;
+			productName = ChiakiUITests;
+			productReference = 93B6985E2F1667E90099098E /* ChiakiUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -213,9 +213,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				93B698422F1667E80099098E /* chiaki-apple */,
-				93B698532F1667E90099098E /* chiaki-appleTests */,
-				93B6985D2F1667E90099098E /* chiaki-appleUITests */,
+				93B698422F1667E80099098E /* Chiaki */,
+				93B698532F1667E90099098E /* ChiakiTests */,
+				93B6985D2F1667E90099098E /* ChiakiUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -271,12 +271,12 @@
 /* Begin PBXTargetDependency section */
 		93B698562F1667E90099098E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 93B698422F1667E80099098E /* chiaki-apple */;
+			target = 93B698422F1667E80099098E /* Chiaki */;
 			targetProxy = 93B698552F1667E90099098E /* PBXContainerItemProxy */;
 		};
 		93B698602F1667E90099098E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 93B698422F1667E80099098E /* chiaki-apple */;
+			target = 93B698422F1667E80099098E /* Chiaki */;
 			targetProxy = 93B6985F2F1667E90099098E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -287,6 +287,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chiaki/Chiaki.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
@@ -295,7 +296,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "chiaki-apple/Info.plist";
+				INFOPLIST_FILE = Chiaki/Resources/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -306,24 +307,23 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-apple";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -332,6 +332,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chiaki/Chiaki.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
@@ -340,7 +341,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "chiaki-apple/Info.plist";
+				INFOPLIST_FILE = Chiaki/Resources/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -351,24 +352,23 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-apple";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -496,21 +496,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-appleTests";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/chiaki-apple.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/chiaki-apple";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chiaki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chiaki";
 			};
 			name = Debug;
 		};
@@ -522,21 +521,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-appleTests";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/chiaki-apple.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/chiaki-apple";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chiaki.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chiaki";
 			};
 			name = Release;
 		};
@@ -547,21 +545,20 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-appleUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = "chiaki-apple";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Chiaki;
 			};
 			name = Debug;
 		};
@@ -572,28 +569,27 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2Z6RCCJ7YG;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "ltd.hotter.chiaki-appleUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = ltd.hotter.chiaki.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = "chiaki-apple";
-				XROS_DEPLOYMENT_TARGET = 26.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Chiaki;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		93B6983E2F1667E80099098E /* Build configuration list for PBXProject "chiaki-apple" */ = {
+		93B6983E2F1667E80099098E /* Build configuration list for PBXProject "Chiaki" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				93B6986A2F1667E90099098E /* Debug */,
@@ -602,7 +598,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		93B698672F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-apple" */ = {
+		93B698672F1667E90099098E /* Build configuration list for PBXNativeTarget "Chiaki" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				93B698682F1667E90099098E /* Debug */,
@@ -611,7 +607,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		93B6986C2F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-appleTests" */ = {
+		93B6986C2F1667E90099098E /* Build configuration list for PBXNativeTarget "ChiakiTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				93B6986D2F1667E90099098E /* Debug */,
@@ -620,7 +616,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		93B6986F2F1667E90099098E /* Build configuration list for PBXNativeTarget "chiaki-appleUITests" */ = {
+		93B6986F2F1667E90099098E /* Build configuration list for PBXNativeTarget "ChiakiUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				93B698702F1667E90099098E /* Debug */,

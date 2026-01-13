@@ -1,13 +1,13 @@
 //
-//  chiaki_appleUITestsLaunchTests.swift
-//  chiaki-appleUITests
+//  ChiakiUITestsLaunchTests.swift
+//  ChiakiUITests
 //
-//  Created by 孟伸 on 2026/1/13.
+//  PlayStation Remote Play client for Apple platforms
 //
 
 import XCTest
 
-final class chiaki_appleUITestsLaunchTests: XCTestCase {
+final class ChiakiUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
@@ -21,9 +21,6 @@ final class chiaki_appleUITestsLaunchTests: XCTestCase {
     func testLaunch() throws {
         let app = XCUIApplication()
         app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

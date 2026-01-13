@@ -1,13 +1,14 @@
 //
-//  chiaki_appleTests.swift
-//  chiaki-appleTests
+//  ChiakiTests.swift
+//  ChiakiTests
 //
-//  Created by 孟伸 on 2026/1/13.
+//  PlayStation Remote Play client for Apple platforms
 //
 
 import Testing
+@testable import Chiaki
 
-struct chiaki_appleTests {
+struct ChiakiTests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.
