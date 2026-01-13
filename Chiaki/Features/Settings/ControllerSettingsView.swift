@@ -1,14 +1,15 @@
 import SwiftUI
 
 struct ControllerSettingsView: View {
-    @EnvironmentObject var store: SettingsStore
-    
+    @Environment(SettingsStore.self) var store
+
     let connectedControllers = [
         "DualSense Wireless Controller",
         "Xbox Wireless Controller"
     ]
     
     var body: some View {
+        @Bindable var store = store
         Form {
             Section {
                 Toggle("Haptic Feedback", isOn: $store.streamSettings.hapticFeedbackEnabled)
