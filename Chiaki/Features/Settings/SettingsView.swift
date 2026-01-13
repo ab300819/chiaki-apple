@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var store: SettingsStore
+    @Environment(SettingsStore.self) var store
     
     var body: some View {
         #if os(iOS)
