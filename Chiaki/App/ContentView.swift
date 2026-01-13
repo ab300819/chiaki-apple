@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  Chiaki
 //
-//  Main content view - placeholder for navigation structure
+//  Main content view with navigation structure
 //
 
 import SwiftUI
@@ -11,32 +11,34 @@ struct ContentView: View {
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            List {
-                Text("Host List")
-                    .font(.headline)
-            }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 250)
+            HostListView()
+                .navigationSplitViewColumnWidth(min: 280, ideal: 320)
         } detail: {
-            VStack {
-                Image(systemName: "gamecontroller.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Chiaki")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                Text("PlayStation Remote Play")
-                    .foregroundStyle(.secondary)
-            }
+            WelcomeView()
         }
         #else
         NavigationStack {
-            List {
-                Text("Host List")
-                    .font(.headline)
-            }
-            .navigationTitle("Chiaki")
+            HostListView()
         }
         #endif
+    }
+}
+
+struct WelcomeView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "gamecontroller.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.secondary)
+            Text("Chiaki")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            Text("PlayStation Remote Play")
+                .foregroundStyle(.secondary)
+            Text("Select a host to start streaming")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
     }
 }
 

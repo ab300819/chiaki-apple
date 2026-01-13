@@ -3,23 +3,11 @@ import SwiftUI
 struct HostListView: View {
     @StateObject private var viewModel = HostListViewModel()
     @State private var showingAddHost = false
-    
+
     var body: some View {
         List {
             if viewModel.hosts.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "gamecontroller.slash")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    Text("No Hosts Found")
-                        .font(.headline)
-                    Text("Add a host manually or wait for discovery.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .listRowBackground(Color.clear)
+                emptyStateView
             } else {
                 ForEach(viewModel.hosts) { host in
                     HostRowView(host: host) {
@@ -41,9 +29,24 @@ struct HostListView: View {
             AddHostView(viewModel: viewModel)
         }
         .refreshable {
-            // Mock refresh
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            try? await Task.sleep(for: .seconds(1))
         }
+    }
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "gamecontroller.slash")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("No Hosts Found")
+                .font(.headline)
+            Text("Add a host manually or wait for discovery.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .listRowBackground(Color.clear)
     }
 }
 

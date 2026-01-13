@@ -212,3 +212,5 @@ iOSInjectionProject/
 # Test outputs
 test_output.txt
 unit_test_output.txt
+.sisyphus/
+*.DS_Store

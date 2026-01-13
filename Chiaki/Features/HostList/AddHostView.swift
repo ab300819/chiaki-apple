@@ -3,18 +3,20 @@ import SwiftUI
 struct AddHostView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: HostListViewModel
-    
+
     @State private var nickname = ""
     @State private var address = ""
     @State private var isPS5 = true
-    
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Host Details") {
                     TextField("Nickname", text: $nickname)
                     TextField("IP Address", text: $address)
+                        #if os(iOS)
                         .keyboardType(.numbersAndPunctuation)
+                        #endif
                     Picker("Console Type", selection: $isPS5) {
                         Text("PS5").tag(true)
                         Text("PS4").tag(false)
@@ -22,6 +24,9 @@ struct AddHostView: View {
                 }
             }
             .navigationTitle("Add Host")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -43,4 +48,8 @@ struct AddHostView: View {
             }
         }
     }
+}
+
+#Preview {
+    AddHostView(viewModel: HostListViewModel())
 }
