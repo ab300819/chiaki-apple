@@ -2,7 +2,7 @@
 
 > **文档来源**: 改造自 `TASK.md`
 > **改造时间**: 2026-01-13
-> **最后更新**: 2026-01-13
+> **最后更新**: 2026-01-13 20:10
 > **调整说明**: UI 优先策略 - 项目初始化后先构建 UI 框架
 
 ## 任务说明
@@ -21,79 +21,84 @@
 4. UI 可独立于核心库开发，支持并行工作
 
 **里程碑概览**：
-| 阶段 | 名称 | 说明 |
-|------|------|------|
-| M1 | 项目初始化 | Xcode 项目、目录结构 |
-| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）|
-| M3 | 核心库构建 | 依赖库、桥接层、Metal 渲染器 |
-| M4 | 功能集成 | 主机发现、会话、流媒体、控制器 |
-| M5 | 完善功能 | PSN 登录、注册、多语言 |
-| M6 | 平台适配 | 各平台优化 |
+| 阶段 | 名称 | 说明 | 状态 |
+|------|------|------|------|
+| M1 | 项目初始化 | Xcode 项目、目录结构 | ✅ 已完成 |
+| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 未开始 |
+| M3 | 核心库构建 | 依赖库、桥接层、Metal 渲染器 | 未开始 |
+| M4 | 功能集成 | 主机发现、会话、流媒体、控制器 | 未开始 |
+| M5 | 完善功能 | PSN 登录、注册、多语言 | 未开始 |
+| M6 | 平台适配 | 各平台优化 | 未开始 |
 
 ---
 
-## 阶段 M1: 项目初始化 (Project Setup)
+## 阶段 M1: 项目初始化 (Project Setup) ✅
+
+> **完成时间**: 2026-01-13
+> **提交**: `0fd51a3` feat(M1): initialize project structure
 
 ### 1.1 项目初始化
 
-#### T1.1.1 创建 Xcode 项目结构
+#### T1.1.1 创建 Xcode 项目结构 ✅
 - **描述**: 创建 Apple 多平台 Xcode 项目，包含 iOS、macOS、tvOS targets
 - **依赖**: 无
 - **文件**:
-  - `apple/Chiaki.xcodeproj`
-  - `apple/Chiaki/App/ChiakiApp.swift`
-  - `apple/ChiakiTV/App/ChiakiTVApp.swift`
+  - `Chiaki.xcodeproj`
+  - `Chiaki/App/ChiakiApp.swift`
+  - `ChiakiTV/App/ChiakiTVApp.swift`
 - **验收标准**:
-  - [ ] 项目可在 Xcode 中打开
-  - [ ] iOS target 可编译运行（空白应用）
-  - [ ] macOS target 可编译运行
-  - [ ] tvOS target 可编译运行
+  - [x] 项目可在 Xcode 中打开
+  - [x] iOS target 可编译运行（空白应用）
+  - [x] macOS target 可编译运行
+  - [ ] tvOS target 可编译运行（待添加 target）
 - **测试**: 各平台模拟器运行空白应用
 
 ---
 
-#### T1.1.2 配置项目基本设置
+#### T1.1.2 配置项目基本设置 ✅
 - **描述**: 配置 Bundle ID、部署目标、签名等
 - **依赖**: T1.1.1
 - **文件**:
-  - `apple/Chiaki/Info.plist`
-  - `apple/ChiakiTV/Info.plist`
+  - `Chiaki/Resources/Info.plist`
+  - `ChiakiTV/Resources/` (待配置)
 - **验收标准**:
-  - [ ] iOS 部署目标设为 16.0
-  - [ ] macOS 部署目标设为 13.0
-  - [ ] tvOS 部署目标设为 16.0
-  - [ ] 配置 Development Team
+  - [x] iOS 部署目标设为 16.0
+  - [x] macOS 部署目标设为 13.0
+  - [ ] tvOS 部署目标设为 16.0（待添加 target）
+  - [x] 配置 Development Team
 - **测试**: 真机可安装运行
 
 ---
 
-#### T1.1.3 创建目录结构
+#### T1.1.3 创建目录结构 ✅
 - **描述**: 按 DESIGN.md 创建完整的目录结构和占位文件
 - **依赖**: T1.1.1
 - **文件**:
   ```
-  apple/Chiaki/
+  Chiaki/
+  ├── App/                    # ✅ ChiakiApp.swift, ContentView.swift
   ├── Features/
-  │   ├── HostList/
-  │   ├── Streaming/
-  │   ├── Settings/
-  │   └── PSNLogin/
+  │   ├── HostList/           # ✅
+  │   ├── Streaming/          # ✅
+  │   ├── Settings/           # ✅
+  │   └── PSNLogin/           # ✅
   ├── Core/
-  │   ├── Bridge/
-  │   ├── Video/
-  │   ├── Audio/
-  │   ├── Controllers/
-  │   ├── Network/
-  │   └── Storage/
+  │   ├── Bridge/             # ✅
+  │   ├── Video/              # ✅
+  │   ├── Audio/              # ✅
+  │   ├── Controllers/        # ✅
+  │   ├── Network/            # ✅
+  │   └── Storage/            # ✅
   ├── Domain/
-  │   ├── Models/
-  │   └── Services/
-  └── Utilities/
+  │   ├── Models/             # ✅
+  │   └── Services/           # ✅
+  ├── Resources/              # ✅ Assets.xcassets, Info.plist
+  └── Utilities/              # ✅
   ```
 - **验收标准**:
-  - [ ] 所有目录已创建
-  - [ ] 目录已添加到 Xcode 项目
-- **测试**: 项目编译通过
+  - [x] 所有目录已创建
+  - [x] 目录已添加到 Xcode 项目
+- **测试**: 项目编译通过 ✅
 
 ---
 
