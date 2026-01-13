@@ -2,7 +2,7 @@
 
 > **文档来源**: 改造自 `TASK.md`
 > **改造时间**: 2026-01-13
-> **最后更新**: 2026-01-13 21:15
+> **最后更新**: 2026-01-13 22:58
 > **调整说明**: UI 优先策略 - 项目初始化后先构建 UI 框架
 
 ## 任务说明
@@ -62,11 +62,12 @@
   - `Chiaki/Resources/Info.plist`
   - `ChiakiTV/Resources/` (待配置)
 - **验收标准**:
-  - [x] iOS 部署目标设为 16.0
-  - [x] macOS 部署目标设为 13.0
-  - [ ] tvOS 部署目标设为 16.0（待添加 target）
+  - [x] iOS 部署目标设为 17.0（支持 @Observable）
+  - [x] macOS 部署目标设为 14.0（支持 @Observable）
+  - [ ] tvOS 部署目标设为 17.0（待添加 target）
   - [x] 配置 Development Team
 - **测试**: 真机可安装运行
+- **更新**: `562a51c` 调整部署目标以支持 @Observable
 
 ---
 
@@ -161,9 +162,10 @@
   - `Chiaki/Core/Storage/SettingsStore.swift`
 - **验收标准**:
   - [x] 存储 StreamSettings
-  - [x] 支持 ObservableObject（macOS 13 兼容）
+  - [x] 支持 ObservableObject（待迁移到 @Observable）
   - [x] 数据持久化到 UserDefaults
 - **测试**: 修改设置后重启，数据保留
+- **待优化**: 部署目标已升级到 iOS 17/macOS 14，可迁移到 @Observable
 
 ---
 
@@ -223,12 +225,13 @@
 - **文件**:
   - `Chiaki/Features/HostList/HostListViewModel.swift`
 - **验收标准**:
-  - [x] ObservableObject 协议（macOS 13 兼容）
+  - [x] ObservableObject 协议（待迁移到 @Observable）
   - [x] @Published hosts 数组
   - [x] 添加/删除主机方法（本地）
   - [x] 唤醒主机方法（模拟状态变更）
   - [x] 连接主机方法（占位）
 - **测试**: ViewModel 响应操作
+- **待优化**: 部署目标已升级到 iOS 17/macOS 14，可迁移到 @Observable
 
 ---
 
