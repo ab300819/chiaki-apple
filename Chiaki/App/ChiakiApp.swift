@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct ChiakiApp: App {
+    @StateObject private var settingsStore = SettingsStore()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(settingsStore)
         }
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)

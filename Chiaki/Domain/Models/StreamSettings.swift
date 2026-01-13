@@ -7,6 +7,11 @@ struct StreamSettings: Codable, Equatable {
     var bitrate: Int = 15000 // kbps
     var codec: VideoCodec = .h265
     var hdrEnabled: Bool = false
+    
+    var volume: Double = 1.0
+    var microphoneEnabled: Bool = false
+    
+    var hapticFeedbackEnabled: Bool = true
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {
         case r540p = "540p"

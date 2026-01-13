@@ -1,10 +1,9 @@
 import Foundation
-import Observation
+import Combine
 
 /// Settings storage managing persistence to UserDefaults
-@Observable
-class SettingsStore {
-    var streamSettings: StreamSettings {
+class SettingsStore: ObservableObject {
+    @Published var streamSettings: StreamSettings {
         didSet {
             saveSettings()
         }
