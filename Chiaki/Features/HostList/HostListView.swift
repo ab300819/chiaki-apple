@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HostListView: View {
-    @StateObject private var viewModel = HostListViewModel()
+    @State private var viewModel = HostListViewModel()
     @State private var showingAddHost = false
 
     var body: some View {

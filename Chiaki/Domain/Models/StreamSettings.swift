@@ -12,7 +12,8 @@ struct StreamSettings: Codable, Equatable {
         case r540p = "540p"
         case r720p = "720p"
         case r1080p = "1080p"
-        
+        case r2160p = "4K"
+
         var id: String { rawValue }
 
         var width: Int {
@@ -20,6 +21,7 @@ struct StreamSettings: Codable, Equatable {
             case .r540p: return 960
             case .r720p: return 1280
             case .r1080p: return 1920
+            case .r2160p: return 3840
             }
         }
 
@@ -28,6 +30,7 @@ struct StreamSettings: Codable, Equatable {
             case .r540p: return 540
             case .r720p: return 720
             case .r1080p: return 1080
+            case .r2160p: return 2160
             }
         }
     }

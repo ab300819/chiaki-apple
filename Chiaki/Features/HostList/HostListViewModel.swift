@@ -1,9 +1,10 @@
-import Combine
 import Foundation
+import Observation
 import SwiftUI
 
-final class HostListViewModel: ObservableObject {
-    @Published var hosts: [ConsoleHost] = []
+@Observable
+final class HostListViewModel {
+    var hosts: [ConsoleHost] = []
 
     init() {
         loadMockData()

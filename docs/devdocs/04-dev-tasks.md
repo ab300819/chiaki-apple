@@ -2,7 +2,7 @@
 
 > **文档来源**: 改造自 `TASK.md`
 > **改造时间**: 2026-01-13
-> **最后更新**: 2026-01-13 22:58
+> **最后更新**: 2026-01-13 23:10
 > **调整说明**: UI 优先策略 - 项目初始化后先构建 UI 框架
 
 ## 任务说明
@@ -24,7 +24,7 @@
 | 阶段 | 名称 | 说明 | 状态 |
 |------|------|------|------|
 | M1 | 项目初始化 | Xcode 项目、目录结构 | ✅ 已完成 |
-| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 🔄 进行中 (M2.1, M2.2 已完成) |
+| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 🔄 进行中 (M2.1-M2.3 已完成) |
 | M3 | 核心库构建 | 依赖库、桥接层、Metal 渲染器 | 未开始 |
 | M4 | 功能集成 | 主机发现、会话、流媒体、控制器 | 未开始 |
 | M5 | 完善功能 | PSN 登录、注册、多语言 | 未开始 |
@@ -235,46 +235,50 @@
 
 ---
 
-### 2.3 流媒体视图 UI
+### 2.3 流媒体视图 UI ✅
 
-#### T2.3.1 创建 StreamingView 框架
+> **完成时间**: 2026-01-13
+> **说明**: 实现已存在但未在文档中标记
+
+#### T2.3.1 创建 StreamingView 框架 ✅
 - **描述**: 流媒体视图框架，参考 `gui/qml/StreamView.qml`
 - **依赖**: T1.1.3
 - **文件**:
   - `Chiaki/Features/Streaming/StreamingView.swift`
 - **验收标准**:
-  - [ ] 全屏视图容器
-  - [ ] 占位视频区域（纯色背景）
-  - [ ] 返回按钮/手势
-  - [ ] 状态显示区域
+  - [x] 全屏视图容器（ZStack + Color.black）
+  - [x] 占位视频区域（GridPattern 背景）
+  - [x] 返回按钮（xmark.circle.fill）
+  - [x] 状态显示区域（VideoPlaceholderView）
 - **测试**: Preview 显示全屏布局
 
 ---
 
-#### T2.3.2 创建 StreamingOverlay
+#### T2.3.2 创建 StreamingOverlay ✅
 - **描述**: 流媒体状态覆盖层
 - **依赖**: T2.3.1
 - **文件**:
   - `Chiaki/Features/Streaming/StreamingOverlay.swift`
 - **验收标准**:
-  - [ ] 显示分辨率（Mock: 1080p）
-  - [ ] 显示帧率（Mock: 60fps）
-  - [ ] 显示延迟（Mock: 15ms）
-  - [ ] 点击隐藏/显示
+  - [x] 显示分辨率（Mock: 1080p）
+  - [x] 显示帧率（Mock: 60fps）
+  - [x] 显示延迟（动态模拟）
+  - [x] 点击隐藏/显示（toggleOverlay）
 - **测试**: Overlay 可切换显示
 
 ---
 
-#### T2.3.3 创建 StreamingViewModel（Mock 版本）
+#### T2.3.3 创建 StreamingViewModel（Mock 版本） ✅
 - **描述**: 流媒体视图模型
 - **依赖**: T2.3.1, T2.1.1
 - **文件**:
   - `Chiaki/Features/Streaming/StreamingViewModel.swift`
 - **验收标准**:
-  - [ ] 连接状态枚举
-  - [ ] 连接/断开方法（占位）
-  - [ ] 统计数据属性（Mock）
+  - [x] 连接状态枚举（ConnectionState）
+  - [x] 连接/断开方法（connect/disconnect）
+  - [x] 统计数据属性（Mock + Timer 模拟）
 - **测试**: 状态切换正确
+- **待优化**: 可迁移到 @Observable
 
 ---
 

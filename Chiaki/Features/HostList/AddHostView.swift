@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AddHostView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: HostListViewModel
+    @Bindable var viewModel: HostListViewModel
 
     @State private var nickname = ""
     @State private var address = ""

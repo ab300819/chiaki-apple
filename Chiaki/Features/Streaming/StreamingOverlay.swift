@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct StreamingOverlay: View {
-    @ObservedObject var viewModel: StreamingViewModel
+    var viewModel: StreamingViewModel
     
     var body: some View {
         HStack(spacing: 0) {
@@ -48,11 +48,9 @@ private struct StatItem: View {
     }
 }
 
-struct StreamingOverlay_Previews: PreviewProvider {
-    static var previews: some View {
-        ZStack {
-            Color.black
-            StreamingOverlay(viewModel: StreamingViewModel())
-        }
+#Preview {
+    ZStack {
+        Color.black
+        StreamingOverlay(viewModel: StreamingViewModel())
     }
 }

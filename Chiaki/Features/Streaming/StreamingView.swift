@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct StreamingView: View {
-    @StateObject private var viewModel = StreamingViewModel()
+    @State private var viewModel = StreamingViewModel()
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -36,8 +36,10 @@ struct StreamingView: View {
                 .transition(.opacity)
             }
         }
+        #if os(iOS)
         .statusBar(hidden: true)
         .navigationBarHidden(true)
+        #endif
         .onTapGesture {
             viewModel.toggleOverlay()
         }
@@ -104,9 +106,6 @@ private struct GridPattern: Shape {
     }
 }
 
-struct StreamingView_Previews: PreviewProvider {
-    static var previews: some View {
-        StreamingView()
-            .previewInterfaceOrientation(.landscapeLeft)
-    }
+#Preview(traits: .landscapeLeft) {
+    StreamingView()
 }

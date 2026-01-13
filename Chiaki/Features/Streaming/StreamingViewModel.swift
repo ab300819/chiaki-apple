@@ -1,23 +1,24 @@
 import Foundation
-import Combine
+import Observation
 import SwiftUI
 
-class StreamingViewModel: ObservableObject {
-    
+@Observable
+class StreamingViewModel {
+
     enum ConnectionState: Equatable {
         case disconnected
         case connecting
         case connected
         case error(String)
     }
-    
-    @Published var state: ConnectionState = .disconnected
-    @Published var isOverlayVisible: Bool = true
-    
-    @Published var currentResolution: String = "1080p"
-    @Published var currentFrameRate: Int = 60
-    @Published var latency: Double = 15.0
-    @Published var bitrate: Double = 25.0
+
+    var state: ConnectionState = .disconnected
+    var isOverlayVisible: Bool = true
+
+    var currentResolution: String = "1080p"
+    var currentFrameRate: Int = 60
+    var latency: Double = 15.0
+    var bitrate: Double = 25.0
     
     private var timer: Timer?
     
