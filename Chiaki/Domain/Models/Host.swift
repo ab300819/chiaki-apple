@@ -13,7 +13,7 @@ enum ConsoleType: String, Codable, CaseIterable {
 }
 
 /// Host model
-struct ConsoleHost: Identifiable, Codable, Equatable {
+struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var nickname: String
     var address: String

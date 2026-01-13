@@ -21,8 +21,10 @@ class StreamingViewModel {
     var bitrate: Double = 25.0
     
     private var timer: Timer?
+    private let host: ConsoleHost
     
-    init() {
+    init(host: ConsoleHost) {
+        self.host = host
         connect()
     }
     
@@ -32,6 +34,7 @@ class StreamingViewModel {
     
     func connect() {
         state = .connecting
+        print("Connecting to \(host.nickname) at \(host.address)...")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             self?.state = .connected
@@ -48,6 +51,10 @@ class StreamingViewModel {
         withAnimation(.easeInOut(duration: 0.2)) {
             isOverlayVisible.toggle()
         }
+    }
+    
+    func handleInput(_ input: VirtualControllerInput) {
+        print("Input received for \(host.nickname): \(input)")
     }
     
     private func startMockStatsUpdate() {

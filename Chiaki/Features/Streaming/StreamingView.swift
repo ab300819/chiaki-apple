@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct StreamingView: View {
-    @State private var viewModel = StreamingViewModel()
+    @State private var viewModel: StreamingViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(SettingsStore.self) private var settingsStore
+    
+    init(host: ConsoleHost) {
+        _viewModel = State(initialValue: StreamingViewModel(host: host))
+    }
     
     var body: some View {
         ZStack {
@@ -10,6 +15,15 @@ struct StreamingView: View {
                 .ignoresSafeArea()
             
             VideoPlaceholderView(state: viewModel.state)
+            
+            #if os(iOS)
+            if viewModel.state == .connected && settingsStore.streamSettings.isTouchControllerEnabled {
+                VirtualControllerView { input in
+                    viewModel.handleInput(input)
+                }
+                .zIndex(1)
+            }
+            #endif
             
             if viewModel.isOverlayVisible {
                 VStack {
@@ -34,6 +48,7 @@ struct StreamingView: View {
                     Spacer()
                 }
                 .transition(.opacity)
+                .zIndex(2)
             }
         }
         #if os(iOS)
@@ -107,5 +122,6 @@ private struct GridPattern: Shape {
 }
 
 #Preview(traits: .landscapeLeft) {
-    StreamingView()
+    StreamingView(host: MockData.hostPS5)
+        .environment(SettingsStore())
 }

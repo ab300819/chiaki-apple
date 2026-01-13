@@ -10,12 +10,17 @@ struct HostListView: View {
                 emptyStateView
             } else {
                 ForEach(viewModel.hosts) { host in
-                    HostRowView(host: host) {
-                        viewModel.wakeUp(host)
+                    NavigationLink(value: host) {
+                        HostRowView(host: host) {
+                            viewModel.wakeUp(host)
+                        }
                     }
                 }
                 .onDelete(perform: viewModel.deleteHost)
             }
+        }
+        .navigationDestination(for: ConsoleHost.self) { host in
+            StreamingView(host: host)
         }
         .navigationTitle("Hosts")
         .toolbar {

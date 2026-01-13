@@ -12,6 +12,7 @@ struct StreamSettings: Codable, Equatable {
     var microphoneEnabled: Bool = false
     
     var hapticFeedbackEnabled: Bool = true
+    var isTouchControllerEnabled: Bool = true
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {
         case r540p = "540p"

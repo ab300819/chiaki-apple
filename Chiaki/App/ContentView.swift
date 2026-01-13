@@ -8,17 +8,50 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var sidebarSelection: SidebarItem? = .hosts
+    
+    enum SidebarItem: Hashable {
+        case hosts
+        case settings
+    }
+    
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            HostListView()
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320)
+            List(selection: $sidebarSelection) {
+                NavigationLink(value: SidebarItem.hosts) {
+                    Label("Hosts", systemImage: "gamecontroller")
+                }
+                NavigationLink(value: SidebarItem.settings) {
+                    Label("Settings", systemImage: "gear")
+                }
+            }
+            .navigationTitle("Chiaki")
         } detail: {
-            WelcomeView()
+            NavigationStack {
+                switch sidebarSelection {
+                case .hosts:
+                    HostListView()
+                case .settings:
+                    SettingsView()
+                case nil:
+                    WelcomeView()
+                }
+            }
         }
         #else
-        NavigationStack {
-            HostListView()
+        TabView {
+            NavigationStack {
+                HostListView()
+            }
+            .tabItem {
+                Label("Hosts", systemImage: "gamecontroller")
+            }
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
         }
         #endif
     }
@@ -44,4 +77,5 @@ struct WelcomeView: View {
 
 #Preview {
     ContentView()
+        .environment(SettingsStore())
 }
