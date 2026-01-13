@@ -2,7 +2,7 @@
 
 > **文档来源**: 改造自 `TASK.md`
 > **改造时间**: 2026-01-13
-> **最后更新**: 2026-01-13 20:10
+> **最后更新**: 2026-01-13 21:15
 > **调整说明**: UI 优先策略 - 项目初始化后先构建 UI 框架
 
 ## 任务说明
@@ -24,7 +24,7 @@
 | 阶段 | 名称 | 说明 | 状态 |
 |------|------|------|------|
 | M1 | 项目初始化 | Xcode 项目、目录结构 | ✅ 已完成 |
-| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 未开始 |
+| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 🔄 进行中 (M2.1, M2.2 已完成) |
 | M3 | 核心库构建 | 依赖库、桥接层、Metal 渲染器 | 未开始 |
 | M4 | 功能集成 | 主机发现、会话、流媒体、控制器 | 未开始 |
 | M5 | 完善功能 | PSN 登录、注册、多语言 | 未开始 |
@@ -107,118 +107,127 @@
 > **参考**: `chiaki-ng/gui/` Qt/QML 实现
 > **策略**: macOS 优先开发，使用 Mock 数据，后续平台适配
 
-### 2.1 数据模型与 Mock
+### 2.1 数据模型与 Mock ✅
 
-#### T2.1.1 创建 Host 数据模型
+> **完成时间**: 2026-01-13
+> **提交**: `8080fac` feat(ui): implement M2.1 and M2.2 models and views
+
+#### T2.1.1 创建 Host 数据模型 ✅
 - **描述**: 定义主机数据模型，参考 `gui/include/chiaki/gui/host.h`
 - **依赖**: T1.1.3
 - **文件**:
   - `Chiaki/Domain/Models/Host.swift`
 - **验收标准**:
-  - [ ] 定义 `Host` 结构体（id, name, address, state, type）
-  - [ ] 定义 `HostState` 枚举（online, standby, offline）
-  - [ ] 定义 `ConsoleType` 枚举（ps4, ps5）
-  - [ ] 实现 Codable 协议
+  - [x] 定义 `ConsoleHost` 结构体（id, nickname, address, state, consoleType）
+  - [x] 定义 `HostState` 枚举（online, standby, offline）
+  - [x] 定义 `ConsoleType` 枚举（ps4, ps5）
+  - [x] 实现 Codable 协议
 - **测试**: 单元测试验证模型序列化
 
 ---
 
-#### T2.1.2 创建 StreamSettings 数据模型
+#### T2.1.2 创建 StreamSettings 数据模型 ✅
 - **描述**: 定义流媒体设置模型，参考 `gui/include/chiaki/gui/settings.h`
 - **依赖**: T1.1.3
 - **文件**:
   - `Chiaki/Domain/Models/StreamSettings.swift`
 - **验收标准**:
-  - [ ] 定义分辨率选项（720p, 1080p, 4K）
-  - [ ] 定义帧率选项（30, 60, 120）
-  - [ ] 定义码率范围
-  - [ ] 定义 HDR 开关
+  - [x] 定义分辨率选项（720p, 1080p, 4K）
+  - [x] 定义帧率选项（30, 60, 120）
+  - [x] 定义码率范围
+  - [x] 定义 HDR 开关
+  - [x] 定义 VideoCodec 枚举（h264, h265）
 - **测试**: 单元测试验证默认值
 
 ---
 
-#### T2.1.3 创建 Mock 数据提供者
+#### T2.1.3 创建 Mock 数据提供者 ✅
 - **描述**: 为 UI 开发创建 Mock 数据
 - **依赖**: T2.1.1, T2.1.2
 - **文件**:
   - `Chiaki/Preview Content/MockData.swift`
 - **验收标准**:
-  - [ ] 提供示例 Host 列表（在线、休眠、离线各一）
-  - [ ] 提供默认 StreamSettings
-  - [ ] 支持 SwiftUI Preview
+  - [x] 提供示例 Host 列表（在线、休眠、离线各一）
+  - [x] 提供默认 StreamSettings
+  - [x] 支持 SwiftUI Preview
 - **测试**: Preview 中显示 Mock 数据
 
 ---
 
-#### T2.1.4 实现 SettingsStore（仅存储）
+#### T2.1.4 实现 SettingsStore（仅存储） ✅
 - **描述**: 设置存储层，使用 @AppStorage
 - **依赖**: T2.1.2
 - **文件**:
   - `Chiaki/Core/Storage/SettingsStore.swift`
 - **验收标准**:
-  - [ ] 存储 StreamSettings
-  - [ ] 支持 @Observable
-  - [ ] 数据持久化到 UserDefaults
+  - [x] 存储 StreamSettings
+  - [x] 支持 ObservableObject（macOS 13 兼容）
+  - [x] 数据持久化到 UserDefaults
 - **测试**: 修改设置后重启，数据保留
 
 ---
 
-### 2.2 主机列表 UI (macOS First)
+### 2.2 主机列表 UI (macOS First) ✅
 
-#### T2.2.1 创建 HostRowView
+> **完成时间**: 2026-01-13
+> **提交**: `8080fac` feat(ui): implement M2.1 and M2.2 models and views
+> **改进提交**: `b7250d9` refactor(ui): improve HostList integration and code quality
+
+#### T2.2.1 创建 HostRowView ✅
 - **描述**: 单个主机行视图，参考 `gui/qml/HostItem.qml`
 - **依赖**: T2.1.1, T2.1.3
 - **文件**:
   - `Chiaki/Features/HostList/HostRowView.swift`
 - **验收标准**:
-  - [ ] 显示主机名称和图标
-  - [ ] 显示 IP 地址
-  - [ ] 状态指示（在线/休眠/离线）
-  - [ ] 休眠状态显示唤醒按钮占位
+  - [x] 显示主机名称和图标
+  - [x] 显示 IP 地址
+  - [x] 状态指示（在线/休眠/离线）
+  - [x] 休眠状态显示唤醒按钮
 - **测试**: SwiftUI Preview 显示三种状态
 
 ---
 
-#### T2.2.2 创建 HostListView
+#### T2.2.2 创建 HostListView ✅
 - **描述**: 主机列表视图，参考 `gui/qml/HostList.qml`
 - **依赖**: T2.2.1
 - **文件**:
   - `Chiaki/Features/HostList/HostListView.swift`
 - **验收标准**:
-  - [ ] macOS: 侧边栏布局
-  - [ ] iOS: List 布局
-  - [ ] 空状态提示
-  - [ ] 添加主机按钮
-  - [ ] 下拉刷新（占位）
+  - [x] macOS: 侧边栏布局（NavigationSplitView）
+  - [x] iOS: List 布局（NavigationStack）
+  - [x] 空状态提示（emptyStateView）
+  - [x] 添加主机按钮（toolbar）
+  - [x] 下拉刷新（占位）
 - **测试**: 各平台 Preview 显示正确布局
 
 ---
 
-#### T2.2.3 创建 AddHostView
+#### T2.2.3 创建 AddHostView ✅
 - **描述**: 手动添加主机表单
 - **依赖**: T2.1.1
 - **文件**:
   - `Chiaki/Features/HostList/AddHostView.swift`
 - **验收标准**:
-  - [ ] 主机昵称输入
-  - [ ] IP 地址输入（带验证）
-  - [ ] 主机类型选择（PS4/PS5）
-  - [ ] 保存/取消按钮
+  - [x] 主机昵称输入
+  - [x] IP 地址输入（带验证 - 不允许空地址）
+  - [x] 主机类型选择（PS4/PS5）
+  - [x] 保存/取消按钮
+  - [x] iOS 适配（keyboard type, navigationBarTitleDisplayMode）
 - **测试**: 表单验证逻辑正确
 
 ---
 
-#### T2.2.4 创建 HostListViewModel（Mock 版本）
+#### T2.2.4 创建 HostListViewModel（Mock 版本） ✅
 - **描述**: 主机列表视图模型，使用 Mock 数据
 - **依赖**: T2.2.2, T2.1.3
 - **文件**:
   - `Chiaki/Features/HostList/HostListViewModel.swift`
 - **验收标准**:
-  - [ ] @Observable 属性
-  - [ ] hosts 数组
-  - [ ] 添加/删除主机方法（本地）
-  - [ ] 唤醒主机方法（占位）
-  - [ ] 连接主机方法（占位）
+  - [x] ObservableObject 协议（macOS 13 兼容）
+  - [x] @Published hosts 数组
+  - [x] 添加/删除主机方法（本地）
+  - [x] 唤醒主机方法（模拟状态变更）
+  - [x] 连接主机方法（占位）
 - **测试**: ViewModel 响应操作
 
 ---
