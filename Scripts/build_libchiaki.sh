@@ -33,15 +33,17 @@ if [ -d "$PATCHES_DIR" ]; then
     for patch in "$PATCHES_DIR"/*.patch; do
         if [ -f "$patch" ]; then
             patch_name=$(basename "$patch")
-            if ! git diff --quiet; then
-                log "chiaki-ng already has local changes, skipping patches"
-                break
-            fi
+            # Check if patch can be applied (not already applied)
             if git apply --check "$patch" 2>/dev/null; then
                 log "Applying patch: $patch_name"
                 git apply "$patch"
             else
-                log "Patch already applied or not applicable: $patch_name"
+                # Check if patch is already applied by trying reverse
+                if git apply --check -R "$patch" 2>/dev/null; then
+                    log "Patch already applied: $patch_name"
+                else
+                    log "Warning: Patch not applicable: $patch_name"
+                fi
             fi
         fi
     done
