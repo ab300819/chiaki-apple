@@ -51,6 +51,6 @@ private struct StatItem: View {
 #Preview {
     ZStack {
         Color.black
-        StreamingOverlay(viewModel: StreamingViewModel())
+        StreamingOverlay(viewModel: StreamingViewModel(host: MockData.hostPS5))
     }
 }
