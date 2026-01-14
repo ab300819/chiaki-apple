@@ -10,7 +10,7 @@
 #   make clean-build  - Remove build cache only (keep xcframeworks)
 #   make help         - Show this help
 
-.PHONY: all frameworks mbedtls opus libchiaki clean clean-build help
+.PHONY: all frameworks mbedtls opus libchiaki clean clean-build setup check-patches help
 
 # Directories
 BUILD_DIR := .build
@@ -68,19 +68,43 @@ clean-build:
 	rm -rf $(BUILD_DIR)
 	@echo "✅ Build cache cleaned"
 
+# Initialize submodules
+setup:
+	@echo "📦 Initializing submodules..."
+	git submodule update --init --recursive
+	@echo "✅ Setup complete"
+
+# Check if patches can be applied
+check-patches:
+	@echo "🔍 Checking patches..."
+	@cd chiaki-ng && \
+	for patch in ../Patches/*.patch; do \
+		name=$$(basename $$patch); \
+		if git apply --check "$$patch" 2>/dev/null; then \
+			echo "  ⏳ $$name - can be applied"; \
+		elif git apply --check -R "$$patch" 2>/dev/null; then \
+			echo "  ✅ $$name - already applied"; \
+		else \
+			echo "  ❌ $$name - CONFLICT (needs update)"; \
+		fi \
+	done
+
 # Help
 help:
 	@echo "Chiaki Apple - Build System"
 	@echo ""
-	@echo "Usage:"
+	@echo "Build:"
 	@echo "  make              - Build all xcframeworks"
 	@echo "  make frameworks   - Same as above"
 	@echo "  make mbedtls      - Build mbedtls xcframeworks only"
 	@echo "  make opus         - Build opus xcframework only"
 	@echo "  make libchiaki    - Build libchiaki xcframework only"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make setup        - Initialize git submodules"
+	@echo "  make check-patches - Check if patches need updating"
 	@echo "  make clean        - Remove all build artifacts"
-	@echo "  make clean-build  - Remove build cache only (keep xcframeworks)"
+	@echo "  make clean-build  - Remove build cache only"
 	@echo "  make help         - Show this help"
 	@echo ""
 	@echo "Build order: mbedtls → opus → libchiaki"
-	@echo "libchiaki depends on mbedtls and opus"
