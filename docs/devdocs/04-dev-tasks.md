@@ -24,7 +24,7 @@
 | 阶段 | 名称 | 说明 | 状态 |
 |------|------|------|------|
 | M1 | 项目初始化 | Xcode 项目、目录结构 | ✅ 已完成 |
-| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| 🔄 进行中 (M2.1-M2.3 已完成) |
+| M2 | UI 框架 | 数据模型、所有页面 UI（Mock 数据）| ✅ 已完成 (iOS/macOS) |
 | M3 | 核心库构建 | 依赖库、桥接层、Metal 渲染器 | 未开始 |
 | M4 | 功能集成 | 主机发现、会话、流媒体、控制器 | 未开始 |
 | M5 | 完善功能 | PSN 登录、注册、多语言 | 未开始 |
@@ -282,132 +282,144 @@
 
 ---
 
-### 2.4 设置页面 UI
+### 2.4 设置页面 UI ✅
 
-#### T2.4.1 创建 SettingsView
+> **完成时间**: 2026-01-14
+> **提交**: `7c17700` feat(ui): implement M2.4 settings views
+
+#### T2.4.1 创建 SettingsView ✅
 - **描述**: 设置主视图，参考 `gui/qml/SettingsView.qml`
 - **依赖**: T2.1.4
 - **文件**:
   - `Chiaki/Features/Settings/SettingsView.swift`
 - **验收标准**:
-  - [ ] macOS: 多列布局
-  - [ ] iOS: Form 布局
-  - [ ] 分组：视频、音频、控制器、账户
+  - [x] macOS: TabView 布局
+  - [x] iOS: Form + NavigationLink 布局
+  - [x] 分组：视频、音频、控制器、账户
 - **测试**: 各平台 Preview 显示正确
 
 ---
 
-#### T2.4.2 创建 VideoSettingsView
+#### T2.4.2 创建 VideoSettingsView ✅
 - **描述**: 视频设置页面
 - **依赖**: T2.1.4
 - **文件**:
   - `Chiaki/Features/Settings/VideoSettingsView.swift`
 - **验收标准**:
-  - [ ] 分辨率 Picker
-  - [ ] 帧率 Picker
-  - [ ] 码率 Slider
-  - [ ] HDR Toggle
+  - [x] 分辨率 Picker
+  - [x] 帧率 Picker
+  - [x] 码率 Slider
+  - [x] HDR Toggle
 - **测试**: 设置修改立即反映
 
 ---
 
-#### T2.4.3 创建 AudioSettingsView
+#### T2.4.3 创建 AudioSettingsView ✅
 - **描述**: 音频设置页面
 - **依赖**: T2.1.4
 - **文件**:
   - `Chiaki/Features/Settings/AudioSettingsView.swift`
 - **验收标准**:
-  - [ ] 音量控制
-  - [ ] 输出设备选择（macOS）
-  - [ ] 麦克风开关
+  - [x] 音量控制
+  - [ ] 输出设备选择（macOS）- 待 M4 音频集成
+  - [x] 麦克风开关
 - **测试**: 设置修改立即反映
 
 ---
 
-#### T2.4.4 创建 ControllerSettingsView
+#### T2.4.4 创建 ControllerSettingsView ✅
 - **描述**: 控制器设置页面
 - **依赖**: T2.1.4
 - **文件**:
   - `Chiaki/Features/Settings/ControllerSettingsView.swift`
 - **验收标准**:
-  - [ ] 已连接控制器列表（Mock）
-  - [ ] 触觉反馈 Toggle
-  - [ ] 按键映射入口
+  - [x] 已连接控制器列表（Mock）
+  - [x] 触觉反馈 Toggle
+  - [ ] 按键映射入口 - 待 M4 控制器集成
 - **测试**: 设置项显示正确
 
 ---
 
-### 2.5 虚拟控制器 UI (iOS)
+### 2.5 虚拟控制器 UI (iOS) ✅
 
-#### T2.5.1 创建 VirtualControllerView
+> **完成时间**: 2026-01-14
+> **说明**: 完整实现触屏控制器，包含摇杆、按钮、方向键
+
+#### T2.5.1 创建 VirtualControllerView ✅
 - **描述**: iOS 触屏虚拟控制器
 - **依赖**: T2.3.1
 - **文件**:
   - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift`
+  - `Chiaki/Features/Streaming/VirtualControllerInput.swift`
 - **验收标准**:
-  - [ ] 左摇杆区域
-  - [ ] 右摇杆区域
-  - [ ] 方向键
-  - [ ] ABXY 按钮
-  - [ ] L/R 触发器
-  - [ ] 透明度可调
+  - [x] 左摇杆区域
+  - [x] 右摇杆区域
+  - [x] 方向键
+  - [x] PlayStation 按钮 (△○✕□)
+  - [x] L1/L2/R1/R2 触发器
+  - [x] 透明度可调
+  - [x] PS/Share/Options 按钮
 - **测试**: iPad Preview 显示完整布局
 
 ---
 
-#### T2.5.2 创建 VirtualStickView
+#### T2.5.2 创建 VirtualStickView ✅
 - **描述**: 虚拟摇杆组件
 - **依赖**: T2.5.1
 - **文件**:
   - `Chiaki/Features/Streaming/VirtualController/VirtualStickView.swift`
 - **验收标准**:
-  - [ ] 触摸跟随
-  - [ ] 范围限制（圆形）
-  - [ ] 松开回中
-  - [ ] 输出归一化坐标 (-1 ~ 1)
+  - [x] 触摸跟随
+  - [x] 范围限制（圆形）
+  - [x] 松开回中（带弹簧动画）
+  - [x] 输出归一化坐标 (-1 ~ 1)
 - **测试**: 手势测试，输出值正确
 
 ---
 
-#### T2.5.3 创建 VirtualButtonView
+#### T2.5.3 创建 VirtualButtonView ✅
 - **描述**: 虚拟按钮组件
 - **依赖**: T2.5.1
 - **文件**:
   - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift`
 - **验收标准**:
-  - [ ] 按下/释放状态
-  - [ ] 视觉反馈
-  - [ ] 支持自定义图标
+  - [x] 按下/释放状态
+  - [x] 视觉反馈（缩放 + 颜色变化）
+  - [x] 支持自定义图标
+  - [x] 触觉反馈 (UIImpactFeedbackGenerator)
 - **测试**: 按钮状态切换正确
 
 ---
 
-### 2.6 导航与整合
+### 2.6 导航与整合 ✅
 
-#### T2.6.1 创建 ContentView 主导航
+> **完成时间**: 2026-01-14
+> **说明**: iOS/macOS 已完成，tvOS 待 M6 平台适配阶段实现
+
+#### T2.6.1 创建 ContentView 主导航 ✅
 - **描述**: 应用主导航结构
 - **依赖**: T2.2.2, T2.4.1
 - **文件**:
   - `Chiaki/App/ContentView.swift`
 - **验收标准**:
-  - [ ] macOS: NavigationSplitView
-  - [ ] iOS: TabView
-  - [ ] tvOS: 焦点导航
-  - [ ] 主机列表为首页
-  - [ ] 设置入口
+  - [x] macOS: NavigationSplitView
+  - [x] iOS: TabView
+  - [ ] tvOS: 焦点导航（待 M6 实现）
+  - [x] 主机列表为首页
+  - [x] 设置入口
 - **测试**: 各平台导航流程完整
 
 ---
 
-#### T2.6.2 实现主机列表到流媒体导航
+#### T2.6.2 实现主机列表到流媒体导航 ✅
 - **描述**: 点击主机进入流媒体视图
 - **依赖**: T2.6.1, T2.3.1, T2.2.4
 - **文件**:
   - `Chiaki/Features/HostList/HostListView.swift` (修改)
 - **验收标准**:
-  - [ ] 点击在线主机，导航到 StreamingView
-  - [ ] 显示连接中状态（Mock）
-  - [ ] 返回操作正常
+  - [x] 点击在线主机，导航到 StreamingView
+  - [x] 显示连接中状态（Mock）
+  - [x] 返回操作正常
 - **测试**: 完整导航流程
 
 ---
