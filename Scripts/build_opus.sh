@@ -10,6 +10,10 @@ SOURCE_DIR="$BUILD_DIR/opus-${OPUS_VERSION}"
 
 download_and_extract "$OPUS_URL" "opus-${OPUS_VERSION}"
 
+if [ ! -f "$SOURCE_DIR/opus_buildtype.cmake" ]; then
+    touch "$SOURCE_DIR/opus_buildtype.cmake"
+fi
+
 # Define targets
 # Format: platform arch
 TARGETS=(
@@ -39,13 +43,30 @@ for target in "${TARGETS[@]}"; do
 done
 
 # Create XCFramework
-args=()
-for target in "${TARGETS[@]}"; do
-    read -r platform arch <<< "$target"
-    install_dir="$BUILD_DIR/opus_install_${platform}_${arch}"
-    args+=("$install_dir/lib/libopus.a")
-done
+ios_lib="$BUILD_DIR/opus_install_ios_arm64/lib/libopus.a"
 
-create_xcframework "opus" "${args[@]}"
+mkdir -p "$BUILD_DIR/opus_combined_ios-simulator/lib"
+cp -r "$BUILD_DIR/opus_install_ios-simulator_arm64/include" "$BUILD_DIR/opus_combined_ios-simulator/"
+lipo -create \
+    "$BUILD_DIR/opus_install_ios-simulator_arm64/lib/libopus.a" \
+    "$BUILD_DIR/opus_install_ios-simulator_x86_64/lib/libopus.a" \
+    -output "$BUILD_DIR/opus_combined_ios-simulator/lib/libopus.a"
+ios_sim_lib="$BUILD_DIR/opus_combined_ios-simulator/lib/libopus.a"
+
+mkdir -p "$BUILD_DIR/opus_combined_macos/lib"
+cp -r "$BUILD_DIR/opus_install_macos_arm64/include" "$BUILD_DIR/opus_combined_macos/"
+lipo -create \
+    "$BUILD_DIR/opus_install_macos_arm64/lib/libopus.a" \
+    "$BUILD_DIR/opus_install_macos_x86_64/lib/libopus.a" \
+    -output "$BUILD_DIR/opus_combined_macos/lib/libopus.a"
+macos_lib="$BUILD_DIR/opus_combined_macos/lib/libopus.a"
+
+tvos_lib="$BUILD_DIR/opus_install_tvos_arm64/lib/libopus.a"
+
+create_xcframework "opus" \
+    "$ios_lib" \
+    "$ios_sim_lib" \
+    "$macos_lib" \
+    "$tvos_lib"
 
 log "Opus build complete."

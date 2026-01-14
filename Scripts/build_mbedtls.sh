@@ -35,23 +35,56 @@ for target in "${TARGETS[@]}"; do
         "-DENABLE_PROGRAMS=OFF" \
         "-DUSE_SHARED_MBEDTLS_LIBRARY=OFF" \
         "-DUSE_STATIC_MBEDTLS_LIBRARY=ON" \
-        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON" \
+        "-DMBEDTLS_FATAL_WARNINGS=OFF"
 
     cmake --build "$build_dir" --target install
 done
 
-# Create XCFrameworks
-LIBS=("mbedcrypto" "mbedtls" "mbedx509")
+# Create combined directories for fat binaries
+log "Creating combined libraries for multi-arch platforms..."
 
-for lib in "${LIBS[@]}"; do
-    args=()
-    for target in "${TARGETS[@]}"; do
-        read -r platform arch <<< "$target"
-        install_dir="$BUILD_DIR/mbedtls_install_${platform}_${arch}"
-        args+=("$install_dir/lib/lib${lib}.a")
-    done
-    
-    create_xcframework "$lib" "${args[@]}"
+mkdir -p "$BUILD_DIR/mbedtls_combined_ios-simulator/lib"
+mkdir -p "$BUILD_DIR/mbedtls_combined_ios-simulator/include"
+cp -r "$BUILD_DIR/mbedtls_install_ios-simulator_arm64/include/"* "$BUILD_DIR/mbedtls_combined_ios-simulator/include/"
+
+mkdir -p "$BUILD_DIR/mbedtls_combined_macos/lib"
+mkdir -p "$BUILD_DIR/mbedtls_combined_macos/include"
+cp -r "$BUILD_DIR/mbedtls_install_macos_arm64/include/"* "$BUILD_DIR/mbedtls_combined_macos/include/"
+
+for lib in mbedcrypto mbedtls mbedx509; do
+    lipo -create \
+        "$BUILD_DIR/mbedtls_install_ios-simulator_arm64/lib/lib${lib}.a" \
+        "$BUILD_DIR/mbedtls_install_ios-simulator_x86_64/lib/lib${lib}.a" \
+        -output "$BUILD_DIR/mbedtls_combined_ios-simulator/lib/lib${lib}.a"
+
+    lipo -create \
+        "$BUILD_DIR/mbedtls_install_macos_arm64/lib/lib${lib}.a" \
+        "$BUILD_DIR/mbedtls_install_macos_x86_64/lib/lib${lib}.a" \
+        -output "$BUILD_DIR/mbedtls_combined_macos/lib/lib${lib}.a"
+done
+
+# Create XCFrameworks - only mbedcrypto includes headers (others would duplicate)
+log "Creating xcframeworks..."
+
+# mbedcrypto with headers
+rm -rf "$FRAMEWORKS_DIR/mbedcrypto.xcframework"
+xcodebuild -create-xcframework \
+    -library "$BUILD_DIR/mbedtls_install_ios_arm64/lib/libmbedcrypto.a" -headers "$BUILD_DIR/mbedtls_install_ios_arm64/include" \
+    -library "$BUILD_DIR/mbedtls_combined_ios-simulator/lib/libmbedcrypto.a" -headers "$BUILD_DIR/mbedtls_combined_ios-simulator/include" \
+    -library "$BUILD_DIR/mbedtls_combined_macos/lib/libmbedcrypto.a" -headers "$BUILD_DIR/mbedtls_combined_macos/include" \
+    -library "$BUILD_DIR/mbedtls_install_tvos_arm64/lib/libmbedcrypto.a" -headers "$BUILD_DIR/mbedtls_install_tvos_arm64/include" \
+    -output "$FRAMEWORKS_DIR/mbedcrypto.xcframework"
+
+# mbedtls and mbedx509 without headers (they share headers with mbedcrypto)
+for lib in mbedtls mbedx509; do
+    rm -rf "$FRAMEWORKS_DIR/${lib}.xcframework"
+    xcodebuild -create-xcframework \
+        -library "$BUILD_DIR/mbedtls_install_ios_arm64/lib/lib${lib}.a" \
+        -library "$BUILD_DIR/mbedtls_combined_ios-simulator/lib/lib${lib}.a" \
+        -library "$BUILD_DIR/mbedtls_combined_macos/lib/lib${lib}.a" \
+        -library "$BUILD_DIR/mbedtls_install_tvos_arm64/lib/lib${lib}.a" \
+        -output "$FRAMEWORKS_DIR/${lib}.xcframework"
 done
 
 log "mbedtls build complete."

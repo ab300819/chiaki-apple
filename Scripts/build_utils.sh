@@ -77,6 +77,7 @@ configure_cmake() {
         "-DCMAKE_INSTALL_PREFIX=$install_dir"
         "-DCMAKE_BUILD_TYPE=Release"
         "-DCMAKE_OSX_ARCHITECTURES=$arch"
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
     )
 
     case $platform in

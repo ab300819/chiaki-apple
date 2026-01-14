@@ -12,6 +12,42 @@ MINIUPNPC_URL="http://miniupnp.free.fr/files/miniupnpc-${MINIUPNPC_VERSION}.tar.
 download_and_extract "$JSONC_URL" "json-c-${JSONC_VERSION}"
 download_and_extract "$MINIUPNPC_URL" "miniupnpc-${MINIUPNPC_VERSION}"
 
+miniuppnc_cmake="$BUILD_DIR/miniupnpc-${MINIUPNPC_VERSION}/CMakeLists.txt"
+if ! grep -q "include/miniupnpc.h" "$miniuppnc_cmake"; then
+    sed -i '' 's|[[:space:]]miniupnpc.h| include/miniupnpc.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]miniwget.h| include/miniwget.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]upnpcommands.h| include/upnpcommands.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]igd_desc_parse.h| include/igd_desc_parse.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]upnpreplyparse.h| include/upnpreplyparse.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]upnperrors.h| include/upnperrors.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]upnpdev.h| include/upnpdev.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]miniupnpctypes.h| include/miniupnpctypes.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]portlistingparse.h| include/portlistingparse.h|g' "$miniuppnc_cmake"
+    sed -i '' 's|[[:space:]]miniupnpc_declspec.h| include/miniupnpc_declspec.h|g' "$miniuppnc_cmake"
+fi
+
+# Apply patches to chiaki-ng
+PATCHES_DIR="$PROJECT_ROOT/Patches"
+if [ -d "$PATCHES_DIR" ]; then
+    pushd "$PROJECT_ROOT/chiaki-ng" > /dev/null
+    for patch in "$PATCHES_DIR"/*.patch; do
+        if [ -f "$patch" ]; then
+            patch_name=$(basename "$patch")
+            if ! git diff --quiet; then
+                log "chiaki-ng already has local changes, skipping patches"
+                break
+            fi
+            if git apply --check "$patch" 2>/dev/null; then
+                log "Applying patch: $patch_name"
+                git apply "$patch"
+            else
+                log "Patch already applied or not applicable: $patch_name"
+            fi
+        fi
+    done
+    popd > /dev/null
+fi
+
 # Define targets
 # Format: platform arch
 TARGETS=(
@@ -59,12 +95,13 @@ for target in "${TARGETS[@]}"; do
     configure_cmake "$platform" "$arch" "$BUILD_DIR/miniupnpc-${MINIUPNPC_VERSION}" \
         "$BUILD_DIR/miniupnpc_build_${platform}_${arch}" "$deps_install" \
         "-DUPNPC_BUILD_SHARED=OFF" \
-        "-DUPNPC_BUILD_TESTS=OFF"
+        "-DUPNPC_BUILD_TESTS=OFF" \
+        "-DCMAKE_C_FLAGS=-D_DARWIN_C_SOURCE"
     cmake --build "$BUILD_DIR/miniupnpc_build_${platform}_${arch}" --target install
 
     # 3. Build libchiaki
     log "Building libchiaki..."
-    
+
     # Set PKG_CONFIG_PATH for json-c and miniupnpc
     export PKG_CONFIG_PATH="$deps_install/lib/pkgconfig:$deps_install/share/pkgconfig"
     
@@ -84,15 +121,25 @@ for target in "${TARGETS[@]}"; do
         "-DCHIAKI_ENABLE_ANDROID=OFF" \
         "-DCHIAKI_ENABLE_BOREALIS=OFF" \
         "-DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF" \
+        "-DCHIAKI_ENABLE_STEAM_SHORTCUT=OFF" \
         "-DCHIAKI_ENABLE_SETSU=OFF" \
+        "-DCHIAKI_ENABLE_SPEEX=OFF" \
+        "-DCHIAKI_ENABLE_RUDP=OFF" \
         "-DCHIAKI_LIB_ENABLE_MBEDTLS=ON" \
         "-DCHIAKI_LIB_MBEDTLS_EXTERNAL_PROJECT=OFF" \
         "-DCHIAKI_LIB_ENABLE_OPUS=ON" \
         "-DCHIAKI_ENABLE_FFMPEG_DECODER=OFF" \
+        "-DCHIAKI_ENABLE_PI_DECODER=OFF" \
         "-DCHIAKI_USE_SYSTEM_NANOPB=OFF" \
         "-DCHIAKI_USE_SYSTEM_JERASURE=OFF" \
         "-DCHIAKI_USE_SYSTEM_CURL=OFF" \
+        "-DCURL_USE_MBEDTLS=ON" \
+        "-DCURL_USE_OPENSSL=OFF" \
         "-DCMAKE_PREFIX_PATH=$mbedtls_install;$opus_install;$deps_install" \
+        "-DCMAKE_FIND_ROOT_PATH=$mbedtls_install;$opus_install;$deps_install" \
+        "-DOpus_INCLUDE_DIRS=$opus_install/include" \
+        "-DOpus_LIBRARIES=$opus_install/lib/libopus.a" \
+        "-DCMAKE_C_FLAGS=-I$mbedtls_install/include -DGESTALT_WORKAROUND=1" \
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
     # Build only chiaki-lib target
@@ -100,40 +147,37 @@ for target in "${TARGETS[@]}"; do
 done
 
 # Create XCFramework
-args=()
-headers_source=""
-
-for target in "${TARGETS[@]}"; do
-    read -r platform arch <<< "$target"
-    build_dir="$BUILD_DIR/chiaki_build_${platform}_${arch}"
-    lib_path="$build_dir/lib/libchiaki.a"
-    
-    if [ ! -f "$lib_path" ]; then
-        error "libchiaki.a not found at $lib_path"
-    fi
-    
-    # We need to specify headers for the XCFramework
-    # We'll use the first build's headers as source, assuming they are identical
-    if [ -z "$headers_source" ]; then
-        # Create a combined headers directory
-        headers_source="$BUILD_DIR/chiaki_headers"
-        mkdir -p "$headers_source"
-        # Copy source headers
-        cp -R "$PROJECT_ROOT/chiaki-ng/lib/include/chiaki" "$headers_source/"
-        # Copy generated headers (protobuf, config.h)
-        # config.h is in build_dir/include/chiaki/config.h
-        # protobuf headers are in build_dir/lib/protobuf... wait.
-        # lib/CMakeLists.txt: target_include_directories(chiaki-lib PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/include")
-        # So we should copy from build_dir/lib/include/chiaki if it exists?
-        # Actually CMake configures config.h into include/chiaki/config.h in binary dir.
-        cp -R "$build_dir/lib/include/chiaki" "$headers_source/"
-    fi
-    
-    args+=("-library" "$lib_path" "-headers" "$headers_source")
-done
-
 log "Creating libchiaki.xcframework..."
+
+headers_source="$BUILD_DIR/chiaki_headers"
+mkdir -p "$headers_source"
+cp -R "$PROJECT_ROOT/chiaki-ng/lib/include/chiaki" "$headers_source/"
+cp -R "$BUILD_DIR/chiaki_build_ios_arm64/lib/include/chiaki" "$headers_source/"
+
+ios_lib="$BUILD_DIR/chiaki_build_ios_arm64/lib/libchiaki.a"
+
+mkdir -p "$BUILD_DIR/chiaki_combined_ios-simulator"
+lipo -create \
+    "$BUILD_DIR/chiaki_build_ios-simulator_arm64/lib/libchiaki.a" \
+    "$BUILD_DIR/chiaki_build_ios-simulator_x86_64/lib/libchiaki.a" \
+    -output "$BUILD_DIR/chiaki_combined_ios-simulator/libchiaki.a"
+ios_sim_lib="$BUILD_DIR/chiaki_combined_ios-simulator/libchiaki.a"
+
+mkdir -p "$BUILD_DIR/chiaki_combined_macos"
+lipo -create \
+    "$BUILD_DIR/chiaki_build_macos_arm64/lib/libchiaki.a" \
+    "$BUILD_DIR/chiaki_build_macos_x86_64/lib/libchiaki.a" \
+    -output "$BUILD_DIR/chiaki_combined_macos/libchiaki.a"
+macos_lib="$BUILD_DIR/chiaki_combined_macos/libchiaki.a"
+
+tvos_lib="$BUILD_DIR/chiaki_build_tvos_arm64/lib/libchiaki.a"
+
 rm -rf "$FRAMEWORKS_DIR/libchiaki.xcframework"
-xcodebuild -create-xcframework "${args[@]}" -output "$FRAMEWORKS_DIR/libchiaki.xcframework"
+xcodebuild -create-xcframework \
+    -library "$ios_lib" -headers "$headers_source" \
+    -library "$ios_sim_lib" -headers "$headers_source" \
+    -library "$macos_lib" -headers "$headers_source" \
+    -library "$tvos_lib" -headers "$headers_source" \
+    -output "$FRAMEWORKS_DIR/libchiaki.xcframework"
 
 log "libchiaki build complete."
