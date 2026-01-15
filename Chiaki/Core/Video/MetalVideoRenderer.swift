@@ -1,0 +1,688 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// MetalVideoRenderer.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// High-performance Metal-based video renderer with zero-copy CVPixelBuffer support
+
+import Foundation
+import Metal
+import MetalKit
+import CoreVideo
+import simd
+
+// MARK: - Video Display Mode
+
+/// Video display modes matching chiaki-ng GUI options
+enum VideoDisplayMode: Int, CaseIterable {
+    case normal = 0    // Maintain aspect ratio, letterbox/pillarbox
+    case stretch = 1   // Stretch to fill screen
+    case zoom = 2      // Zoom to fill, crop edges
+
+    var displayName: String {
+        switch self {
+        case .normal: return "Normal"
+        case .stretch: return "Stretch"
+        case .zoom: return "Zoom"
+        }
+    }
+}
+
+// MARK: - Video Uniforms
+
+/// Uniforms passed to Metal shaders
+struct VideoUniforms {
+    var transform: simd_float4x4
+    var textureSizeY: simd_float2
+    var textureSizeUV: simd_float2
+    var brightness: Float
+    var contrast: Float
+    var saturation: Float
+
+    static var `default`: VideoUniforms {
+        VideoUniforms(
+            transform: matrix_identity_float4x4,
+            textureSizeY: simd_float2(1920, 1080),
+            textureSizeUV: simd_float2(960, 540),
+            brightness: 1.0,
+            contrast: 1.0,
+            saturation: 1.0
+        )
+    }
+}
+
+// MARK: - Vertex Data
+
+/// Vertex structure for video quad
+struct VideoVertex {
+    var position: simd_float2
+    var texCoord: simd_float2
+}
+
+// MARK: - Metal Video Renderer
+
+/// High-performance video renderer using Metal with CVPixelBuffer zero-copy support
+final class MetalVideoRenderer: NSObject {
+    // MARK: - Properties
+
+    /// Metal device
+    private let device: MTLDevice
+
+    /// Command queue for rendering
+    private let commandQueue: MTLCommandQueue
+
+    /// Texture cache for zero-copy CVPixelBuffer conversion
+    private var textureCache: CVMetalTextureCache?
+
+    /// Render pipeline for biplanar YUV (NV12)
+    private var biplanarPipeline: MTLRenderPipelineState?
+
+    /// Render pipeline for BGRA
+    private var bgraPipeline: MTLRenderPipelineState?
+
+    /// Vertex buffer for video quad
+    private var vertexBuffer: MTLBuffer?
+
+    /// Index buffer for video quad
+    private var indexBuffer: MTLBuffer?
+
+    /// Uniforms buffer
+    private var uniformsBuffer: MTLBuffer?
+
+    /// Current video uniforms
+    private var uniforms = VideoUniforms.default
+
+    /// Current display mode
+    var displayMode: VideoDisplayMode = .normal {
+        didSet { updateTransform() }
+    }
+
+    /// Zoom factor (only used in zoom mode)
+    var zoomFactor: Float = 1.0 {
+        didSet { updateTransform() }
+    }
+
+    /// Video source size
+    private var videoSize: CGSize = CGSize(width: 1920, height: 1080)
+
+    /// View size
+    private var viewSize: CGSize = CGSize(width: 1920, height: 1080)
+
+    /// Current Y texture
+    private var currentTextureY: MTLTexture?
+
+    /// Current UV texture
+    private var currentTextureUV: MTLTexture?
+
+    /// Current BGRA texture
+    private var currentTextureBGRA: MTLTexture?
+
+    /// Whether current frame is biplanar
+    private var isBiplanar = true
+
+    /// Lock for thread-safe frame updates
+    private let frameLock = NSLock()
+
+    /// Frame counter for statistics
+    private(set) var frameCount: UInt64 = 0
+
+    /// Dropped frame counter
+    private(set) var droppedFrameCount: UInt64 = 0
+
+    // MARK: - Initialization
+
+    init?(device: MTLDevice? = nil) {
+        guard let metalDevice = device ?? MTLCreateSystemDefaultDevice() else {
+            logError("Metal is not supported on this device")
+            return nil
+        }
+
+        self.device = metalDevice
+
+        guard let queue = metalDevice.makeCommandQueue() else {
+            logError("Failed to create Metal command queue")
+            return nil
+        }
+        self.commandQueue = queue
+
+        super.init()
+
+        // Create texture cache for zero-copy CVPixelBuffer conversion
+        var cache: CVMetalTextureCache?
+        let status = CVMetalTextureCacheCreate(
+            kCFAllocatorDefault,
+            nil,
+            metalDevice,
+            nil,
+            &cache
+        )
+
+        guard status == kCVReturnSuccess, let textureCache = cache else {
+            logError("Failed to create CVMetalTextureCache: \(status)")
+            return nil
+        }
+        self.textureCache = textureCache
+
+        // Setup rendering resources
+        guard setupPipelines() && setupBuffers() else {
+            return nil
+        }
+
+        logInfo("MetalVideoRenderer initialized successfully")
+    }
+
+    deinit {
+        textureCache = nil
+        logInfo("MetalVideoRenderer deinitialized")
+    }
+
+    // MARK: - Setup
+
+    private func setupPipelines() -> Bool {
+        // Try to load from default library first, fall back to runtime compilation
+        let library: MTLLibrary
+        if let defaultLibrary = device.makeDefaultLibrary() {
+            library = defaultLibrary
+            logInfo("Loaded Metal shaders from default library")
+        } else {
+            // Compile shaders from source at runtime
+            logInfo("Compiling Metal shaders from source...")
+            do {
+                library = try device.makeLibrary(source: Self.shaderSource, options: nil)
+                logInfo("Metal shaders compiled successfully")
+            } catch {
+                logError("Failed to compile Metal shaders: \(error)")
+                return false
+            }
+        }
+
+        // Vertex descriptor
+        let vertexDescriptor = MTLVertexDescriptor()
+        vertexDescriptor.attributes[0].format = .float2
+        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].bufferIndex = 0
+        vertexDescriptor.attributes[1].format = .float2
+        vertexDescriptor.attributes[1].offset = MemoryLayout<simd_float2>.stride
+        vertexDescriptor.attributes[1].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = MemoryLayout<VideoVertex>.stride
+
+        // Common pipeline descriptor setup
+        let pipelineDescriptor = MTLRenderPipelineDescriptor()
+        pipelineDescriptor.vertexDescriptor = vertexDescriptor
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+
+        // Get shader functions
+        guard let vertexFunction = library.makeFunction(name: "videoVertexShader") else {
+            logError("Failed to load vertex shader")
+            return false
+        }
+        pipelineDescriptor.vertexFunction = vertexFunction
+
+        // Biplanar pipeline (NV12/NV21)
+        if let biplanarFragment = library.makeFunction(name: "videoBiplanarFragmentShader") {
+            pipelineDescriptor.fragmentFunction = biplanarFragment
+            pipelineDescriptor.label = "Biplanar Video Pipeline"
+
+            do {
+                biplanarPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            } catch {
+                logError("Failed to create biplanar pipeline: \(error)")
+                return false
+            }
+        }
+
+        // BGRA pipeline
+        if let bgraFragment = library.makeFunction(name: "videoBGRAFragmentShader") {
+            pipelineDescriptor.fragmentFunction = bgraFragment
+            pipelineDescriptor.label = "BGRA Video Pipeline"
+
+            do {
+                bgraPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            } catch {
+                logError("Failed to create BGRA pipeline: \(error)")
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private func setupBuffers() -> Bool {
+        // Full-screen quad vertices (position and texture coordinates)
+        let vertices: [VideoVertex] = [
+            VideoVertex(position: simd_float2(-1, -1), texCoord: simd_float2(0, 1)),  // Bottom-left
+            VideoVertex(position: simd_float2(1, -1), texCoord: simd_float2(1, 1)),   // Bottom-right
+            VideoVertex(position: simd_float2(1, 1), texCoord: simd_float2(1, 0)),    // Top-right
+            VideoVertex(position: simd_float2(-1, 1), texCoord: simd_float2(0, 0))    // Top-left
+        ]
+
+        guard let vBuffer = device.makeBuffer(
+            bytes: vertices,
+            length: MemoryLayout<VideoVertex>.stride * vertices.count,
+            options: .storageModeShared
+        ) else {
+            logError("Failed to create vertex buffer")
+            return false
+        }
+        vertexBuffer = vBuffer
+        vBuffer.label = "Video Vertex Buffer"
+
+        // Index buffer for two triangles
+        let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
+
+        guard let iBuffer = device.makeBuffer(
+            bytes: indices,
+            length: MemoryLayout<UInt16>.stride * indices.count,
+            options: .storageModeShared
+        ) else {
+            logError("Failed to create index buffer")
+            return false
+        }
+        indexBuffer = iBuffer
+        iBuffer.label = "Video Index Buffer"
+
+        // Uniforms buffer
+        guard let uBuffer = device.makeBuffer(
+            length: MemoryLayout<VideoUniforms>.stride,
+            options: .storageModeShared
+        ) else {
+            logError("Failed to create uniforms buffer")
+            return false
+        }
+        uniformsBuffer = uBuffer
+        uBuffer.label = "Video Uniforms Buffer"
+
+        return true
+    }
+
+    // MARK: - Frame Handling
+
+    /// Submit a new video frame for rendering (zero-copy from CVPixelBuffer)
+    func submitFrame(_ pixelBuffer: CVPixelBuffer) {
+        frameLock.lock()
+        defer { frameLock.unlock() }
+
+        guard let textureCache = textureCache else {
+            logWarning("Texture cache not available")
+            droppedFrameCount += 1
+            return
+        }
+
+        let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+
+        videoSize = CGSize(width: width, height: height)
+
+        switch pixelFormat {
+        case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+             kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+            // Biplanar NV12 format (common from VideoToolbox)
+            isBiplanar = true
+            createBiplanarTextures(from: pixelBuffer, cache: textureCache)
+
+        case kCVPixelFormatType_32BGRA:
+            // BGRA format
+            isBiplanar = false
+            createBGRATexture(from: pixelBuffer, cache: textureCache)
+
+        default:
+            logWarning("Unsupported pixel format: \(pixelFormat)")
+            droppedFrameCount += 1
+            return
+        }
+
+        frameCount += 1
+        updateTransform()
+    }
+
+    private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache) {
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+
+        // Y plane (full resolution)
+        var textureY: CVMetalTexture?
+        var status = CVMetalTextureCacheCreateTextureFromImage(
+            kCFAllocatorDefault,
+            cache,
+            pixelBuffer,
+            nil,
+            .r8Unorm,
+            width,
+            height,
+            0,  // Y plane index
+            &textureY
+        )
+
+        guard status == kCVReturnSuccess, let cvTextureY = textureY else {
+            logWarning("Failed to create Y texture: \(status)")
+            return
+        }
+        currentTextureY = CVMetalTextureGetTexture(cvTextureY)
+
+        // UV plane (half resolution)
+        var textureUV: CVMetalTexture?
+        status = CVMetalTextureCacheCreateTextureFromImage(
+            kCFAllocatorDefault,
+            cache,
+            pixelBuffer,
+            nil,
+            .rg8Unorm,
+            width / 2,
+            height / 2,
+            1,  // UV plane index
+            &textureUV
+        )
+
+        guard status == kCVReturnSuccess, let cvTextureUV = textureUV else {
+            logWarning("Failed to create UV texture: \(status)")
+            return
+        }
+        currentTextureUV = CVMetalTextureGetTexture(cvTextureUV)
+
+        // Update uniforms
+        uniforms.textureSizeY = simd_float2(Float(width), Float(height))
+        uniforms.textureSizeUV = simd_float2(Float(width / 2), Float(height / 2))
+    }
+
+    private func createBGRATexture(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache) {
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+
+        var texture: CVMetalTexture?
+        let status = CVMetalTextureCacheCreateTextureFromImage(
+            kCFAllocatorDefault,
+            cache,
+            pixelBuffer,
+            nil,
+            .bgra8Unorm,
+            width,
+            height,
+            0,
+            &texture
+        )
+
+        guard status == kCVReturnSuccess, let cvTexture = texture else {
+            logWarning("Failed to create BGRA texture: \(status)")
+            return
+        }
+        currentTextureBGRA = CVMetalTextureGetTexture(cvTexture)
+
+        uniforms.textureSizeY = simd_float2(Float(width), Float(height))
+    }
+
+    // MARK: - Rendering
+
+    /// Render the current frame to a drawable
+    func render(to drawable: CAMetalDrawable, renderPassDescriptor: MTLRenderPassDescriptor) {
+        frameLock.lock()
+        let hasFrame = isBiplanar ? (currentTextureY != nil && currentTextureUV != nil) : (currentTextureBGRA != nil)
+        let biplanar = isBiplanar
+        let textureY = currentTextureY
+        let textureUV = currentTextureUV
+        let textureBGRA = currentTextureBGRA
+        frameLock.unlock()
+
+        guard hasFrame else {
+            // No frame yet, clear to black
+            renderClear(to: drawable, renderPassDescriptor: renderPassDescriptor)
+            return
+        }
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        commandBuffer.label = "Video Render Command Buffer"
+
+        // Update uniforms
+        if let uniformsBuffer = uniformsBuffer {
+            memcpy(uniformsBuffer.contents(), &uniforms, MemoryLayout<VideoUniforms>.stride)
+        }
+
+        renderPassDescriptor.colorAttachments[0].texture = drawable.texture
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        renderPassDescriptor.colorAttachments[0].storeAction = .store
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+            return
+        }
+        renderEncoder.label = "Video Render Encoder"
+
+        // Select pipeline
+        let pipeline: MTLRenderPipelineState?
+        if biplanar {
+            pipeline = biplanarPipeline
+            renderEncoder.setFragmentTexture(textureY, index: 0)
+            renderEncoder.setFragmentTexture(textureUV, index: 1)
+        } else {
+            pipeline = bgraPipeline
+            renderEncoder.setFragmentTexture(textureBGRA, index: 0)
+        }
+
+        guard let activePipeline = pipeline else {
+            renderEncoder.endEncoding()
+            return
+        }
+
+        renderEncoder.setRenderPipelineState(activePipeline)
+        renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        renderEncoder.setFragmentBuffer(uniformsBuffer, offset: 0, index: 1)
+
+        renderEncoder.drawIndexedPrimitives(
+            type: .triangle,
+            indexCount: 6,
+            indexType: .uint16,
+            indexBuffer: indexBuffer!,
+            indexBufferOffset: 0
+        )
+
+        renderEncoder.endEncoding()
+
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    private func renderClear(to drawable: CAMetalDrawable, renderPassDescriptor: MTLRenderPassDescriptor) {
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+
+        renderPassDescriptor.colorAttachments[0].texture = drawable.texture
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        renderPassDescriptor.colorAttachments[0].storeAction = .store
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+            return
+        }
+        renderEncoder.endEncoding()
+
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    // MARK: - Transform Calculation
+
+    /// Update view size (call when view resizes)
+    func updateViewSize(_ size: CGSize) {
+        viewSize = size
+        updateTransform()
+    }
+
+    private func updateTransform() {
+        let videoAspect = Float(videoSize.width / videoSize.height)
+        let viewAspect = Float(viewSize.width / viewSize.height)
+
+        var scaleX: Float = 1.0
+        var scaleY: Float = 1.0
+
+        switch displayMode {
+        case .normal:
+            // Letterbox/pillarbox to maintain aspect ratio
+            if videoAspect > viewAspect {
+                // Video is wider, pillarbox (black bars top/bottom)
+                scaleY = viewAspect / videoAspect
+            } else {
+                // Video is taller, letterbox (black bars left/right)
+                scaleX = videoAspect / viewAspect
+            }
+
+        case .stretch:
+            // Fill entire view, ignore aspect ratio
+            scaleX = 1.0
+            scaleY = 1.0
+
+        case .zoom:
+            // Fill entire view, crop edges to maintain aspect ratio
+            if videoAspect > viewAspect {
+                scaleX = videoAspect / viewAspect * zoomFactor
+                scaleY = zoomFactor
+            } else {
+                scaleX = zoomFactor
+                scaleY = viewAspect / videoAspect * zoomFactor
+            }
+        }
+
+        uniforms.transform = simd_float4x4(diagonal: simd_float4(scaleX, scaleY, 1.0, 1.0))
+    }
+
+    // MARK: - Color Adjustment
+
+    /// Set brightness (0.0 - 2.0, default 1.0)
+    func setBrightness(_ value: Float) {
+        uniforms.brightness = max(0.0, min(2.0, value))
+    }
+
+    /// Set contrast (0.0 - 2.0, default 1.0)
+    func setContrast(_ value: Float) {
+        uniforms.contrast = max(0.0, min(2.0, value))
+    }
+
+    /// Set saturation (0.0 - 2.0, default 1.0)
+    func setSaturation(_ value: Float) {
+        uniforms.saturation = max(0.0, min(2.0, value))
+    }
+
+    // MARK: - Statistics
+
+    /// Reset frame statistics
+    func resetStatistics() {
+        frameLock.lock()
+        frameCount = 0
+        droppedFrameCount = 0
+        frameLock.unlock()
+    }
+
+    /// Flush texture cache (call periodically to free memory)
+    func flushTextureCache() {
+        if let cache = textureCache {
+            CVMetalTextureCacheFlush(cache, 0)
+        }
+    }
+
+    // MARK: - Shader Source (Runtime Compilation Fallback)
+
+    /// Metal shader source for runtime compilation when default library is unavailable
+    private static let shaderSource = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexIn {
+        float2 position [[attribute(0)]];
+        float2 texCoord [[attribute(1)]];
+    };
+
+    struct VertexOut {
+        float4 position [[position]];
+        float2 texCoord;
+    };
+
+    struct VideoUniforms {
+        float4x4 transform;
+        float2 textureSizeY;
+        float2 textureSizeUV;
+        float brightness;
+        float contrast;
+        float saturation;
+    };
+
+    constant float3x3 colorMatrixBT709 = float3x3(
+        float3(1.0,     1.0,      1.0),
+        float3(0.0,    -0.18732, 1.8556),
+        float3(1.5748, -0.46812,  0.0)
+    );
+
+    vertex VertexOut videoVertexShader(
+        VertexIn in [[stage_in]],
+        constant VideoUniforms &uniforms [[buffer(1)]]
+    ) {
+        VertexOut out;
+        out.position = uniforms.transform * float4(in.position, 0.0, 1.0);
+        out.texCoord = in.texCoord;
+        return out;
+    }
+
+    fragment float4 videoBiplanarFragmentShader(
+        VertexOut in [[stage_in]],
+        texture2d<float> textureY [[texture(0)]],
+        texture2d<float> textureUV [[texture(1)]],
+        constant VideoUniforms &uniforms [[buffer(1)]]
+    ) {
+        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+
+        float y = textureY.sample(textureSampler, in.texCoord).r;
+        float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
+
+        y = (y - 0.0625) * 1.1643835616;
+        uv = (uv - 0.5);
+
+        float3 yuv = float3(y, uv.x, uv.y);
+        float3 rgb = colorMatrixBT709 * yuv;
+
+        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+        rgb = rgb * uniforms.brightness;
+
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+
+        rgb = clamp(rgb, 0.0, 1.0);
+
+        return float4(rgb, 1.0);
+    }
+
+    fragment float4 videoBGRAFragmentShader(
+        VertexOut in [[stage_in]],
+        texture2d<float> texture [[texture(0)]],
+        constant VideoUniforms &uniforms [[buffer(1)]]
+    ) {
+        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+
+        float4 color = texture.sample(textureSampler, in.texCoord);
+        float3 rgb = color.rgb;
+
+        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+        rgb = rgb * uniforms.brightness;
+
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+
+        rgb = clamp(rgb, 0.0, 1.0);
+
+        return float4(rgb, color.a);
+    }
+    """
+}
+
+// MARK: - MTKViewDelegate Extension
+
+extension MetalVideoRenderer: MTKViewDelegate {
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        updateViewSize(size)
+    }
+
+    func draw(in view: MTKView) {
+        guard let drawable = view.currentDrawable,
+              let renderPassDescriptor = view.currentRenderPassDescriptor else {
+            return
+        }
+        render(to: drawable, renderPassDescriptor: renderPassDescriptor)
+    }
+}

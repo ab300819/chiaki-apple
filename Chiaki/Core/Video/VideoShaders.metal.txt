@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// VideoShaders.metal
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// Metal shaders for video frame rendering with YUV to RGB conversion
+
+#include <metal_stdlib>
+using namespace metal;
+
+// MARK: - Vertex Structures
+
+struct VertexIn {
+    float2 position [[attribute(0)]];
+    float2 texCoord [[attribute(1)]];
+};
+
+struct VertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+};
+
+// MARK: - Uniforms
+
+struct VideoUniforms {
+    float4x4 transform;      // Model-view-projection matrix
+    float2 textureSizeY;     // Y plane texture size
+    float2 textureSizeUV;    // UV plane texture size
+    float brightness;        // Brightness adjustment (0.0 - 2.0, default 1.0)
+    float contrast;          // Contrast adjustment (0.0 - 2.0, default 1.0)
+    float saturation;        // Saturation adjustment (0.0 - 2.0, default 1.0)
+};
+
+// MARK: - Color Space Conversion Constants
+
+// BT.709 color matrix for HD content (used by PS4/PS5)
+constant float3x3 colorMatrixBT709 = float3x3(
+    float3(1.0,     1.0,      1.0),
+    float3(0.0,    -0.18732, 1.8556),
+    float3(1.5748, -0.46812,  0.0)
+);
+
+// BT.601 color matrix for SD content (fallback)
+constant float3x3 colorMatrixBT601 = float3x3(
+    float3(1.0,     1.0,     1.0),
+    float3(0.0,    -0.34414, 1.772),
+    float3(1.402,  -0.71414, 0.0)
+);
+
+// MARK: - Vertex Shader
+
+vertex VertexOut videoVertexShader(
+    VertexIn in [[stage_in]],
+    constant VideoUniforms &uniforms [[buffer(1)]]
+) {
+    VertexOut out;
+    out.position = uniforms.transform * float4(in.position, 0.0, 1.0);
+    out.texCoord = in.texCoord;
+    return out;
+}
+
+// MARK: - Fragment Shader (Biplanar NV12/NV21)
+
+// For CVPixelBuffer with kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange or FullRange
+fragment float4 videoBiplanarFragmentShader(
+    VertexOut in [[stage_in]],
+    texture2d<float> textureY [[texture(0)]],      // Y plane (luma)
+    texture2d<float> textureUV [[texture(1)]],     // UV plane (chroma, interleaved)
+    constant VideoUniforms &uniforms [[buffer(1)]]
+) {
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+
+    // Sample Y and UV planes
+    float y = textureY.sample(textureSampler, in.texCoord).r;
+    float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
+
+    // Convert from video range to full range if needed
+    // Video range: Y [16-235], UV [16-240]
+    // Full range: Y [0-255], UV [0-255]
+    // PS4/PS5 typically use video range
+    y = (y - 0.0625) * 1.1643835616;  // (y - 16/255) * (255/(235-16))
+    uv = (uv - 0.5);                   // Center UV around 0
+
+    // YUV to RGB using BT.709
+    float3 yuv = float3(y, uv.x, uv.y);
+    float3 rgb = colorMatrixBT709 * yuv;
+
+    // Apply color adjustments
+    rgb = (rgb - 0.5) * uniforms.contrast + 0.5;  // Contrast
+    rgb = rgb * uniforms.brightness;               // Brightness
+
+    // Saturation
+    float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+    rgb = mix(float3(gray), rgb, uniforms.saturation);
+
+    // Clamp to valid range
+    rgb = clamp(rgb, 0.0, 1.0);
+
+    return float4(rgb, 1.0);
+}
+
+// MARK: - Fragment Shader (Single Plane BGRA)
+
+// For CVPixelBuffer with kCVPixelFormatType_32BGRA
+fragment float4 videoBGRAFragmentShader(
+    VertexOut in [[stage_in]],
+    texture2d<float> texture [[texture(0)]],
+    constant VideoUniforms &uniforms [[buffer(1)]]
+) {
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+
+    float4 color = texture.sample(textureSampler, in.texCoord);
+    float3 rgb = color.rgb;
+
+    // Apply color adjustments
+    rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+    rgb = rgb * uniforms.brightness;
+
+    float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+    rgb = mix(float3(gray), rgb, uniforms.saturation);
+
+    rgb = clamp(rgb, 0.0, 1.0);
+
+    return float4(rgb, color.a);
+}
+
+// MARK: - Passthrough Fragment Shader (for debugging)
+
+fragment float4 videoPassthroughFragmentShader(
+    VertexOut in [[stage_in]],
+    texture2d<float> texture [[texture(0)]]
+) {
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    return texture.sample(textureSampler, in.texCoord);
+}

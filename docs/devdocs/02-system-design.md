@@ -754,28 +754,595 @@ fragment float4 videoFragmentShader(
 }
 ```
 
-### 2.3 音频模块
+### 2.3 VideoToolbox 解码器（基于 Android MediaCodec 审查）
+
+> **设计参考**: chiaki-ng/android `video-decoder.c` 的双线程模型
+
+#### 2.3.1 架构概述
+
+```
+libchiaki 视频数据流
+        │
+        ▼
+┌───────────────────────────────────────┐
+│     VideoToolboxDecoder               │
+│  ┌─────────────────────────────────┐  │
+│  │      Input Thread (异步)        │  │
+│  │  - 接收 H.264/H.265 NAL 单元    │  │
+│  │  - VTDecompressionSession       │  │
+│  │  - 异步解码提交                  │  │
+│  └──────────────┬──────────────────┘  │
+│                 │ 解码完成回调         │
+│  ┌──────────────▼──────────────────┐  │
+│  │      Output Callback            │  │
+│  │  - CVPixelBuffer 输出           │  │
+│  │  - 帧排序（B 帧重排）            │  │
+│  │  - 推送到 Metal 渲染器           │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+        │
+        ▼
+   MetalVideoRenderer (零拷贝)
+```
+
+#### 2.3.2 核心实现
+
+```swift
+// VideoToolboxDecoder.swift
+import VideoToolbox
+import CoreVideo
+
+/// VideoToolbox 硬件解码器
+final class VideoToolboxDecoder {
+    // MARK: - Properties
+
+    private var decompressionSession: VTDecompressionSession?
+    private var formatDescription: CMVideoFormatDescription?
+
+    private let outputQueue = DispatchQueue(label: "video.output.queue")
+    private let decodeLock = NSLock()
+
+    /// 解码帧输出回调
+    var onFrameDecoded: ((CVPixelBuffer, CMTime) -> Void)?
+
+    /// 解码统计
+    private(set) var decodedFrameCount: UInt64 = 0
+    private(set) var droppedFrameCount: UInt64 = 0
+
+    // 帧重排缓冲（处理 B 帧）
+    private var frameReorderBuffer: [(CVPixelBuffer, CMTime)] = []
+    private let maxReorderBufferSize = 4
+
+    // MARK: - Codec Configuration
+
+    private let codec: ChiakiVideoCodec
+    private let width: Int32
+    private let height: Int32
+
+    // MARK: - Initialization
+
+    init(codec: ChiakiVideoCodec, width: Int32, height: Int32) {
+        self.codec = codec
+        self.width = width
+        self.height = height
+    }
+
+    deinit {
+        shutdown()
+    }
+
+    // MARK: - Public Methods
+
+    /// 初始化解码器（收到 SPS/PPS 后调用）
+    func initialize(sps: Data, pps: Data, vps: Data? = nil) throws {
+        decodeLock.lock()
+        defer { decodeLock.unlock() }
+
+        // 创建格式描述
+        formatDescription = try createFormatDescription(sps: sps, pps: pps, vps: vps)
+
+        // 创建解码会话
+        let destinationAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height
+        ]
+
+        var callbacks = VTDecompressionOutputCallbackRecord(
+            decompressionOutputCallback: decompressionOutputCallback,
+            decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
+        )
+
+        let status = VTDecompressionSessionCreate(
+            allocator: kCFAllocatorDefault,
+            formatDescription: formatDescription!,
+            decoderSpecification: nil,
+            imageBufferAttributes: destinationAttributes as CFDictionary,
+            outputCallback: &callbacks,
+            decompressionSessionOut: &decompressionSession
+        )
+
+        guard status == noErr else {
+            throw VideoDecoderError.sessionCreationFailed(status)
+        }
+
+        // 启用低延迟模式
+        VTSessionSetProperty(
+            decompressionSession!,
+            key: kVTDecompressionPropertyKey_RealTime,
+            value: kCFBooleanTrue
+        )
+    }
+
+    /// 提交视频数据进行解码（从 libchiaki 回调调用）
+    func decodeFrame(_ data: UnsafePointer<UInt8>, size: Int, timestamp: UInt64) {
+        decodeLock.lock()
+        guard let session = decompressionSession, let formatDesc = formatDescription else {
+            decodeLock.unlock()
+            return
+        }
+        decodeLock.unlock()
+
+        // 创建 CMBlockBuffer
+        var blockBuffer: CMBlockBuffer?
+        var status = CMBlockBufferCreateWithMemoryBlock(
+            allocator: kCFAllocatorDefault,
+            memoryBlock: UnsafeMutableRawPointer(mutating: data),
+            blockLength: size,
+            blockAllocator: kCFAllocatorNull,
+            customBlockSource: nil,
+            offsetToData: 0,
+            dataLength: size,
+            flags: 0,
+            blockBufferOut: &blockBuffer
+        )
+
+        guard status == kCMBlockBufferNoErr, let buffer = blockBuffer else {
+            droppedFrameCount += 1
+            return
+        }
+
+        // 创建 CMSampleBuffer
+        var sampleBuffer: CMSampleBuffer?
+        var sampleSize = size
+        status = CMSampleBufferCreateReady(
+            allocator: kCFAllocatorDefault,
+            dataBuffer: buffer,
+            formatDescription: formatDesc,
+            sampleCount: 1,
+            sampleTimingEntryCount: 0,
+            sampleTimingArray: nil,
+            sampleSizeEntryCount: 1,
+            sampleSizeArray: &sampleSize,
+            sampleBufferOut: &sampleBuffer
+        )
+
+        guard status == noErr, let sample = sampleBuffer else {
+            droppedFrameCount += 1
+            return
+        }
+
+        // 异步解码
+        let decodeFlags: VTDecodeFrameFlags = [._EnableAsynchronousDecompression]
+        var infoFlags: VTDecodeInfoFlags = []
+
+        let decodeStatus = VTDecompressionSessionDecodeFrame(
+            session,
+            sampleBuffer: sample,
+            flags: decodeFlags,
+            frameRefcon: UnsafeMutableRawPointer(bitPattern: UInt(timestamp)),
+            infoFlagsOut: &infoFlags
+        )
+
+        if decodeStatus != noErr {
+            droppedFrameCount += 1
+        }
+    }
+
+    /// 关闭解码器
+    func shutdown() {
+        decodeLock.lock()
+        defer { decodeLock.unlock() }
+
+        if let session = decompressionSession {
+            VTDecompressionSessionInvalidate(session)
+            decompressionSession = nil
+        }
+        formatDescription = nil
+        frameReorderBuffer.removeAll()
+    }
+
+    // MARK: - Private Methods
+
+    private func createFormatDescription(sps: Data, pps: Data, vps: Data?) throws -> CMVideoFormatDescription {
+        var formatDescription: CMVideoFormatDescription?
+
+        if codec.isH265, let vps = vps {
+            // H.265/HEVC
+            let parameterSets = [vps, sps, pps]
+            let parameterSetPointers = parameterSets.map { $0.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) } }
+            let parameterSetSizes = parameterSets.map { $0.count }
+
+            let status = CMVideoFormatDescriptionCreateFromHEVCParameterSets(
+                allocator: kCFAllocatorDefault,
+                parameterSetCount: 3,
+                parameterSetPointers: parameterSetPointers,
+                parameterSetSizes: parameterSetSizes,
+                nalUnitHeaderLength: 4,
+                extensions: nil,
+                formatDescriptionOut: &formatDescription
+            )
+
+            guard status == noErr else {
+                throw VideoDecoderError.formatDescriptionFailed(status)
+            }
+        } else {
+            // H.264/AVC
+            let parameterSets = [sps, pps]
+            let parameterSetPointers = parameterSets.map { $0.withUnsafeBytes { $0.baseAddress!.assumingMemoryBound(to: UInt8.self) } }
+            let parameterSetSizes = parameterSets.map { $0.count }
+
+            let status = CMVideoFormatDescriptionCreateFromH264ParameterSets(
+                allocator: kCFAllocatorDefault,
+                parameterSetCount: 2,
+                parameterSetPointers: parameterSetPointers,
+                parameterSetSizes: parameterSetSizes,
+                nalUnitHeaderLength: 4,
+                formatDescriptionOut: &formatDescription
+            )
+
+            guard status == noErr else {
+                throw VideoDecoderError.formatDescriptionFailed(status)
+            }
+        }
+
+        return formatDescription!
+    }
+
+    /// 处理解码输出帧（帧重排）
+    private func handleDecodedFrame(_ pixelBuffer: CVPixelBuffer, presentationTime: CMTime) {
+        outputQueue.async { [weak self] in
+            guard let self = self else { return }
+
+            // 添加到重排缓冲
+            self.frameReorderBuffer.append((pixelBuffer, presentationTime))
+
+            // 按 PTS 排序
+            self.frameReorderBuffer.sort { $0.1 < $1.1 }
+
+            // 输出最旧的帧（当缓冲区满时）
+            while self.frameReorderBuffer.count > self.maxReorderBufferSize {
+                let (buffer, time) = self.frameReorderBuffer.removeFirst()
+                self.decodedFrameCount += 1
+                self.onFrameDecoded?(buffer, time)
+            }
+        }
+    }
+
+    /// 刷新重排缓冲区
+    func flush() {
+        outputQueue.async { [weak self] in
+            guard let self = self else { return }
+
+            for (buffer, time) in self.frameReorderBuffer {
+                self.onFrameDecoded?(buffer, time)
+            }
+            self.frameReorderBuffer.removeAll()
+        }
+    }
+}
+
+// MARK: - C Callback
+
+private func decompressionOutputCallback(
+    decompressionOutputRefCon: UnsafeMutableRawPointer?,
+    sourceFrameRefCon: UnsafeMutableRawPointer?,
+    status: OSStatus,
+    infoFlags: VTDecodeInfoFlags,
+    imageBuffer: CVImageBuffer?,
+    presentationTimeStamp: CMTime,
+    presentationDuration: CMTime
+) {
+    guard status == noErr,
+          let refCon = decompressionOutputRefCon,
+          let pixelBuffer = imageBuffer else {
+        return
+    }
+
+    let decoder = Unmanaged<VideoToolboxDecoder>.fromOpaque(refCon).takeUnretainedValue()
+
+    // 从 frameRefcon 恢复时间戳
+    let timestamp = sourceFrameRefCon.map { CMTime(value: CMTimeValue(UInt(bitPattern: $0)), timescale: 90000) } ?? presentationTimeStamp
+
+    decoder.handleDecodedFrame(pixelBuffer, presentationTime: timestamp)
+}
+
+/// 解码器错误
+enum VideoDecoderError: Error {
+    case sessionCreationFailed(OSStatus)
+    case formatDescriptionFailed(OSStatus)
+    case decodeFailed(OSStatus)
+}
+```
+
+### 2.4 音频模块（基于 Android Oboe 审查）
+
+> **设计参考**: chiaki-ng/android `audio-output.cpp` 的 Lock-free 环形缓冲模型
+
+#### 2.4.1 架构概述
+
+```
+libchiaki Opus 解码数据
+        │
+        ▼
+┌───────────────────────────────────────┐
+│         AudioPlayer                   │
+│  ┌─────────────────────────────────┐  │
+│  │    Opus Decode Thread           │  │
+│  │  - ChiakiOpusDecoder 解码       │  │
+│  │  - PCM Int16 输出               │  │
+│  └──────────────┬──────────────────┘  │
+│                 │ Push (生产者)        │
+│  ┌──────────────▼──────────────────┐  │
+│  │    Lock-free Circular Buffer    │  │
+│  │  - 32 chunks × 1024 bytes       │  │
+│  │  - 原子操作无锁队列              │  │
+│  └──────────────┬──────────────────┘  │
+│                 │ Pop (消费者)         │
+│  ┌──────────────▼──────────────────┐  │
+│  │    AVAudioEngine Render         │  │
+│  │  - AVAudioSourceNode            │  │
+│  │  - 实时回调拉取数据              │  │
+│  │  - 低延迟播放 (<10ms)            │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+```
+
+#### 2.4.2 Lock-free 环形缓冲
+
+```swift
+// CircularAudioBuffer.swift
+import Foundation
+
+/// Lock-free 环形缓冲区（参考 Android circular-buf.hpp）
+final class CircularAudioBuffer<T> {
+    // MARK: - Configuration
+
+    private let chunkCount: Int
+    private let chunkSize: Int
+
+    // MARK: - Storage
+
+    private var chunks: [UnsafeMutablePointer<T>]
+    private var freeQueue: LockFreeQueue<Int>
+    private var fullQueue: LockFreeQueue<Int>
+
+    // 当前操作中的 chunk
+    private var pushChunk: UnsafeMutablePointer<T>?
+    private var pushChunkOffset: Int = 0
+    private var popChunk: UnsafeMutablePointer<T>?
+    private var popChunkOffset: Int = 0
+
+    // MARK: - Initialization
+
+    /// 初始化环形缓冲
+    /// - Parameters:
+    ///   - chunkCount: chunk 数量（默认 32）
+    ///   - chunkSize: 每个 chunk 的元素数量（默认 512，对应 1024 bytes Int16）
+    init(chunkCount: Int = 32, chunkSize: Int = 512) {
+        self.chunkCount = chunkCount
+        self.chunkSize = chunkSize
+
+        // 分配 chunks
+        self.chunks = (0..<chunkCount).map { _ in
+            UnsafeMutablePointer<T>.allocate(capacity: chunkSize)
+        }
+
+        // 初始化队列
+        self.freeQueue = LockFreeQueue(capacity: chunkCount)
+        self.fullQueue = LockFreeQueue(capacity: chunkCount)
+
+        // 所有 chunk 初始为空闲
+        for i in 0..<chunkCount {
+            freeQueue.push(i)
+        }
+    }
+
+    deinit {
+        for chunk in chunks {
+            chunk.deallocate()
+        }
+    }
+
+    // MARK: - Push (生产者)
+
+    /// 推送数据到缓冲区
+    /// - Returns: 实际写入的元素数量
+    @discardableResult
+    func push(_ buffer: UnsafePointer<T>, count: Int) -> Int {
+        var pushed = 0
+
+        while pushed < count {
+            // 获取空闲 chunk
+            if pushChunk == nil {
+                guard let chunkIndex = freeQueue.pop() else {
+                    // 缓冲区满，丢弃旧数据
+                    if let oldIndex = fullQueue.pop() {
+                        pushChunk = chunks[oldIndex]
+                        pushChunkOffset = 0
+                    } else {
+                        break
+                    }
+                } else {
+                    pushChunk = chunks[chunkIndex]
+                    pushChunkOffset = 0
+                }
+            }
+
+            // 计算可写入数量
+            let toPush = min(count - pushed, chunkSize - pushChunkOffset)
+
+            // 复制数据
+            pushChunk!.advanced(by: pushChunkOffset).assign(from: buffer.advanced(by: pushed), count: toPush)
+
+            pushed += toPush
+            pushChunkOffset += toPush
+
+            // chunk 写满，放入 full 队列
+            if pushChunkOffset == chunkSize {
+                let chunkIndex = chunks.firstIndex(of: pushChunk!)!
+                fullQueue.push(chunkIndex)
+                pushChunk = nil
+                pushChunkOffset = 0
+            }
+        }
+
+        return pushed
+    }
+
+    // MARK: - Pop (消费者)
+
+    /// 从缓冲区读取数据
+    /// - Returns: 实际读取的元素数量
+    @discardableResult
+    func pop(_ buffer: UnsafeMutablePointer<T>, count: Int) -> Int {
+        var popped = 0
+
+        while popped < count {
+            // 获取已填充 chunk
+            if popChunk == nil {
+                guard let chunkIndex = fullQueue.pop() else {
+                    break // 缓冲区空
+                }
+                popChunk = chunks[chunkIndex]
+                popChunkOffset = 0
+            }
+
+            // 计算可读取数量
+            let toPop = min(count - popped, chunkSize - popChunkOffset)
+
+            // 复制数据
+            buffer.advanced(by: popped).assign(from: popChunk!.advanced(by: popChunkOffset), count: toPop)
+
+            popped += toPop
+            popChunkOffset += toPop
+
+            // chunk 读完，放回 free 队列
+            if popChunkOffset == chunkSize {
+                let chunkIndex = chunks.firstIndex(of: popChunk!)!
+                freeQueue.push(chunkIndex)
+                popChunk = nil
+                popChunkOffset = 0
+            }
+        }
+
+        return popped
+    }
+
+    /// 清空缓冲区
+    func reset() {
+        // 归还所有 chunk 到 free 队列
+        while let index = fullQueue.pop() {
+            freeQueue.push(index)
+        }
+        pushChunk = nil
+        pushChunkOffset = 0
+        popChunk = nil
+        popChunkOffset = 0
+    }
+
+    /// 当前缓冲的 chunk 数量
+    var bufferedChunkCount: Int {
+        fullQueue.count
+    }
+}
+
+// MARK: - Lock-free Queue
+
+/// 简单的 Lock-free 单生产者单消费者队列
+final class LockFreeQueue<T> {
+    private var buffer: [T?]
+    private var head: UnsafeMutablePointer<Int>
+    private var tail: UnsafeMutablePointer<Int>
+    private let capacity: Int
+
+    init(capacity: Int) {
+        self.capacity = capacity + 1  // 需要一个空位区分满/空
+        self.buffer = Array(repeating: nil, count: self.capacity)
+        self.head = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+        self.tail = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+        head.pointee = 0
+        tail.pointee = 0
+    }
+
+    deinit {
+        head.deallocate()
+        tail.deallocate()
+    }
+
+    func push(_ value: T) -> Bool {
+        let currentTail = tail.pointee
+        let nextTail = (currentTail + 1) % capacity
+
+        if nextTail == head.pointee {
+            return false  // 队列满
+        }
+
+        buffer[currentTail] = value
+        OSMemoryBarrier()
+        tail.pointee = nextTail
+        return true
+    }
+
+    func pop() -> T? {
+        let currentHead = head.pointee
+
+        if currentHead == tail.pointee {
+            return nil  // 队列空
+        }
+
+        let value = buffer[currentHead]
+        buffer[currentHead] = nil
+        OSMemoryBarrier()
+        head.pointee = (currentHead + 1) % capacity
+        return value
+    }
+
+    var count: Int {
+        let h = head.pointee
+        let t = tail.pointee
+        return t >= h ? t - h : capacity - h + t
+    }
+}
+```
+
+#### 2.4.3 音频播放器（使用环形缓冲）
 
 ```swift
 // AudioPlayer.swift
 import AVFoundation
 import Accelerate
 
-/// 音频播放器
+/// 低延迟音频播放器（基于 Lock-free 环形缓冲）
 final class AudioPlayer {
     // MARK: - Properties
 
     private let engine = AVAudioEngine()
-    private let playerNode = AVAudioPlayerNode()
+    private var sourceNode: AVAudioSourceNode?
     private let format: AVAudioFormat
 
-    private var isPlaying = false
-    private let bufferQueue = DispatchQueue(label: "audio.buffer.queue")
+    /// Lock-free 环形缓冲（32 chunks × 512 samples = 约 340ms 缓冲）
+    private let circularBuffer = CircularAudioBuffer<Float>(chunkCount: 32, chunkSize: 512)
 
-    // 缓冲区配置
+    private var isPlaying = false
+
+    // 配置
     private let sampleRate: Double = 48000
     private let channelCount: AVAudioChannelCount = 2
-    private let bufferSize: AVAudioFrameCount = 480 // 10ms at 48kHz
+
+    // 统计
+    private(set) var underrunCount: UInt64 = 0
 
     // MARK: - Initialization
 
@@ -799,7 +1366,6 @@ final class AudioPlayer {
         guard !isPlaying else { return }
 
         try engine.start()
-        playerNode.play()
         isPlaying = true
     }
 
@@ -807,16 +1373,24 @@ final class AudioPlayer {
     func stop() {
         guard isPlaying else { return }
 
-        playerNode.stop()
         engine.stop()
+        circularBuffer.reset()
         isPlaying = false
     }
 
-    /// 接收音频数据
+    /// 接收音频数据（从 libchiaki 回调，Int16 PCM）
     func receiveAudio(samples: UnsafePointer<Int16>, frameCount: Int) {
-        bufferQueue.async { [weak self] in
-            self?.processAudioSamples(samples, frameCount: frameCount)
-        }
+        // Int16 转 Float32（交错格式）
+        let floatSamples = UnsafeMutablePointer<Float>.allocate(capacity: frameCount * Int(channelCount))
+        defer { floatSamples.deallocate() }
+
+        // 使用 vDSP 加速转换
+        var scale: Float = 1.0 / 32768.0
+        vDSP_vflt16(samples, 1, floatSamples, 1, vDSP_Length(frameCount * Int(channelCount)))
+        vDSP_vsmul(floatSamples, 1, &scale, floatSamples, 1, vDSP_Length(frameCount * Int(channelCount)))
+
+        // 推送到环形缓冲
+        circularBuffer.push(floatSamples, count: frameCount * Int(channelCount))
     }
 
     // MARK: - Private Methods
@@ -825,38 +1399,152 @@ final class AudioPlayer {
         #if os(iOS) || os(tvOS)
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try session.setPreferredIOBufferDuration(0.005) // 5ms
+        try session.setPreferredIOBufferDuration(0.005)  // 5ms 低延迟
         try session.setActive(true)
         #endif
     }
 
     private func setupEngine() {
-        engine.attach(playerNode)
-        engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        // 使用 AVAudioSourceNode 实现拉取模式（类似 Android Oboe 回调）
+        sourceNode = AVAudioSourceNode(format: format) { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
+            guard let self = self else { return noErr }
+
+            let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
+            let requestedSamples = Int(frameCount) * Int(self.channelCount)
+
+            // 从环形缓冲读取数据
+            let tempBuffer = UnsafeMutablePointer<Float>.allocate(capacity: requestedSamples)
+            defer { tempBuffer.deallocate() }
+
+            let poppedSamples = self.circularBuffer.pop(tempBuffer, count: requestedSamples)
+
+            // 填充静音（如果数据不足）
+            if poppedSamples < requestedSamples {
+                memset(tempBuffer.advanced(by: poppedSamples), 0, (requestedSamples - poppedSamples) * MemoryLayout<Float>.size)
+                self.underrunCount += 1
+            }
+
+            // 解交错到各声道
+            for channel in 0..<Int(self.channelCount) {
+                guard let channelData = ablPointer[channel].mData?.assumingMemoryBound(to: Float.self) else { continue }
+
+                for frame in 0..<Int(frameCount) {
+                    channelData[frame] = tempBuffer[frame * Int(self.channelCount) + channel]
+                }
+            }
+
+            return noErr
+        }
+
+        engine.attach(sourceNode!)
+        engine.connect(sourceNode!, to: engine.mainMixerNode, format: format)
         engine.prepare()
     }
+}
 
-    private func processAudioSamples(_ samples: UnsafePointer<Int16>, frameCount: Int) {
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
-            return
+enum AudioPlayerError: Error {
+    case formatCreationFailed
+    case engineStartFailed
+}
+```
+
+### 2.5 串流统计（基于 Qt GUI 审查）
+
+```swift
+// StreamStatistics.swift
+import Foundation
+
+/// 串流统计信息（参考 chiaki-ng/gui StreamView.qml）
+@Observable
+final class StreamStatistics {
+    // MARK: - Video Statistics
+
+    /// 测量的比特率 (Mbps)
+    private(set) var measuredBitrate: Double = 0
+
+    /// 丢帧计数
+    private(set) var droppedFrames: UInt64 = 0
+
+    /// 解码帧计数
+    private(set) var decodedFrames: UInt64 = 0
+
+    // MARK: - Network Statistics
+
+    /// 平均丢包率 (0.0 - 1.0)
+    private(set) var averagePacketLoss: Double = 0
+
+    /// 网络延迟 (ms)
+    private(set) var networkLatency: Double = 0
+
+    // MARK: - Audio Statistics
+
+    /// 音频缓冲欠载次数
+    private(set) var audioUnderruns: UInt64 = 0
+
+    // MARK: - Internal
+
+    private var packetLossHistory: [Double] = []
+    private let maxHistorySize = 100
+    private var lastBitrateUpdate = Date()
+    private var bytesReceivedSinceLastUpdate: UInt64 = 0
+
+    // MARK: - Update Methods
+
+    func recordVideoFrame(size: Int, wasDropped: Bool) {
+        if wasDropped {
+            droppedFrames += 1
+        } else {
+            decodedFrames += 1
         }
 
-        buffer.frameLength = AVAudioFrameCount(frameCount)
+        bytesReceivedSinceLastUpdate += UInt64(size)
+        updateBitrate()
+    }
 
-        // Int16 转 Float32
-        let floatChannelData = buffer.floatChannelData!
-
-        for channel in 0..<Int(channelCount) {
-            for frame in 0..<frameCount {
-                let sampleIndex = frame * Int(channelCount) + channel
-                floatChannelData[channel][frame] = Float(samples[sampleIndex]) / 32768.0
-            }
+    func recordPacketLoss(_ lossRate: Double) {
+        packetLossHistory.append(lossRate)
+        if packetLossHistory.count > maxHistorySize {
+            packetLossHistory.removeFirst()
         }
+        averagePacketLoss = packetLossHistory.reduce(0, +) / Double(packetLossHistory.count)
+    }
 
-        playerNode.scheduleBuffer(buffer, completionHandler: nil)
+    func recordAudioUnderrun() {
+        audioUnderruns += 1
+    }
+
+    func updateLatency(_ latency: Double) {
+        networkLatency = latency
+    }
+
+    func reset() {
+        measuredBitrate = 0
+        droppedFrames = 0
+        decodedFrames = 0
+        averagePacketLoss = 0
+        networkLatency = 0
+        audioUnderruns = 0
+        packetLossHistory.removeAll()
+        bytesReceivedSinceLastUpdate = 0
+        lastBitrateUpdate = Date()
+    }
+
+    // MARK: - Private Methods
+
+    private func updateBitrate() {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastBitrateUpdate)
+
+        if elapsed >= 1.0 {  // 每秒更新一次
+            measuredBitrate = Double(bytesReceivedSinceLastUpdate) * 8 / elapsed / 1_000_000  // Mbps
+            bytesReceivedSinceLastUpdate = 0
+            lastBitrateUpdate = now
+        }
     }
 }
 ```
+
+### 2.6 控制器模块
 
 ### 2.4 控制器模块
 

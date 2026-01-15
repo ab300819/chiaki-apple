@@ -137,6 +137,9 @@ for target in "${TARGETS[@]}"; do
         "-DCHIAKI_USE_SYSTEM_CURL=OFF" \
         "-DCURL_USE_MBEDTLS=ON" \
         "-DCURL_USE_OPENSSL=OFF" \
+        "-DUSE_NGHTTP2=OFF" \
+        "-DUSE_LIBIDN2=OFF" \
+        "-DCURL_USE_LIBSSH2=OFF" \
         "-DCMAKE_PREFIX_PATH=$mbedtls_install;$opus_install;$deps_install" \
         "-DCMAKE_FIND_ROOT_PATH=$mbedtls_install;$opus_install;$deps_install" \
         "-DOpus_INCLUDE_DIRS=$opus_install/include" \
@@ -148,6 +151,40 @@ for target in "${TARGETS[@]}"; do
     cmake --build "$build_dir" --target chiaki-lib
 done
 
+# Merge all static libraries for each platform
+merge_libs() {
+    local platform=$1
+    local arch=$2
+    local output=$3
+
+    local chiaki_build="$BUILD_DIR/chiaki_build_${platform}_${arch}"
+    local deps_install="$BUILD_DIR/deps_install_${platform}_${arch}"
+
+    # Collect all .a files (chiaki + third-party + external deps)
+    local libs=(
+        "$chiaki_build/lib/libchiaki.a"
+        "$chiaki_build/third-party/nanopb/libprotobuf-nanopb.a"
+        "$chiaki_build/third-party/curl/lib/libcurl.a"
+        "$chiaki_build/third-party/libjerasure.a"
+        "$chiaki_build/third-party/libgf_complete.a"
+        "$deps_install/lib/libjson-c.a"
+        "$deps_install/lib/libminiupnpc.a"
+    )
+
+    log "Merging libraries for $platform $arch..."
+    libtool -static -o "$output" "${libs[@]}"
+}
+
+log "Merging static libraries for each platform..."
+
+# Merge for single-arch platforms
+merge_libs "ios" "arm64" "$BUILD_DIR/libchiaki_merged_ios_arm64.a"
+merge_libs "ios-simulator" "arm64" "$BUILD_DIR/libchiaki_merged_ios-simulator_arm64.a"
+merge_libs "ios-simulator" "x86_64" "$BUILD_DIR/libchiaki_merged_ios-simulator_x86_64.a"
+merge_libs "macos" "arm64" "$BUILD_DIR/libchiaki_merged_macos_arm64.a"
+merge_libs "macos" "x86_64" "$BUILD_DIR/libchiaki_merged_macos_x86_64.a"
+merge_libs "tvos" "arm64" "$BUILD_DIR/libchiaki_merged_tvos_arm64.a"
+
 # Create XCFramework
 log "Creating libchiaki.xcframework..."
 
@@ -156,23 +193,23 @@ mkdir -p "$headers_source"
 cp -R "$PROJECT_ROOT/chiaki-ng/lib/include/chiaki" "$headers_source/"
 cp -R "$BUILD_DIR/chiaki_build_ios_arm64/lib/include/chiaki" "$headers_source/"
 
-ios_lib="$BUILD_DIR/chiaki_build_ios_arm64/lib/libchiaki.a"
+ios_lib="$BUILD_DIR/libchiaki_merged_ios_arm64.a"
 
 mkdir -p "$BUILD_DIR/chiaki_combined_ios-simulator"
 lipo -create \
-    "$BUILD_DIR/chiaki_build_ios-simulator_arm64/lib/libchiaki.a" \
-    "$BUILD_DIR/chiaki_build_ios-simulator_x86_64/lib/libchiaki.a" \
+    "$BUILD_DIR/libchiaki_merged_ios-simulator_arm64.a" \
+    "$BUILD_DIR/libchiaki_merged_ios-simulator_x86_64.a" \
     -output "$BUILD_DIR/chiaki_combined_ios-simulator/libchiaki.a"
 ios_sim_lib="$BUILD_DIR/chiaki_combined_ios-simulator/libchiaki.a"
 
 mkdir -p "$BUILD_DIR/chiaki_combined_macos"
 lipo -create \
-    "$BUILD_DIR/chiaki_build_macos_arm64/lib/libchiaki.a" \
-    "$BUILD_DIR/chiaki_build_macos_x86_64/lib/libchiaki.a" \
+    "$BUILD_DIR/libchiaki_merged_macos_arm64.a" \
+    "$BUILD_DIR/libchiaki_merged_macos_x86_64.a" \
     -output "$BUILD_DIR/chiaki_combined_macos/libchiaki.a"
 macos_lib="$BUILD_DIR/chiaki_combined_macos/libchiaki.a"
 
-tvos_lib="$BUILD_DIR/chiaki_build_tvos_arm64/lib/libchiaki.a"
+tvos_lib="$BUILD_DIR/libchiaki_merged_tvos_arm64.a"
 
 rm -rf "$FRAMEWORKS_DIR/libchiaki.xcframework"
 xcodebuild -create-xcframework \
