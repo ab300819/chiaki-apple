@@ -139,6 +139,61 @@ final class Logger {
     }
 }
 
+// MARK: - Category Loggers
+
+/// Category-specific loggers for different subsystems
+extension Logger {
+    /// Logger for session/streaming related events
+    nonisolated static let session = CategoryLogger(category: "Session")
+
+    /// Logger for discovery related events
+    nonisolated static let discovery = CategoryLogger(category: "Discovery")
+
+    /// Logger for storage related events
+    nonisolated static let storage = CategoryLogger(category: "Storage")
+
+    /// Logger for video related events
+    nonisolated static let video = CategoryLogger(category: "Video")
+
+    /// Logger for audio related events
+    nonisolated static let audio = CategoryLogger(category: "Audio")
+
+    /// Logger for controller input events
+    nonisolated static let controller = CategoryLogger(category: "Controller")
+
+    /// Logger for network events
+    nonisolated static let network = CategoryLogger(category: "Network")
+}
+
+/// A category-specific logger that uses OSLog directly
+struct CategoryLogger: Sendable {
+    private let logger: os.Logger
+
+    init(category: String) {
+        self.logger = os.Logger(subsystem: "ltd.hotter.chiaki", category: category)
+    }
+
+    func debug(_ message: String) {
+        logger.debug("\(message, privacy: .public)")
+    }
+
+    func info(_ message: String) {
+        logger.info("\(message, privacy: .public)")
+    }
+
+    func warning(_ message: String) {
+        logger.warning("\(message, privacy: .public)")
+    }
+
+    func error(_ message: String) {
+        logger.error("\(message, privacy: .public)")
+    }
+
+    func trace(_ message: String) {
+        logger.trace("\(message, privacy: .public)")
+    }
+}
+
 // MARK: - Global Logging Functions
 
 /// Log a debug message
