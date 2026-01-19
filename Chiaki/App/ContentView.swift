@@ -7,18 +7,18 @@
 
 import SwiftUI
 
+enum SidebarItem: Hashable {
+    case hosts
+    case settings
+}
+
 struct ContentView: View {
-    @State private var sidebarSelection: SidebarItem? = .hosts
-    
-    enum SidebarItem: Hashable {
-        case hosts
-        case settings
-    }
+    @EnvironmentObject var navigationManager: NavigationManager
     
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            List(selection: $sidebarSelection) {
+            List(selection: $navigationManager.sidebarSelection) {
                 NavigationLink(value: SidebarItem.hosts) {
                     Label("Hosts", systemImage: "gamecontroller")
                 }
@@ -29,7 +29,7 @@ struct ContentView: View {
             .navigationTitle("Chiaki")
         } detail: {
             NavigationStack {
-                switch sidebarSelection {
+                switch navigationManager.sidebarSelection {
                 case .hosts:
                     HostListView()
                 case .settings:
@@ -49,9 +49,9 @@ struct ContentView: View {
             }
             
             SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
+            .tabItem {
+                Label("Settings", systemImage: "gear")
+            }
         }
         #endif
     }

@@ -1,14 +1,15 @@
 import SwiftUI
 
 struct HostListView: View {
+    @EnvironmentObject var navigationManager: NavigationManager
     @State private var viewModel = HostListViewModel()
-    @State private var showingAddHost = false
     @State private var registeringHost: ConsoleHost?
     @State private var showDeleteConfirmation = false
     @State private var indexSetToDelete: IndexSet?
+    @State private var selectedHostId: ConsoleHost.ID?
 
     var body: some View {
-        List {
+        List(selection: $selectedHostId) {
             if viewModel.hosts.isEmpty {
                 emptyStateView
             } else {
@@ -50,22 +51,38 @@ struct HostListView: View {
         .navigationTitle("Hosts")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingAddHost = true }) {
+                Button(action: { navigationManager.showAddHostSheet = true }) {
                     Label("Add Host", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showingAddHost) {
+        .sheet(isPresented: $navigationManager.showAddHostSheet) {
             AddHostView(viewModel: viewModel)
         }
         .sheet(item: $registeringHost) { host in
             RegistrationView(hostStore: HostManager.shared.hostStore, initialAddress: host.address)
         }
         .refreshable {
-            try? await Task.sleep(for: .seconds(1))
+            await viewModel.refresh()
+        }
+        .onChange(of: navigationManager.refreshDiscoveryTrigger) { _, newValue in
+            if newValue {
+                Task {
+                    await viewModel.refresh()
+                    navigationManager.refreshDiscoveryTrigger = false
+                }
+            }
+        }
+        .onChange(of: navigationManager.wakeUpSelectedHostTrigger) { _, newValue in
+            if newValue {
+                if let selectedId = selectedHostId, let host = viewModel.host(byId: selectedId) {
+                    viewModel.wakeUp(host)
+                }
+                navigationManager.wakeUpSelectedHostTrigger = false
+            }
         }
     }
-
+    
     private var emptyStateView: some View {
         VStack(spacing: 12) {
             Image(systemName: "gamecontroller.slash")
@@ -78,7 +95,7 @@ struct HostListView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             
-            Button(action: { showingAddHost = true }) {
+            Button(action: { navigationManager.showAddHostSheet = true }) {
                 Text("Add Host")
                     .fontWeight(.semibold)
                     .padding(.horizontal, 24)
