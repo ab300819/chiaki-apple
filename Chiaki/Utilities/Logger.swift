@@ -163,6 +163,9 @@ extension Logger {
 
     /// Logger for network events
     nonisolated static let network = CategoryLogger(category: "Network")
+
+    /// Logger for PSN authentication events
+    nonisolated static let psn = CategoryLogger(category: "PSN")
 }
 
 /// A category-specific logger that uses OSLog directly

@@ -20,7 +20,7 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    NavigationLink(destination: Text("Account Settings Placeholder")) {
+                    NavigationLink(destination: AccountSettingsView()) {
                         Label("Account", systemImage: "person.crop.circle")
                     }
                 }
@@ -44,7 +44,7 @@ struct SettingsView: View {
                     Label("Controller", systemImage: "gamecontroller")
                 }
             
-            Text("Account Settings Placeholder")
+            AccountSettingsView()
                 .tabItem {
                     Label("Account", systemImage: "person.crop.circle")
                 }
