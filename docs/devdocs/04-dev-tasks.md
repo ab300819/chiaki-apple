@@ -81,26 +81,34 @@
 **实现文件**:
 - `Chiaki/Features/Streaming/StreamingOverlay.swift` - NetworkQualityIndicator, PacketLossItem 组件
 
-### T8.2: 流媒体控制菜单 (P1) 🟡
+### T8.2: 流媒体控制菜单 (P1) ✅
 
 **目标**: 实现完整的流媒体控制浮层
 
 **子任务**:
-- [ ] T8.2.1: 添加音量滑块控制 (0-100%)
-- [ ] T8.2.2: 添加视频缩放模式 (Fit/Fill/Stretch)
-- [ ] T8.2.3: 添加画面比例调整 (16:9/4:3/原始)
-- [ ] T8.2.4: 添加快捷断开/重连按钮
-- [ ] T8.2.5: macOS: 集成到菜单栏 View 菜单
+- [x] T8.2.1: 添加音量滑块控制 (0-100%)
+- [x] T8.2.2: 添加视频缩放模式 (Fit/Fill/Stretch)
+- [x] T8.2.3: 添加画面比例调整 (通过 displayMode 实现)
+- [x] T8.2.4: 添加快捷断开/重连按钮 (Rest Mode / Disconnect)
+- [x] T8.2.5: macOS: 集成到菜单栏 View 菜单
 
 **验收标准**:
-- 手势/按键呼出控制菜单
-- 所有调整实时生效
-- 设置自动持久化
+- ✅ 点击 slider 图标呼出控制菜单
+- ✅ 所有调整实时生效 (音量/显示模式/缩放)
+- ✅ 设置自动持久化到 UserDefaults
 
-**涉及文件**:
-- `Chiaki/Features/Streaming/StreamingOverlay.swift`
+**实现文件**:
 - `Chiaki/Features/Streaming/StreamingControlsView.swift` (新建)
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (添加 displayMode)
+- `Chiaki/Domain/Models/StreamSettings.swift` (添加 DisplayMode, zoomFactor)
+- `Chiaki/Core/Storage/SettingsStore.swift` (添加 volume/displayMode/zoomFactor)
+- `Chiaki/App/ChiakiApp.swift` (macOS View 菜单)
+- `Chiaki/App/NavigationManager.swift` (流媒体状态追踪)
+
+**macOS 快捷键**:
+- `Cmd+Shift+C`: 切换控制菜单
+- `Cmd+1/2/3`: 切换显示模式 (Fit/Stretch/Zoom)
+- `Cmd+↑/↓`: 音量增减
+- `Cmd+Shift+M`: 静音
 
 ### T8.3: 设置页面完善 (P1) 🟡
 
@@ -269,7 +277,7 @@
 | 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
 |------|------|------|------|
 | T8.1: 流媒体统计增强 | 显示丢包率/丢帧数 | 数值与 libchiaki 一致 | ✅ |
-| T8.2: 流媒体控制菜单 | 音量/缩放调整生效 | 设置持久化 | ⏳ |
+| T8.2: 流媒体控制菜单 | 音量/缩放调整生效 | 设置持久化 | ✅ |
 | T8.3: 设置页面完善 | 新增设置项可配置 | 与桌面版功能对齐 | ⏳ |
 | T8.4: 视觉样式优化 | 主题色正确应用 | UI 一致性提升 | ⏳ |
 | T8.5: 控制器交互提示 | 正确识别控制器类型 | 提示信息准确 | ⏳ |
