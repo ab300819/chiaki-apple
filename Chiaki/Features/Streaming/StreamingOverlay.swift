@@ -48,6 +48,16 @@ private struct StatItem: View {
     
     var body: some View {
         HStack(spacing: 6) {
+            #if os(tvOS)
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.secondary)
+            
+            Text(value)
+                .font(.system(size: 24, design: .monospaced))
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            #else
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.secondary)
@@ -56,6 +66,7 @@ private struct StatItem: View {
                 .font(.system(size: 12, design: .monospaced))
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
+            #endif
         }
     }
 }

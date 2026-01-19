@@ -72,6 +72,15 @@ struct StreamingView: View {
         .onTapGesture {
             viewModel.toggleOverlay()
         }
+        #if os(tvOS)
+        .onExitCommand {
+            viewModel.disconnect()
+            dismiss()
+        }
+        .onPlayPauseCommand {
+            viewModel.toggleOverlay()
+        }
+        #endif
         .onAppear {
             rendererHolder.initialize()
             if let renderer = rendererHolder.renderer {

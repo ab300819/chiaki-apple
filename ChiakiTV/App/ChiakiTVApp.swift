@@ -9,21 +9,32 @@ import SwiftUI
 
 @main
 struct ChiakiTVApp: App {
+    @State private var settingsStore = SettingsStore()
+    @StateObject private var navigationManager = NavigationManager()
+
     var body: some Scene {
         WindowGroup {
             TVContentView()
+                .environment(settingsStore)
+                .environmentObject(navigationManager)
         }
     }
 }
 
 struct TVContentView: View {
     var body: some View {
-        NavigationStack {
-            List {
-                Text("Host List")
-                    .font(.headline)
+        TabView {
+            NavigationStack {
+                HostListView()
             }
-            .navigationTitle("Chiaki")
+            .tabItem {
+                Label("Hosts", systemImage: "gamecontroller")
+            }
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
         }
     }
 }

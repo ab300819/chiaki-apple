@@ -4,8 +4,8 @@ struct SettingsView: View {
     @Environment(SettingsStore.self) var store
     
     var body: some View {
-        #if os(iOS)
-        NavigationView {
+        #if os(iOS) || os(tvOS)
+        NavigationStack {
             Form {
                 Section {
                     NavigationLink(destination: VideoSettingsView()) {
