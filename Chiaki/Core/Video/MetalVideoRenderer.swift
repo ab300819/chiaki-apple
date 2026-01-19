@@ -129,6 +129,8 @@ final class MetalVideoRenderer: NSObject {
     /// Dropped frame counter
     private(set) var droppedFrameCount: UInt64 = 0
 
+    var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
+
     // MARK: - Initialization
 
     init?(device: MTLDevice? = nil) {
@@ -334,6 +336,7 @@ final class MetalVideoRenderer: NSObject {
 
         frameCount += 1
         updateTransform()
+        onFrameSubmitted?(pixelBuffer)
     }
 
     private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache) {

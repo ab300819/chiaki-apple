@@ -20,7 +20,11 @@ struct StreamingView: View {
                     renderer: $rendererHolder.renderer,
                     displayMode: .normal,
                     zoomFactor: 1.0
-                )
+                ) { mtkView in
+                    #if os(iOS)
+                    viewModel.pipManager.setup(with: mtkView)
+                    #endif
+                }
             } else {
                 VideoPlaceholderView(state: viewModel.state)
             }

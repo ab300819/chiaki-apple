@@ -15,6 +15,18 @@ struct StreamingOverlay: View {
             HStack(spacing: 16) {
                 StatItem(icon: "waveform.path.ecg", value: String(format: "%.1f ms", viewModel.latency))
                 StatItem(icon: "antenna.radiowaves.left.and.right", value: String(format: "%.1f Mbps", viewModel.bitrate))
+                
+                #if os(iOS)
+                if viewModel.pipManager.isPiPSupported {
+                    Button(action: {
+                        viewModel.pipManager.togglePiP()
+                    }) {
+                        Image(systemName: viewModel.pipManager.isPiPActive ? "pip.exit" : "pip.enter")
+                            .font(.system(size: 18))
+                            .foregroundColor(.white)
+                    }
+                }
+                #endif
             }
         }
         .padding(.horizontal, 20)

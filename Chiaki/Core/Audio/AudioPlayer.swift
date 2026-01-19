@@ -231,6 +231,14 @@ final class AudioPlayer {
     private func setupAudioSession() throws {
         #if os(iOS) || os(tvOS)
         let session = AVAudioSession.sharedInstance()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: session
+        )
+
         do {
             // Set category for game audio playback
             try session.setCategory(
@@ -248,6 +256,35 @@ final class AudioPlayer {
             logInfo("AudioPlayer: Audio session configured (buffer: \(session.ioBufferDuration * 1000)ms)")
         } catch {
             throw AudioPlayerError.audioSessionSetupFailed(error)
+        }
+        #endif
+    }
+
+    @objc private func handleInterruption(notification: Notification) {
+        #if os(iOS) || os(tvOS)
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            logInfo("AudioPlayer: Interruption began")
+            pause()
+        case .ended:
+            logInfo("AudioPlayer: Interruption ended")
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) {
+                do {
+                    try resume()
+                } catch {
+                    logError("AudioPlayer: Failed to resume after interruption: \(error.localizedDescription)")
+                }
+            }
+        @unknown default:
+            break
         }
         #endif
     }

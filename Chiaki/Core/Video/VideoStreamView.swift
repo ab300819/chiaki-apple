@@ -38,16 +38,20 @@ struct VideoStreamView: ViewRepresentable {
     /// Preferred frames per second
     var preferredFramesPerSecond: Int
 
+    var onMTKViewCreated: ((MTKView) -> Void)?
+
     init(
         renderer: Binding<MetalVideoRenderer?>,
         displayMode: VideoDisplayMode = .normal,
         zoomFactor: Float = 1.0,
-        preferredFramesPerSecond: Int = 60
+        preferredFramesPerSecond: Int = 60,
+        onMTKViewCreated: ((MTKView) -> Void)? = nil
     ) {
         self._renderer = renderer
         self.displayMode = displayMode
         self.zoomFactor = zoomFactor
         self.preferredFramesPerSecond = preferredFramesPerSecond
+        self.onMTKViewCreated = onMTKViewCreated
     }
 
     #if os(iOS) || os(tvOS)
@@ -90,6 +94,8 @@ struct VideoStreamView: ViewRepresentable {
             mtkView.delegate = renderer
             renderer.updateViewSize(mtkView.drawableSize)
         }
+
+        onMTKViewCreated?(mtkView)
 
         return mtkView
     }

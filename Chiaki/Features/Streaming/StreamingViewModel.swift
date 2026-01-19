@@ -44,6 +44,8 @@ final class StreamingViewModel {
     var bitrate: Double = 0
     var connectionQuality: ConnectionQuality = .unknown
 
+    let pipManager = PiPManager()
+
     // MARK: - Private Properties
 
     private let host: ConsoleHost
@@ -107,6 +109,10 @@ final class StreamingViewModel {
     func setVideoRenderer(_ renderer: MetalVideoRenderer) {
         self.videoRenderer = renderer
         videoDecoderBridge.setRenderer(renderer)
+
+        renderer.onFrameSubmitted = { [weak self] pixelBuffer in
+            self?.pipManager.enqueue(pixelBuffer)
+        }
     }
 
     // MARK: - Connection
