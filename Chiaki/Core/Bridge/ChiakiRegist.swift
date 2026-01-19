@@ -111,11 +111,11 @@ final class ChiakiRegistWrapper {
         updateState(.registering)
         
         // Start registration
-        let result: Int32
+        let result: ChiakiErrorCode
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
             result = chiaki_regist_start(regist, chiakiLog, &info, registrationCallback, selfPointer)
         } else {
-            result = 0
+            result = CHIAKI_ERR_SUCCESS
         }
         
         // Free host string (it's copied in chiaki_regist_start)

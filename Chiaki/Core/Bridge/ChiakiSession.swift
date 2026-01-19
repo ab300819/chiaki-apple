@@ -299,11 +299,11 @@ final class ChiakiSessionWrapper {
         connectInfo.enable_dualsense = true
 
         // Initialize session
-        let initResult: Int32
+        let initResult: ChiakiErrorCode
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
             initResult = chiaki_session_init(session, &connectInfo, chiakiLog)
         } else {
-            initResult = 0 // CHIAKI_ERR_SUCCESS
+            initResult = CHIAKI_ERR_SUCCESS
         }
 
         // Free host string
@@ -332,11 +332,11 @@ final class ChiakiSessionWrapper {
         updateState(.connecting)
 
         // Start session
-        let startResult: Int32
+        let startResult: ChiakiErrorCode
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
             startResult = chiaki_session_start(session)
         } else {
-            startResult = 0
+            startResult = CHIAKI_ERR_SUCCESS
         }
         guard startResult == CHIAKI_ERR_SUCCESS else {
             chiaki_session_fini(session)
