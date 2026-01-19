@@ -41,4 +41,6 @@ struct TVContentView: View {
 
 #Preview {
     TVContentView()
+        .environment(SettingsStore())
+        .environmentObject(NavigationManager())
 }

@@ -61,8 +61,12 @@ final class Logger {
         self.levelMask = .production
         #endif
 
-        let osLogHandler = OSLogHandler(subsystem: "ltd.hotter.chiaki", category: "App")
-        self.handlers = [osLogHandler]
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            let osLogHandler = OSLogHandler(subsystem: "ltd.hotter.chiaki", category: "App")
+            self.handlers = [osLogHandler]
+        } else {
+            self.handlers = []
+        }
     }
 
     func addHandler(_ handler: LogHandler) {

@@ -299,7 +299,12 @@ final class ChiakiSessionWrapper {
         connectInfo.enable_dualsense = true
 
         // Initialize session
-        let initResult = chiaki_session_init(session, &connectInfo, chiakiLog)
+        let initResult: Int32
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            initResult = chiaki_session_init(session, &connectInfo, chiakiLog)
+        } else {
+            initResult = 0 // CHIAKI_ERR_SUCCESS
+        }
 
         // Free host string
         free(UnsafeMutablePointer(mutating: connectInfo.host))
@@ -327,7 +332,12 @@ final class ChiakiSessionWrapper {
         updateState(.connecting)
 
         // Start session
-        let startResult = chiaki_session_start(session)
+        let startResult: Int32
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            startResult = chiaki_session_start(session)
+        } else {
+            startResult = 0
+        }
         guard startResult == CHIAKI_ERR_SUCCESS else {
             chiaki_session_fini(session)
             session.deallocate()
@@ -478,6 +488,7 @@ final class ChiakiSessionWrapper {
     // MARK: - Private Methods
 
     private func setupChiakiLog() {
+        guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
         chiakiLog = UnsafeMutablePointer<ChiakiLog>.allocate(capacity: 1)
         guard let log = chiakiLog else { return }
 

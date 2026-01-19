@@ -78,4 +78,5 @@ struct WelcomeView: View {
 #Preview {
     ContentView()
         .environment(SettingsStore())
+        .environmentObject(NavigationManager())
 }

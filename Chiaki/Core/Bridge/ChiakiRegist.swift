@@ -111,7 +111,12 @@ final class ChiakiRegistWrapper {
         updateState(.registering)
         
         // Start registration
-        let result = chiaki_regist_start(regist, chiakiLog, &info, registrationCallback, selfPointer)
+        let result: Int32
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            result = chiaki_regist_start(regist, chiakiLog, &info, registrationCallback, selfPointer)
+        } else {
+            result = 0
+        }
         
         // Free host string (it's copied in chiaki_regist_start)
         free(UnsafeMutablePointer(mutating: info.host))
@@ -143,6 +148,7 @@ final class ChiakiRegistWrapper {
     // MARK: - Private Methods
     
     private func setupChiakiLog() {
+        guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
         chiakiLog = UnsafeMutablePointer<ChiakiLog>.allocate(capacity: 1)
         guard let log = chiakiLog else { return }
         

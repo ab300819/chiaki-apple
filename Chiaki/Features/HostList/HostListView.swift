@@ -178,5 +178,7 @@ struct HostListView: View {
 #Preview {
     NavigationStack {
         HostListView()
+            .environmentObject(NavigationManager())
+            .environment(SettingsStore())
     }
 }
