@@ -16,13 +16,41 @@ struct StreamSettings: Codable, Equatable {
     
     var volume: Double = 1.0
     var microphoneEnabled: Bool = false
-    
+
     var hapticFeedbackEnabled: Bool = true
     var isTouchControllerEnabled: Bool = true
 
+    var displayMode: DisplayMode = .normal
+    var zoomFactor: Double = 1.0
+
     enum CodingKeys: String, CodingKey {
         case localProfile, remoteProfile, codec, hdrEnabled, volume, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
-        case resolution, frameRate, bitrate
+        case resolution, frameRate, bitrate, displayMode, zoomFactor
+    }
+
+    /// Video display mode for streaming
+    enum DisplayMode: String, Codable, CaseIterable, Identifiable {
+        case normal = "Fit"
+        case stretch = "Stretch"
+        case zoom = "Zoom"
+
+        var id: String { rawValue }
+
+        var description: String {
+            switch self {
+            case .normal: return "Fit (letterbox)"
+            case .stretch: return "Stretch to fill"
+            case .zoom: return "Zoom to fill"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .normal: return "rectangle.arrowtriangle.2.inward"
+            case .stretch: return "arrow.left.and.right"
+            case .zoom: return "arrow.up.left.and.arrow.down.right"
+            }
+        }
     }
 
     init() {}
@@ -49,6 +77,8 @@ struct StreamSettings: Codable, Equatable {
         self.microphoneEnabled = (try? container.decode(Bool.self, forKey: .microphoneEnabled)) ?? false
         self.hapticFeedbackEnabled = (try? container.decode(Bool.self, forKey: .hapticFeedbackEnabled)) ?? true
         self.isTouchControllerEnabled = (try? container.decode(Bool.self, forKey: .isTouchControllerEnabled)) ?? true
+        self.displayMode = (try? container.decode(DisplayMode.self, forKey: .displayMode)) ?? .normal
+        self.zoomFactor = (try? container.decode(Double.self, forKey: .zoomFactor)) ?? 1.0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -61,6 +91,8 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(microphoneEnabled, forKey: .microphoneEnabled)
         try container.encode(hapticFeedbackEnabled, forKey: .hapticFeedbackEnabled)
         try container.encode(isTouchControllerEnabled, forKey: .isTouchControllerEnabled)
+        try container.encode(displayMode, forKey: .displayMode)
+        try container.encode(zoomFactor, forKey: .zoomFactor)
     }
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {

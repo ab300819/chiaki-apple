@@ -47,6 +47,12 @@ final class StreamingViewModel {
     var isPoorConnection: Bool = false
     var connectionQuality: ConnectionQuality = .unknown
 
+    // Playback controls
+    var volume: Double = 1.0
+    var displayMode: StreamSettings.DisplayMode = .normal
+    var zoomFactor: Double = 1.0
+    var isControlMenuVisible: Bool = false
+
     let pipManager = PiPManager()
 
     // MARK: - Private Properties
@@ -250,6 +256,44 @@ final class StreamingViewModel {
         }
     }
 
+    /// Toggle control menu visibility
+    func toggleControlMenu() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isControlMenuVisible.toggle()
+        }
+    }
+
+    // MARK: - Playback Controls
+
+    /// Set audio volume (0.0 - 1.0)
+    func setVolume(_ newVolume: Double) {
+        volume = max(0.0, min(1.0, newVolume))
+        audioPlayerBridge.setVolume(Float(volume))
+    }
+
+    /// Set video display mode
+    func setDisplayMode(_ mode: StreamSettings.DisplayMode) {
+        displayMode = mode
+        videoRenderer?.displayMode = mode.toVideoDisplayMode
+    }
+
+    /// Set zoom factor (1.0 - 2.0, only used in zoom mode)
+    func setZoomFactor(_ factor: Double) {
+        zoomFactor = max(1.0, min(2.0, factor))
+        videoRenderer?.zoomFactor = Float(zoomFactor)
+    }
+
+    /// Apply settings from SettingsStore
+    func applySettings(from settings: StreamSettings) {
+        volume = settings.volume
+        displayMode = settings.displayMode
+        zoomFactor = settings.zoomFactor
+
+        audioPlayerBridge.setVolume(Float(volume))
+        videoRenderer?.displayMode = displayMode.toVideoDisplayMode
+        videoRenderer?.zoomFactor = Float(zoomFactor)
+    }
+
     /// Submit login PIN
     func submitLoginPin(_ pin: String) {
         session.submitLoginPin(pin)
@@ -317,5 +361,18 @@ final class StreamingViewModel {
         isPoorConnection = packetLoss > 5.0
 
         currentResolution = "1080p"
+    }
+}
+
+// MARK: - DisplayMode Conversion
+
+extension StreamSettings.DisplayMode {
+    /// Convert to VideoDisplayMode for MetalVideoRenderer
+    var toVideoDisplayMode: VideoDisplayMode {
+        switch self {
+        case .normal: return .normal
+        case .stretch: return .stretch
+        case .zoom: return .zoom
+        }
     }
 }

@@ -18,8 +18,8 @@ struct StreamingView: View {
             if viewModel.state == .streaming {
                 VideoStreamView(
                     renderer: rendererHolder.renderer,
-                    displayMode: .normal,
-                    zoomFactor: 1.0
+                    displayMode: viewModel.displayMode.toVideoDisplayMode,
+                    zoomFactor: Float(viewModel.zoomFactor)
                 ) { mtkView in
                     #if os(iOS)
                     viewModel.pipManager.setup(with: mtkView)
@@ -51,18 +51,57 @@ struct StreamingView: View {
                                 .shadow(radius: 4)
                         }
                         .accessibilityLabel("Disconnect and close stream")
-                        
+
                         Spacer()
-                        
+
+                        // Control menu button
+                        Button(action: { viewModel.toggleControlMenu() }) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 22))
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel("Open controls menu")
+
                         StreamingOverlay(viewModel: viewModel)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    
+
                     Spacer()
                 }
                 .transition(.opacity)
                 .zIndex(2)
+            }
+
+            // Control menu overlay
+            if viewModel.isControlMenuVisible {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture { viewModel.toggleControlMenu() }
+                    .zIndex(3)
+
+                StreamingControlsView(
+                    viewModel: viewModel,
+                    onSaveSettings: { volume, displayMode, zoomFactor in
+                        settingsStore.updateVolume(volume)
+                        settingsStore.updateDisplayMode(displayMode)
+                        settingsStore.updateZoomFactor(zoomFactor)
+                    },
+                    onDisconnect: {
+                        viewModel.toggleControlMenu()
+                        viewModel.disconnect()
+                        dismiss()
+                    },
+                    onGoToBed: {
+                        viewModel.goToBed()
+                        viewModel.toggleControlMenu()
+                    }
+                )
+                .transition(.scale.combined(with: .opacity))
+                .zIndex(4)
             }
         }
         #if os(iOS)
@@ -86,6 +125,8 @@ struct StreamingView: View {
             if let renderer = rendererHolder.renderer {
                 viewModel.setVideoRenderer(renderer)
             }
+            // Apply saved playback settings
+            viewModel.applySettings(from: settingsStore.streamSettings)
             viewModel.connect(settings: settingsStore.streamSettings, isRemote: settingsStore.useRemoteProfile)
         }
         .onDisappear {

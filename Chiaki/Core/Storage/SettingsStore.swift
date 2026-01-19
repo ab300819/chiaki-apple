@@ -70,4 +70,16 @@ class SettingsStore {
     func updateHdrEnabled(_ enabled: Bool) {
         streamSettings.hdrEnabled = enabled
     }
+
+    func updateVolume(_ volume: Double) {
+        streamSettings.volume = max(0.0, min(1.0, volume))
+    }
+
+    func updateDisplayMode(_ mode: StreamSettings.DisplayMode) {
+        streamSettings.displayMode = mode
+    }
+
+    func updateZoomFactor(_ factor: Double) {
+        streamSettings.zoomFactor = max(1.0, min(2.0, factor))
+    }
 }
