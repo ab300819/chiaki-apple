@@ -4,17 +4,26 @@ struct StreamingView: View {
     @State private var viewModel: StreamingViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(SettingsStore.self) private var settingsStore
+    @StateObject private var rendererHolder = VideoRendererHolder()
     
     init(host: ConsoleHost) {
         _viewModel = State(initialValue: StreamingViewModel(host: host))
     }
     
     var body: some View {
-        ZStack {
+            ZStack {
             Color.black
                 .ignoresSafeArea()
             
-            VideoPlaceholderView(state: viewModel.state)
+            if viewModel.state == .streaming {
+                VideoStreamView(
+                    renderer: $rendererHolder.renderer,
+                    displayMode: .normal,
+                    zoomFactor: 1.0
+                )
+            } else {
+                VideoPlaceholderView(state: viewModel.state)
+            }
             
             #if os(iOS)
             if viewModel.state == .connected && settingsStore.streamSettings.isTouchControllerEnabled {
@@ -38,6 +47,7 @@ struct StreamingView: View {
                                 .shadow(radius: 4)
                         }
                         .padding(.leading, 20)
+                        .accessibilityLabel("Disconnect and close stream")
                         
                         Spacer()
                         
@@ -57,6 +67,17 @@ struct StreamingView: View {
         #endif
         .onTapGesture {
             viewModel.toggleOverlay()
+        }
+        .onAppear {
+            rendererHolder.initialize()
+            if let renderer = rendererHolder.renderer {
+                viewModel.setVideoRenderer(renderer)
+            }
+            viewModel.connect(settings: settingsStore.streamSettings)
+        }
+        .onDisappear {
+            viewModel.disconnect()
+            rendererHolder.cleanup()
         }
     }
 }

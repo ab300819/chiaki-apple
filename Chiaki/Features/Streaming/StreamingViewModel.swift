@@ -112,7 +112,7 @@ final class StreamingViewModel {
     // MARK: - Connection
 
     /// Connect to the PlayStation host
-    func connect() {
+    func connect(settings: StreamSettings) {
         guard !state.isActive else {
             Logger.session.warning("Cannot connect: already active")
             return
@@ -141,10 +141,12 @@ final class StreamingViewModel {
         )
 
         // Configure video based on resolution setting
+        let videoCodec: ChiakiVideoCodec = settings.codec == .h265 ? .h265 : .h264
+        
         videoDecoderBridge.configure(
-            codec: .h265,
-            width: 1920,
-            height: 1080
+            codec: videoCodec,
+            width: Int32(settings.resolution.width),
+            height: Int32(settings.resolution.height)
         )
 
         // Start connection
