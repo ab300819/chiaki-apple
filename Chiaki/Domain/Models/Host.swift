@@ -19,7 +19,7 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
     var address: String
     var macAddress: String
     var isPS5: Bool
-    var registKey: UInt64
+    var registKey: Data
     var rpKey: Data
     var rpKeyType: UInt32
     
@@ -27,7 +27,7 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
     var state: HostState = .offline
     
     var isRegistered: Bool {
-        registKey != 0
+        !registKey.isEmpty
     }
     
     var consoleType: ConsoleType {
@@ -51,7 +51,7 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
         address: String,
         macAddress: String = "",
         isPS5: Bool = true,
-        registKey: UInt64 = 0,
+        registKey: Data = Data(),
         rpKey: Data = Data(),
         rpKeyType: UInt32 = 0
     ) {

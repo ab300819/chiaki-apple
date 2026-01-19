@@ -85,7 +85,7 @@ final class HostStore: ObservableObject {
     // MARK: - Registration
 
     /// Update host registration credentials
-    func updateRegistration(for host: ConsoleHost, registKey: UInt64, rpKey: Data, rpKeyType: UInt32) {
+    func updateRegistration(for host: ConsoleHost, registKey: Data, rpKey: Data, rpKeyType: UInt32) {
         guard var updatedHost = self.host(byId: host.id) else { return }
         updatedHost.registKey = registKey
         updatedHost.rpKey = rpKey

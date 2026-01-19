@@ -28,7 +28,7 @@ final class HostManager: ObservableObject {
     // MARK: - Dependencies
 
     private let discoveryService: DiscoveryService
-    private let hostStore: HostStore
+    private(set) var hostStore: HostStore
 
     // MARK: - Private Properties
 
@@ -150,7 +150,7 @@ final class HostManager: ObservableObject {
     // MARK: - Registration
 
     /// Update host registration
-    func updateRegistration(for host: ConsoleHost, registKey: UInt64, rpKey: Data, rpKeyType: UInt32) {
+    func updateRegistration(for host: ConsoleHost, registKey: Data, rpKey: Data, rpKeyType: UInt32) {
         hostStore.updateRegistration(for: host, registKey: registKey, rpKey: rpKey, rpKeyType: rpKeyType)
     }
 

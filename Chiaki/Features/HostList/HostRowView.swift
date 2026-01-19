@@ -26,36 +26,46 @@ struct HostRowView: View {
             
             // Status
             Group {
-                switch host.state {
-                case .online:
-                    Text("Online")
+                if !host.isRegistered {
+                    Text("Register Needed")
                         .font(.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.2))
-                        .foregroundStyle(.green)
+                        .background(Color.red.opacity(0.2))
+                        .foregroundStyle(.red)
                         .clipShape(Capsule())
-                case .standby:
-                    Button(action: onWakeUp) {
-                        Text("Wake Up")
+                } else {
+                    switch host.state {
+                    case .online:
+                        Text("Online")
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.orange.opacity(0.2))
-                            .foregroundStyle(.orange)
+                            .background(Color.green.opacity(0.2))
+                            .foregroundStyle(.green)
                             .clipShape(Capsule())
+                    case .standby:
+                        Button(action: onWakeUp) {
+                            Text("Wake Up")
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.2))
+                                .foregroundStyle(.orange)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    case .offline:
+                        Text("Offline")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.gray.opacity(0.2))
+                            .foregroundStyle(.gray)
+                            .clipShape(Capsule())
+                    case .unknown:
+                        EmptyView()
                     }
-                    .buttonStyle(.plain)
-                case .offline:
-                    Text("Offline")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundStyle(.gray)
-                        .clipShape(Capsule())
-                case .unknown:
-                    EmptyView()
                 }
             }
         }

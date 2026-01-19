@@ -101,7 +101,7 @@ final class DiscoveryService: ObservableObject {
         guard !host.address.isEmpty else {
             throw DiscoveryError.invalidAddress
         }
-        guard host.registKey != 0 else {
+        guard !host.registKey.isEmpty else {
             throw DiscoveryError.notRegistered
         }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct HostListView: View {
     @State private var viewModel = HostListViewModel()
     @State private var showingAddHost = false
+    @State private var registeringHost: ConsoleHost?
 
     var body: some View {
         List {
@@ -10,10 +11,19 @@ struct HostListView: View {
                 emptyStateView
             } else {
                 ForEach(viewModel.hosts) { host in
-                    NavigationLink(value: host) {
-                        HostRowView(host: host) {
-                            viewModel.wakeUp(host)
+                    if host.isRegistered {
+                        NavigationLink(value: host) {
+                            HostRowView(host: host) {
+                                viewModel.wakeUp(host)
+                            }
                         }
+                    } else {
+                        Button(action: { registeringHost = host }) {
+                            HostRowView(host: host) {
+                                viewModel.wakeUp(host)
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .onDelete(perform: viewModel.deleteHost)
@@ -32,6 +42,9 @@ struct HostListView: View {
         }
         .sheet(isPresented: $showingAddHost) {
             AddHostView(viewModel: viewModel)
+        }
+        .sheet(item: $registeringHost) { host in
+            RegistrationView(hostStore: HostManager.shared.hostStore, initialAddress: host.address)
         }
         .refreshable {
             try? await Task.sleep(for: .seconds(1))
