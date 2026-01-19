@@ -12,6 +12,8 @@
 #include <chiaki/common.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
+#include <chiaki/packetstats.h>
+#include <chiaki/congestioncontrol.h>
 #include <chiaki/discovery.h>
 #include <chiaki/discoveryservice.h>
 #include <chiaki/regist.h>

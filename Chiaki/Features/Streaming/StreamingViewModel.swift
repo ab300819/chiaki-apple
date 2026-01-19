@@ -42,6 +42,9 @@ final class StreamingViewModel {
     var currentFrameRate: Double = 0
     var latency: Double = 0
     var bitrate: Double = 0
+    var packetLoss: Double = 0
+    var droppedFrames: Int = 0
+    var isPoorConnection: Bool = false
     var connectionQuality: ConnectionQuality = .unknown
 
     let pipManager = PiPManager()
@@ -302,13 +305,17 @@ final class StreamingViewModel {
     }
 
     private func updateStats() {
+        session.updateStatistics()
+
         currentFrameRate = statistics.currentFrameRate
         latency = statistics.networkLatency
         bitrate = statistics.measuredBitrate
+        packetLoss = statistics.packetLossPercentage
+        droppedFrames = statistics.totalDroppedFrames
         connectionQuality = statistics.connectionQuality
 
-        // Update resolution string based on video size
-        // This would come from the video decoder config
+        isPoorConnection = packetLoss > 5.0
+
         currentResolution = "1080p"
     }
 }

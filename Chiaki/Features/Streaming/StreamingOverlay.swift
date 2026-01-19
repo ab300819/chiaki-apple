@@ -2,20 +2,40 @@ import SwiftUI
 
 struct StreamingOverlay: View {
     var viewModel: StreamingViewModel
-    
+
     var body: some View {
         HStack(spacing: 0) {
+            // Left side: Video stats
             HStack(spacing: 16) {
                 StatItem(icon: "display", value: viewModel.currentResolution)
-                StatItem(icon: "speedometer", value: "\(viewModel.currentFrameRate) FPS")
+                StatItem(
+                    icon: "speedometer",
+                    value: String(format: "%.0f FPS", viewModel.currentFrameRate)
+                )
             }
-            
+
             Spacer()
-            
+
+            // Right side: Network stats + controls
             HStack(spacing: 16) {
-                StatItem(icon: "waveform.path.ecg", value: String(format: "%.1f ms", viewModel.latency))
-                StatItem(icon: "antenna.radiowaves.left.and.right", value: String(format: "%.1f Mbps", viewModel.bitrate))
-                
+                // Network quality indicator
+                NetworkQualityIndicator(quality: viewModel.connectionQuality)
+
+                StatItem(
+                    icon: "waveform.path.ecg",
+                    value: String(format: "%.0f ms", viewModel.latency)
+                )
+                StatItem(
+                    icon: "antenna.radiowaves.left.and.right",
+                    value: String(format: "%.1f Mbps", viewModel.bitrate)
+                )
+
+                // Packet loss with semantic color
+                PacketLossItem(
+                    packetLoss: viewModel.packetLoss,
+                    droppedFrames: viewModel.droppedFrames
+                )
+
                 #if os(iOS)
                 if viewModel.pipManager.isPiPSupported {
                     Button(action: {
@@ -39,6 +59,107 @@ struct StreamingOverlay: View {
         )
         .padding(.horizontal, 24)
         .padding(.top, 16)
+    }
+}
+
+// MARK: - Network Quality Indicator
+
+private struct NetworkQualityIndicator: View {
+    let quality: ConnectionQuality
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<4, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(index < quality.signalBars ? barColor : Color.gray.opacity(0.3))
+                    .frame(width: barWidth, height: barHeight(for: index))
+            }
+        }
+        .frame(height: maxBarHeight)
+        .accessibilityLabel("Network quality: \(quality.rawValue)")
+    }
+
+    private var barColor: Color {
+        switch quality {
+        case .excellent: return .green
+        case .good: return .green
+        case .fair: return .yellow
+        case .poor: return .red
+        case .unknown: return .gray
+        }
+    }
+
+    #if os(tvOS)
+    private let barWidth: CGFloat = 6
+    private let maxBarHeight: CGFloat = 20
+    #else
+    private let barWidth: CGFloat = 3
+    private let maxBarHeight: CGFloat = 12
+    #endif
+
+    private func barHeight(for index: Int) -> CGFloat {
+        let ratio = CGFloat(index + 1) / 4.0
+        return maxBarHeight * (0.4 + ratio * 0.6)
+    }
+}
+
+// MARK: - Packet Loss Item
+
+private struct PacketLossItem: View {
+    let packetLoss: Double
+    let droppedFrames: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            #if os(tvOS)
+            Image(systemName: "xmark.circle")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(lossColor.opacity(0.8))
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(String(format: "%.1f%%", packetLoss))
+                    .font(.system(size: 20, design: .monospaced))
+                    .fontWeight(.medium)
+                    .foregroundColor(lossColor)
+
+                if droppedFrames > 0 {
+                    Text("\(droppedFrames) dropped")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+            }
+            #else
+            Image(systemName: "xmark.circle")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(lossColor.opacity(0.8))
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(String(format: "%.1f%%", packetLoss))
+                    .font(.system(size: 12, design: .monospaced))
+                    .fontWeight(.medium)
+                    .foregroundColor(lossColor)
+
+                if droppedFrames > 0 {
+                    Text("\(droppedFrames) drop")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
+            #endif
+        }
+        .accessibilityLabel("Packet loss \(String(format: "%.1f", packetLoss)) percent, \(droppedFrames) frames dropped")
+    }
+
+    private var lossColor: Color {
+        if packetLoss > 5.0 {
+            return .red
+        } else if packetLoss > 1.0 {
+            return .yellow
+        } else if packetLoss > 0.1 {
+            return .orange
+        } else {
+            return .green
+        }
     }
 }
 

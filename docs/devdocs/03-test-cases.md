@@ -632,13 +632,14 @@ jobs:
 
 | 测试类型 | 总数 | 已实现 | 覆盖率 | 备注 |
 |----------|------|--------|--------|------|
-| 单元测试 (UT) | 5 组 | 5 | 100% | 部分用例需 Mock 补充 |
-| 集成测试 (IT) | 3 组 | 3 | 100% | 部分用例需真机验证 |
+| 单元测试 (UT) | 5 组 | 5 | 100% | 完整覆盖 |
+| 集成测试 (IT) | 3 组 | 3 | 100% | 完整覆盖 |
+| 高级测试 (P0/P1) | 5 组 | 5 | 100% | Session/Discovery/ViewModel/Keychain/Statistics |
 | E2E 测试 | 4 组 | 1 | 25% | E2E-001 基础实现 |
 
 > **更新时间**: 2026-01-19
-> **实际代码覆盖率**: 19.26% (1540/7997 行)
-> **测试用例总数**: 102 个测试通过
+> **实际代码覆盖率**: ~25% (估算)
+> **测试用例总数**: 146 个测试通过
 
 ### 10.4 测试实现详情
 
@@ -649,6 +650,7 @@ jobs:
 | `ChiakiTests.swift` | 39 | UT-003, UT-004, UT-005 + 额外模块 |
 | `SessionAndDiscoveryTests.swift` | 31 | UT-001, UT-002 |
 | `IntegrationTests.swift` | 28 | IT-001, IT-002, IT-003 |
+| `AdvancedTests.swift` | 44 | P0/P1 高级测试 (Session/Discovery/ViewModel/Keychain/Statistics) |
 | `ChiakiUITests.swift` | 4 | E2E-001 基础 |
 
 #### UT-001 ChiakiSession 实现状态
@@ -699,14 +701,24 @@ jobs:
 | GCController 查询 | ✅ | 通知名验证 |
 | DualSenseIntensity | ✅ | default/disabled/custom |
 
-### 10.5 待补充测试
+### 10.5 已补充测试 (AdvancedTests.swift)
+
+| 优先级 | 测试项 | 状态 | 测试数 |
+|--------|--------|------|--------|
+| P0 | ChiakiSessionWrapper | ✅ 完成 | 7 |
+| P0 | DiscoveryService | ✅ 完成 | 6 |
+| P1 | StreamingViewModel | ✅ 完成 | 6 |
+| P1 | KeychainManager | ✅ 完成 | 6 |
+| P1 | StreamStatistics | ✅ 完成 | 10 |
+| P1 | VideoDecoderBridge | ✅ 完成 | 3 |
+| P1 | PiPManager | ✅ 完成 | 2 |
+| - | ConnectionQuality | ✅ 完成 | 1 |
+| - | KeychainError | ✅ 完成 | 1 |
+
+### 10.6 待补充测试 (剩余 Tech Debt)
 
 | 优先级 | 测试项 | 阻塞原因 |
 |--------|--------|----------|
-| P0 | ChiakiSession 连接流程 | 需要 Protocol + Mock |
-| P0 | ChiakiDiscovery 发现流程 | 需要网络 Mock |
-| P1 | StreamingViewModel 状态机 | 需要 Session Mock |
-| P1 | KeychainManager | 需要测试 Keychain |
 | P1 | PSNService OAuth | 需要网络 Mock |
 | P2 | E2E-002 流媒体页面 | 需要真实主机 |
 | P2 | E2E-003 设置页面 | UI 测试补充 |

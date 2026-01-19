@@ -216,6 +216,16 @@ final class StreamStatistics {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 
+    /// Packet loss as a percentage (0.0 - 100.0)
+    var packetLossPercentage: Double {
+        averagePacketLoss * 100.0
+    }
+
+    /// Total dropped frames (decoder couldn't keep up)
+    var totalDroppedFrames: Int {
+        Int(droppedFrames)
+    }
+
     /// Frame drop rate (0.0 - 1.0)
     var frameDropRate: Double {
         let total = decodedFrames + droppedFrames

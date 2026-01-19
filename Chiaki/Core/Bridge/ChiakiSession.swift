@@ -473,6 +473,27 @@ final class ChiakiSessionWrapper {
         chiaki_session_go_home(session)
     }
 
+    /// Update stream statistics from libchiaki raw session state
+    func updateStatistics() {
+        sessionLock.lock()
+        guard let session = session, state == .streaming else {
+            sessionLock.unlock()
+            return
+        }
+
+        let rtt = Double(session.pointee.rtt_us) / 1000.0
+        let packetLoss = session.pointee.stream_connection.congestion_control.packet_loss
+
+        var received: UInt64 = 0
+        var lost: UInt64 = 0
+        chiaki_packet_stats_get(&session.pointee.stream_connection.packet_stats, false, &received, &lost)
+        sessionLock.unlock()
+
+        streamStatistics?.updateLatency(rtt)
+        streamStatistics?.recordPacketLoss(packetLoss)
+        streamStatistics?.recordPacketStats(received: received, lost: lost)
+    }
+
     /// Toggle microphone mute
     func toggleMicrophone(muted: Bool) {
         sessionLock.lock()

@@ -458,30 +458,35 @@ struct StreamStatisticsTests {
     @Test func testInitialization() {
         let stats = StreamStatistics()
 
-        #expect(stats.videoFrameCount == 0)
-        #expect(stats.droppedFrameCount == 0)
-        #expect(stats.averageFrameRate == 0)
+        #expect(stats.decodedFrames == 0)
+        #expect(stats.droppedFrames == 0)
+        #expect(stats.currentFrameRate == 0)
+        #expect(stats.measuredBitrate == 0)
     }
 
     @Test func testRecordVideoFrame() {
         let stats = StreamStatistics()
 
         stats.recordVideoFrame(size: 50000, wasDropped: false)
-        #expect(stats.videoFrameCount == 1)
+        #expect(stats.decodedFrames == 1)
+        #expect(stats.droppedFrames == 0)
 
         stats.recordVideoFrame(size: 50000, wasDropped: true)
-        #expect(stats.videoFrameCount == 2)
-        #expect(stats.droppedFrameCount == 1)
+        #expect(stats.decodedFrames == 1)
+        #expect(stats.droppedFrames == 1)
     }
 
     @Test func testSessionLifecycle() {
         let stats = StreamStatistics()
 
+        #expect(stats.sessionStartTime == nil)
+
         stats.sessionStarted()
-        #expect(stats.isActive == true)
+        #expect(stats.sessionStartTime != nil)
 
         stats.sessionEnded()
-        #expect(stats.isActive == false)
+        // sessionEnded just logs, sessionStartTime remains set
+        #expect(stats.sessionStartTime != nil)
     }
 
     @Test func testReset() {
@@ -494,8 +499,57 @@ struct StreamStatisticsTests {
         // Reset
         stats.reset()
 
-        #expect(stats.videoFrameCount == 0)
-        #expect(stats.droppedFrameCount == 0)
+        #expect(stats.decodedFrames == 0)
+        #expect(stats.droppedFrames == 0)
+    }
+
+    @Test func testConnectionQuality() {
+        let stats = StreamStatistics()
+
+        // Default should be excellent (no packet loss, no latency)
+        #expect(stats.connectionQuality == .excellent)
+    }
+
+    @Test func testAudioUnderrun() {
+        let stats = StreamStatistics()
+
+        #expect(stats.audioUnderruns == 0)
+
+        stats.recordAudioUnderrun()
+        #expect(stats.audioUnderruns == 1)
+
+        stats.recordAudioUnderrun()
+        #expect(stats.audioUnderruns == 2)
+    }
+
+    @Test func testAudioBufferFill() {
+        let stats = StreamStatistics()
+
+        #expect(stats.audioBufferFill == 0.0)
+
+        stats.updateAudioBufferFill(0.75)
+        #expect(stats.audioBufferFill == 0.75)
+    }
+
+    @Test func testNetworkLatency() {
+        let stats = StreamStatistics()
+
+        #expect(stats.networkLatency == 0)
+
+        stats.updateLatency(25.5)
+        #expect(stats.networkLatency == 25.5)
+    }
+
+    @Test func testFrameDropRate() {
+        let stats = StreamStatistics()
+
+        // No frames = 0 drop rate
+        #expect(stats.frameDropRate == 0)
+
+        // 1 decoded, 1 dropped = 50% drop rate
+        stats.recordVideoFrame(size: 1000, wasDropped: false)
+        stats.recordVideoFrame(size: 1000, wasDropped: true)
+        #expect(stats.frameDropRate == 0.5)
     }
 }
 
