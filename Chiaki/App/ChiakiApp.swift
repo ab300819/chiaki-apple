@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+#if os(iOS) || os(macOS)
 @main
 struct ChiakiApp: App {
     @State private var settingsStore = SettingsStore()
@@ -53,3 +54,4 @@ struct ChiakiApp: App {
         #endif
     }
 }
+#endif

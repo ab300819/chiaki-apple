@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+#if os(tvOS)
 @main
 struct ChiakiTVApp: App {
     @State private var settingsStore = SettingsStore()
@@ -20,6 +21,7 @@ struct ChiakiTVApp: App {
         }
     }
 }
+#endif
 
 struct TVContentView: View {
     var body: some View {
