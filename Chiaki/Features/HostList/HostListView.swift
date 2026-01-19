@@ -4,6 +4,8 @@ struct HostListView: View {
     @State private var viewModel = HostListViewModel()
     @State private var showingAddHost = false
     @State private var registeringHost: ConsoleHost?
+    @State private var showDeleteConfirmation = false
+    @State private var indexSetToDelete: IndexSet?
 
     var body: some View {
         List {
@@ -26,8 +28,21 @@ struct HostListView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .onDelete(perform: viewModel.deleteHost)
+                .onDelete { indexSet in
+                    indexSetToDelete = indexSet
+                    showDeleteConfirmation = true
+                }
             }
+        }
+        .confirmationDialog("Delete Host?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let indexSet = indexSetToDelete {
+                    viewModel.deleteHost(at: indexSet)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action cannot be undone.")
         }
         .navigationDestination(for: ConsoleHost.self) { host in
             StreamingView(host: host)
@@ -62,6 +77,19 @@ struct HostListView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            
+            Button(action: { showingAddHost = true }) {
+                Text("Add Host")
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
+            .padding(.top, 12)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add a new host manually")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .listRowBackground(Color.clear)

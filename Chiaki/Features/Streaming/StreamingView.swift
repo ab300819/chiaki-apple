@@ -36,7 +36,7 @@ struct StreamingView: View {
             
             if viewModel.isOverlayVisible {
                 VStack {
-                    HStack {
+                    HStack(alignment: .center) {
                         Button(action: {
                             viewModel.disconnect()
                             dismiss()
@@ -46,13 +46,13 @@ struct StreamingView: View {
                                 .foregroundColor(.white)
                                 .shadow(radius: 4)
                         }
-                        .padding(.leading, 20)
                         .accessibilityLabel("Disconnect and close stream")
                         
                         Spacer()
                         
                         StreamingOverlay(viewModel: viewModel)
                     }
+                    .padding(.horizontal, 20)
                     .padding(.top, 10)
                     
                     Spacer()
