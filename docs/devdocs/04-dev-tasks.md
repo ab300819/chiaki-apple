@@ -1184,6 +1184,62 @@
 
 ---
 
+### 5.5 UI 改进
+
+> **来源**: `05-ui-review.md` UI 审查报告
+> **优先级**: P1 (可访问性), P2 (交互安全), P3 (布局优化)
+
+#### T5.5.1 添加可访问性标签 [P1]
+- **描述**: 为仅图标按钮添加 accessibilityLabel
+- **依赖**: 无
+- **文件**:
+  - `Chiaki/Features/Streaming/StreamingView.swift`
+- **验收标准**:
+  - [ ] 关闭按钮添加 `.accessibilityLabel("Close Stream")`
+  - [ ] VoiceOver 可正确读取按钮用途
+- **测试**: 启用 VoiceOver 测试流媒体视图
+
+---
+
+#### T5.5.2 添加删除确认弹窗 [P2]
+- **描述**: 为主机删除操作添加二次确认
+- **依赖**: 无
+- **文件**:
+  - `Chiaki/Features/HostList/HostListView.swift`
+- **验收标准**:
+  - [ ] 滑动删除时显示 `.confirmationDialog`
+  - [ ] 确认弹窗包含主机名称
+  - [ ] 取消操作不执行删除
+- **测试**: 尝试删除主机，确认弹窗出现
+
+---
+
+#### T5.5.3 适配安全区域 [P3]
+- **描述**: 将固定 padding 替换为 safeAreaInset 适配
+- **依赖**: 无
+- **文件**:
+  - `Chiaki/Features/Streaming/StreamingView.swift`
+- **验收标准**:
+  - [ ] 顶部控件使用 `safeAreaInset` 或 `GeometryReader`
+  - [ ] 在刘海屏/灵动岛设备上控件不被遮挡
+  - [ ] 全屏模式下仍可访问控件
+- **测试**: iPhone 14 Pro/15 Pro 模拟器测试
+
+---
+
+#### T5.5.4 添加空状态操作按钮 [P3]
+- **描述**: 在主机列表空状态视图中添加 "Add Host" 按钮
+- **依赖**: 无
+- **文件**:
+  - `Chiaki/Features/HostList/HostListView.swift`
+- **验收标准**:
+  - [ ] 空状态显示 "Add Host" 按钮
+  - [ ] 点击按钮打开添加主机表单
+  - [ ] 按钮样式与整体 UI 一致
+- **测试**: 清空主机列表，验证空状态
+
+---
+
 ## 阶段 M6: 平台适配 (Platform Adaptation)
 
 ### 6.1 macOS 优化

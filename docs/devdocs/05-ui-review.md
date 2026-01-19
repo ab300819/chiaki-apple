@@ -1,4 +1,9 @@
-# UI 审查建议 (UI Advice)
+# Chiaki-ng Apple 原生客户端 - UI 审查报告
+
+> **文档来源**: UI Skills 审查工具生成
+> **审查时间**: 2026-01-14
+> **最后更新**: 2026-01-19
+> **关联任务**: M5.5 UI 改进
 
 根据 `ui-skills` 准则对 Chiaki-ng Apple 原生客户端当前 UI 实现的审查记录。
 

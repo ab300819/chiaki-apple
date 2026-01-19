@@ -22,6 +22,7 @@
 | 系统设计 | `DESIGN.md` | `docs/devdocs/02-system-design.md` | 完整复制 | ✅ 完成 |
 | 测试用例 | `test/` + DESIGN.md | `docs/devdocs/03-test-cases.md` | **新建** → 迁移 | ✅ 完成 |
 | 开发任务 | `TASK.md` | `docs/devdocs/04-dev-tasks.md` | 完整复制 | ✅ 完成 |
+| UI 审查 | UI Skills 审查 | `docs/devdocs/05-ui-review.md` | **新建** | ✅ 完成 |
 
 ### 产出文件
 
@@ -31,7 +32,8 @@ docs/devdocs/
 ├── 01-requirements.md         # 需求文档 (F/US/AC 编号体系)
 ├── 02-system-design.md        # 系统设计 (完整)
 ├── 03-test-cases.md           # 测试用例 (UT/IT/E2E 编号 + 追溯矩阵)
-└── 04-dev-tasks.md            # 开发任务 (完整)
+├── 04-dev-tasks.md            # 开发任务 (完整 + M5.5 UI 改进)
+└── 05-ui-review.md            # UI 审查报告 (2026-01-19 整合)
 ```
 
 ---
@@ -214,3 +216,5 @@ docs/devdocs/
 | 2026-01-19 | 迁移 03-test-cases.md | 添加 UT-001~UT-005, IT-001~IT-003, E2E-001~E2E-004 编号 |
 | 2026-01-19 | 添加追溯矩阵 | 功能→用户故事→测试用例完整追溯 |
 | 2026-01-19 | 更新改造报告 | 本报告更新 |
+| 2026-01-19 | 整合 UI 审查文档 | ui-advise.md → 05-ui-review.md |
+| 2026-01-19 | 添加 UI 改进任务 | T5.5.1~T5.5.4 添加到 M5.5 |
