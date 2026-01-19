@@ -10,6 +10,7 @@ struct HostListView: View {
     @FocusState private var focusedHost: ConsoleHost.ID?
 
     var body: some View {
+        @Bindable var navigationManager = navigationManager
         Group {
             #if os(tvOS)
             tvOSBody
