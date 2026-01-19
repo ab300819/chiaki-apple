@@ -48,10 +48,67 @@ struct ChiakiApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
-            
+
+            // View Menu - Streaming Controls
+            CommandMenu("View") {
+                Button("Toggle Controls") {
+                    navigationManager.toggleControlMenuTrigger.toggle()
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                .disabled(!navigationManager.isStreaming)
+
+                Divider()
+
+                Menu("Display Mode") {
+                    ForEach(StreamSettings.DisplayMode.allCases) { mode in
+                        Button(mode.rawValue) {
+                            navigationManager.displayModeChangeTrigger = mode
+                            settingsStore.updateDisplayMode(mode)
+                        }
+                        .keyboardShortcut(displayModeShortcut(for: mode), modifiers: .command)
+                    }
+                }
+                .disabled(!navigationManager.isStreaming)
+
+                Divider()
+
+                Button("Volume Up") {
+                    let newVolume = min(1.0, settingsStore.streamSettings.volume + 0.1)
+                    navigationManager.volumeChangeTrigger = newVolume
+                    settingsStore.updateVolume(newVolume)
+                }
+                .keyboardShortcut(.upArrow, modifiers: [.command])
+                .disabled(!navigationManager.isStreaming)
+
+                Button("Volume Down") {
+                    let newVolume = max(0.0, settingsStore.streamSettings.volume - 0.1)
+                    navigationManager.volumeChangeTrigger = newVolume
+                    settingsStore.updateVolume(newVolume)
+                }
+                .keyboardShortcut(.downArrow, modifiers: [.command])
+                .disabled(!navigationManager.isStreaming)
+
+                Button("Mute") {
+                    navigationManager.volumeChangeTrigger = 0.0
+                    settingsStore.updateVolume(0.0)
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .disabled(!navigationManager.isStreaming)
+            }
+
             SidebarCommands()
         }
         #endif
     }
+
+    #if os(macOS)
+    private func displayModeShortcut(for mode: StreamSettings.DisplayMode) -> KeyEquivalent {
+        switch mode {
+        case .normal: return "1"
+        case .stretch: return "2"
+        case .zoom: return "3"
+        }
+    }
+    #endif
 }
 #endif

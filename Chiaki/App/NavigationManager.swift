@@ -17,11 +17,17 @@ enum SidebarItem: Hashable {
 @Observable class NavigationManager {
     // Sidebar Navigation
     var sidebarSelection: SidebarItem? = .hosts
-    
+
     // Command Triggers
     var showAddHostSheet: Bool = false
     var refreshDiscoveryTrigger: Bool = false
     var wakeUpSelectedHostTrigger: Bool = false
+
+    // Streaming State (for macOS menu integration)
+    var isStreaming: Bool = false
+    var toggleControlMenuTrigger: Bool = false
+    var displayModeChangeTrigger: StreamSettings.DisplayMode?
+    var volumeChangeTrigger: Double?
     
     // Actions
     func openAddHost() {

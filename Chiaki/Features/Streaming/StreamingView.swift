@@ -4,8 +4,9 @@ struct StreamingView: View {
     @State private var viewModel: StreamingViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(NavigationManager.self) private var navigationManager
     @StateObject private var rendererHolder = VideoRendererHolder()
-    
+
     init(host: ConsoleHost) {
         _viewModel = State(initialValue: StreamingViewModel(host: host))
     }
@@ -128,11 +129,33 @@ struct StreamingView: View {
             // Apply saved playback settings
             viewModel.applySettings(from: settingsStore.streamSettings)
             viewModel.connect(settings: settingsStore.streamSettings, isRemote: settingsStore.useRemoteProfile)
+            // Mark streaming active for macOS menu
+            navigationManager.isStreaming = true
         }
         .onDisappear {
             viewModel.disconnect()
             rendererHolder.cleanup()
+            // Mark streaming inactive
+            navigationManager.isStreaming = false
         }
+        #if os(macOS)
+        // Handle macOS menu commands
+        .onChange(of: navigationManager.toggleControlMenuTrigger) { _, _ in
+            viewModel.toggleControlMenu()
+        }
+        .onChange(of: navigationManager.displayModeChangeTrigger) { _, newMode in
+            if let mode = newMode {
+                viewModel.setDisplayMode(mode)
+                navigationManager.displayModeChangeTrigger = nil
+            }
+        }
+        .onChange(of: navigationManager.volumeChangeTrigger) { _, newVolume in
+            if let volume = newVolume {
+                viewModel.setVolume(volume)
+                navigationManager.volumeChangeTrigger = nil
+            }
+        }
+        #endif
     }
 }
 
