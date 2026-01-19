@@ -63,29 +63,23 @@
 | **P2** | 控制器提示 | 缺少手柄按键操作提示 | `StreamView.qml:500-520` |
 | **P3** | 日志查看 | 无内置日志查看功能 | `LogDialog.qml` |
 
-### T8.1: 流媒体统计增强 (P0) 🔴
+### T8.1: 流媒体统计增强 (P0) ✅
 
 **目标**: 完善 StreamingView 的实时统计显示，对齐 Qt 参考实现
 
 **子任务**:
-- [ ] T8.1.1: 在 `StreamStatistics` 中添加 `packetLoss` 和 `droppedFrames` 字段
-- [ ] T8.1.2: 从 libchiaki 回调获取丢包/丢帧数据
-- [ ] T8.1.3: 在 `StreamingOverlay` 中显示丢包率 (%) 和丢帧计数
-- [ ] T8.1.4: 添加网络质量指示器 (优/良/差 三档)
+- [x] T8.1.1: 在 `StreamStatistics` 中添加 `packetLoss` 和 `droppedFrames` 字段 (已有)
+- [x] T8.1.2: 从 libchiaki 回调获取丢包/丢帧数据 (已有)
+- [x] T8.1.3: 在 `StreamingOverlay` 中显示丢包率 (%) 和丢帧计数
+- [x] T8.1.4: 添加网络质量指示器 (优/良/差 四档信号条)
 
 **验收标准**:
-- 显示: 比特率 | 帧率 | 延迟 | 丢包率 | 丢帧数
-- 网络质量指示器根据丢包率自动变色 (绿/黄/红)
+- ✅ 显示: 分辨率 | 帧率 | 延迟 | 比特率 | 丢包率 | 丢帧数
+- ✅ 网络质量指示器根据丢包率自动变色 (绿/黄/红)
+- ✅ 支持 iOS/macOS 和 tvOS 不同尺寸布局
 
-**参考实现**:
-```qml
-// chiaki-ng/gui/StreamView.qml:240-260
-Text {
-    text: qsTr("Packet Loss: %1%").arg(streamStats.packetLoss.toFixed(2))
-    color: streamStats.packetLoss > 1.0 ? "red" :
-           streamStats.packetLoss > 0.1 ? "yellow" : "green"
-}
-```
+**实现文件**:
+- `Chiaki/Features/Streaming/StreamingOverlay.swift` - NetworkQualityIndicator, PacketLossItem 组件
 
 ### T8.2: 流媒体控制菜单 (P1) 🟡
 
@@ -274,7 +268,7 @@ Text {
 
 | 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
 |------|------|------|------|
-| T8.1: 流媒体统计增强 | 显示丢包率/丢帧数 | 数值与 libchiaki 一致 | ⏳ |
+| T8.1: 流媒体统计增强 | 显示丢包率/丢帧数 | 数值与 libchiaki 一致 | ✅ |
 | T8.2: 流媒体控制菜单 | 音量/缩放调整生效 | 设置持久化 | ⏳ |
 | T8.3: 设置页面完善 | 新增设置项可配置 | 与桌面版功能对齐 | ⏳ |
 | T8.4: 视觉样式优化 | 主题色正确应用 | UI 一致性提升 | ⏳ |
