@@ -1,8 +1,9 @@
-# Chiaki-ng Apple 原生客户端 - 测试方案
+# Chiaki-ng Apple 原生客户端 - 测试用例
 
 > **文档来源**: 新建（基于 DESIGN.md 第 5 节 + test/ 目录 + 代码逆向推导）
 > **改造时间**: 2026-01-13
 > **改造模式**: 增量补充
+> **迁移更新**: 2026-01-19 - 添加测试编号体系 (UT/IT/E2E-XXX)，添加追溯矩阵
 
 ## 1. 测试策略概述
 
@@ -54,7 +55,7 @@
 
 ### 2.2 ChiakiBridge 测试
 
-#### 2.2.1 ChiakiSession 测试
+#### UT-001: ChiakiSession 测试
 
 ```swift
 // ChiakiSessionTests.swift
@@ -98,18 +99,18 @@ final class ChiakiSessionTests: XCTestCase {
 }
 ```
 
-#### 2.2.2 ChiakiDiscovery 测试
+#### UT-002: ChiakiDiscovery 测试
 
-| 测试用例 | 描述 | 预期结果 |
-|----------|------|----------|
-| testStartDiscovery | 启动发现服务 | isDiscovering = true |
-| testStopDiscovery | 停止发现服务 | isDiscovering = false |
-| testHostDiscovered | 模拟发现主机回调 | discoveredHosts 包含主机 |
-| testHostStatusUpdate | 主机状态更新 | 主机状态正确更新 |
+| 编号 | 测试用例 | 描述 | 预期结果 |
+|------|----------|------|----------|
+| UT-002.1 | testStartDiscovery | 启动发现服务 | isDiscovering = true |
+| UT-002.2 | testStopDiscovery | 停止发现服务 | isDiscovering = false |
+| UT-002.3 | testHostDiscovered | 模拟发现主机回调 | discoveredHosts 包含主机 |
+| UT-002.4 | testHostStatusUpdate | 主机状态更新 | 主机状态正确更新 |
 
 ### 2.3 Domain 层测试
 
-#### 2.3.1 Host 模型测试
+#### UT-003: Host 模型测试
 
 ```swift
 // HostTests.swift
@@ -138,7 +139,7 @@ final class HostTests: XCTestCase {
 }
 ```
 
-#### 2.3.2 HostStore 测试
+#### UT-004: HostStore 测试
 
 ```swift
 // HostStoreTests.swift
@@ -176,19 +177,19 @@ final class HostStoreTests: XCTestCase {
 }
 ```
 
-#### 2.3.3 StreamSettings 测试
+#### UT-005: StreamSettings 测试
 
-| 测试用例 | 描述 | 预期结果 |
-|----------|------|----------|
-| testDefaultSettings | 默认设置值 | 分辨率 1080p, 帧率 60fps |
-| testSettingsCodable | 设置序列化 | 编码解码后相等 |
-| testResolutionDimensions | 分辨率尺寸 | 1080p = 1920x1080 |
+| 编号 | 测试用例 | 描述 | 预期结果 |
+|------|----------|------|----------|
+| UT-005.1 | testDefaultSettings | 默认设置值 | 分辨率 1080p, 帧率 60fps |
+| UT-005.2 | testSettingsCodable | 设置序列化 | 编码解码后相等 |
+| UT-005.3 | testResolutionDimensions | 分辨率尺寸 | 1080p = 1920x1080 |
 
 ---
 
 ## 3. 集成测试
 
-### 3.1 视频渲染集成测试
+### IT-001: 视频渲染集成测试
 
 ```swift
 // StreamingIntegrationTests.swift
@@ -231,7 +232,7 @@ final class VideoRenderingIntegrationTests: XCTestCase {
 }
 ```
 
-### 3.2 音频播放集成测试
+### IT-002: 音频播放集成测试
 
 ```swift
 // AudioIntegrationTests.swift
@@ -254,20 +255,20 @@ final class AudioIntegrationTests: XCTestCase {
 }
 ```
 
-### 3.3 控制器集成测试
+### IT-003: 控制器集成测试
 
-| 测试用例 | 描述 | 预期结果 |
-|----------|------|----------|
-| testControllerConnection | 控制器连接检测 | connectedControllers 更新 |
-| testButtonMapping | 按钮映射正确性 | A→Cross, B→Circle 等 |
-| testStickValues | 摇杆值范围 | -32767 到 32767 |
-| testTriggerValues | 扳机值范围 | 0 到 255 |
+| 编号 | 测试用例 | 描述 | 预期结果 |
+|------|----------|------|----------|
+| IT-003.1 | testControllerConnection | 控制器连接检测 | connectedControllers 更新 |
+| IT-003.2 | testButtonMapping | 按钮映射正确性 | A→Cross, B→Circle 等 |
+| IT-003.3 | testStickValues | 摇杆值范围 | -32767 到 32767 |
+| IT-003.4 | testTriggerValues | 扳机值范围 | 0 到 255 |
 
 ---
 
 ## 4. UI 自动化测试
 
-### 4.1 主机列表页面测试
+### E2E-001: 主机列表页面测试
 
 ```swift
 // HostListUITests.swift
@@ -310,32 +311,32 @@ final class HostListUITests: XCTestCase {
 }
 ```
 
-### 4.2 流媒体页面测试
+### E2E-002: 流媒体页面测试
 
-| 测试用例 | 步骤 | 预期结果 |
-|----------|------|----------|
-| testEnterStreaming | 点击在线主机 | 进入流媒体页面 |
-| testStreamingOverlay | 流媒体中等待 | 显示状态覆盖层 |
-| testExitStreaming | 点击返回按钮 | 返回主机列表 |
-| testOverlayToggle | 点击屏幕中心 | 覆盖层显示/隐藏 |
+| 编号 | 测试用例 | 步骤 | 预期结果 |
+|------|----------|------|----------|
+| E2E-002.1 | testEnterStreaming | 点击在线主机 | 进入流媒体页面 |
+| E2E-002.2 | testStreamingOverlay | 流媒体中等待 | 显示状态覆盖层 |
+| E2E-002.3 | testExitStreaming | 点击返回按钮 | 返回主机列表 |
+| E2E-002.4 | testOverlayToggle | 点击屏幕中心 | 覆盖层显示/隐藏 |
 
-### 4.3 设置页面测试
+### E2E-003: 设置页面测试
 
-| 测试用例 | 步骤 | 预期结果 |
-|----------|------|----------|
-| testNavigateToSettings | 点击设置按钮 | 进入设置页面 |
-| testResolutionPicker | 选择分辨率 | 设置保存 |
-| testFrameRatePicker | 选择帧率 | 设置保存 |
-| testHapticToggle | 切换触觉反馈 | 开关状态改变 |
+| 编号 | 测试用例 | 步骤 | 预期结果 |
+|------|----------|------|----------|
+| E2E-003.1 | testNavigateToSettings | 点击设置按钮 | 进入设置页面 |
+| E2E-003.2 | testResolutionPicker | 选择分辨率 | 设置保存 |
+| E2E-003.3 | testFrameRatePicker | 选择帧率 | 设置保存 |
+| E2E-003.4 | testHapticToggle | 切换触觉反馈 | 开关状态改变 |
 
-### 4.4 tvOS 焦点导航测试
+### E2E-004: tvOS 焦点导航测试
 
-| 测试用例 | 操作 | 预期结果 |
-|----------|------|----------|
-| testInitialFocus | 启动应用 | 第一个主机获得焦点 |
-| testDownNavigation | Siri Remote 下滑 | 焦点移动到下一主机 |
-| testSelectAction | Siri Remote 点击 | 选中主机/执行操作 |
-| testMenuBack | Siri Remote Menu | 返回上一页面 |
+| 编号 | 测试用例 | 操作 | 预期结果 |
+|------|----------|------|----------|
+| E2E-004.1 | testInitialFocus | 启动应用 | 第一个主机获得焦点 |
+| E2E-004.2 | testDownNavigation | Siri Remote 下滑 | 焦点移动到下一主机 |
+| E2E-004.3 | testSelectAction | Siri Remote 点击 | 选中主机/执行操作 |
+| E2E-004.4 | testMenuBack | Siri Remote Menu | 返回上一页面 |
 
 ---
 
@@ -591,9 +592,57 @@ jobs:
 
 ---
 
-## 10. 附录
+## 10. 追溯矩阵
 
-### 10.1 现有 libchiaki 测试
+> 本节追溯需求 → 测试用例的映射关系
+
+### 10.1 功能 → 用户故事 → 测试用例追溯
+
+| 功能编号 | 功能名称 | 用户故事 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|----------|----------|
+| F-001 | 核心流媒体 | US-002, US-003 | UT-001, UT-005 | IT-001, IT-002 | E2E-002 |
+| F-002 | PS 主机发现 | US-001 | UT-002, UT-003, UT-004 | - | E2E-001 |
+| F-003 | 主机注册 | US-001 | UT-001 | - | E2E-001 |
+| F-004 | 游戏控制器 | US-004 | - | IT-003 | - |
+| F-005 | DualSense 支持 | US-004 | - | IT-003 | - |
+| F-006 | 触屏虚拟控制器 | US-004 | - | - | - |
+| F-007 | 流媒体设置 | US-003 | UT-005 | - | E2E-003 |
+| F-008 | 多平台支持 | US-005, US-006, US-007, US-008 | - | - | E2E-004 |
+| F-009 | PSN 账户集成 | US-001 | - | - | - |
+
+### 10.2 验收标准 → 测试用例追溯
+
+| 验收标准 | 测试用例 | 测试类型 |
+|----------|----------|----------|
+| AC-001 | UT-002.1, UT-002.3 | 单元测试 |
+| AC-002 | UT-003, E2E-001 | 单元+E2E |
+| AC-003 | E2E-001 | E2E |
+| AC-004 | IT-001 | 集成测试 |
+| AC-005 | IT-002 | 集成测试 |
+| AC-006 | IT-001, E2E-002 | 集成+E2E |
+| AC-007 | UT-005.1 | 单元测试 |
+| AC-008 | UT-005.1 | 单元测试 |
+| AC-009 | UT-005.2 | 单元测试 |
+| AC-010 | IT-003.1 | 集成测试 |
+| AC-011 | IT-003.2 | 集成测试 |
+| AC-012 | IT-003.3, IT-003.4 | 集成测试 |
+| AC-013-034 | 手动测试清单 | 手动测试 |
+
+### 10.3 测试覆盖状态
+
+| 测试类型 | 总数 | 已实现 | 覆盖率 |
+|----------|------|--------|--------|
+| 单元测试 (UT) | 5 组 | 0 | 0% |
+| 集成测试 (IT) | 3 组 | 0 | 0% |
+| E2E 测试 | 4 组 | 0 | 0% |
+
+> **注**: 测试用例设计已完成，代码实现待开发阶段执行 (M5-M6)。
+
+---
+
+## 11. 附录
+
+### 11.1 现有 libchiaki 测试
 
 项目已有的 C 语言单元测试（`test/` 目录）：
 
@@ -612,6 +661,6 @@ jobs:
 
 这些测试可通过 CMake 构建和运行。
 
-### 10.2 测试数据
+### 11.2 测试数据
 
 测试所需的模拟数据和 Mock 对象应放置在 `Tests/TestData/` 目录。
