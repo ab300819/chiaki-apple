@@ -630,13 +630,87 @@ jobs:
 
 ### 10.3 测试覆盖状态
 
-| 测试类型 | 总数 | 已实现 | 覆盖率 |
-|----------|------|--------|--------|
-| 单元测试 (UT) | 5 组 | 0 | 0% |
-| 集成测试 (IT) | 3 组 | 0 | 0% |
-| E2E 测试 | 4 组 | 0 | 0% |
+| 测试类型 | 总数 | 已实现 | 覆盖率 | 备注 |
+|----------|------|--------|--------|------|
+| 单元测试 (UT) | 5 组 | 5 | 100% | 部分用例需 Mock 补充 |
+| 集成测试 (IT) | 3 组 | 3 | 100% | 部分用例需真机验证 |
+| E2E 测试 | 4 组 | 1 | 25% | E2E-001 基础实现 |
 
-> **注**: 测试用例设计已完成，代码实现待开发阶段执行 (M5-M6)。
+> **更新时间**: 2026-01-19
+> **实际代码覆盖率**: 19.26% (1540/7997 行)
+> **测试用例总数**: 102 个测试通过
+
+### 10.4 测试实现详情
+
+#### 已实现测试文件
+
+| 文件 | 测试数量 | 覆盖用例 |
+|------|----------|----------|
+| `ChiakiTests.swift` | 39 | UT-003, UT-004, UT-005 + 额外模块 |
+| `SessionAndDiscoveryTests.swift` | 31 | UT-001, UT-002 |
+| `IntegrationTests.swift` | 28 | IT-001, IT-002, IT-003 |
+| `ChiakiUITests.swift` | 4 | E2E-001 基础 |
+
+#### UT-001 ChiakiSession 实现状态
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| SessionState 枚举测试 | ✅ | 完整覆盖所有状态 |
+| SessionError 测试 | ✅ | 完整覆盖所有错误类型 |
+| HostConfig 测试 | ✅ | 初始化和可选参数 |
+| StreamConfig 测试 | ✅ | 默认/平衡配置、VideoProfile |
+| 连接流程测试 | ⚠️ | 需 Mock ChiakiSessionWrapper |
+
+#### UT-002 ChiakiDiscovery 实现状态
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| DiscoveryError 测试 | ✅ | 完整覆盖所有错误 |
+| DiscoveredHostInfo 测试 | ✅ | 初始化、状态判断 |
+| ChiakiHostState 测试 | ✅ | displayName、rawValue |
+| 发现流程测试 | ⚠️ | 需网络 Mock |
+
+#### IT-001 视频渲染实现状态
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| MetalVideoRenderer 初始化 | ✅ | 支持无 GPU 环境 |
+| 统计重置 | ✅ | frameCount, droppedFrameCount |
+| VideoDisplayMode | ✅ | normal/stretch/zoom |
+| 实际渲染测试 | ⚠️ | 需 GPU + CVPixelBuffer |
+
+#### IT-002 音频播放实现状态
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| AudioPlayer 初始化 | ✅ | 默认和自定义参数 |
+| 生命周期 (start/stop/pause/resume) | ✅ | 完整测试 |
+| 音量控制 | ✅ | 包含边界值测试 |
+| 缓冲区统计 | ✅ | fillRatio, underrunCount |
+| AudioPlayerBridge | ✅ | configure, start, shutdown |
+
+#### IT-003 控制器实现状态
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| ControllerInput 测试 | ✅ | 按钮、摇杆、扳机、陀螺仪 |
+| ControllerButtons 测试 | ✅ | 所有按钮位、OptionSet 操作 |
+| ControllerManager 初始化 | ✅ | 单例访问 |
+| GCController 查询 | ✅ | 通知名验证 |
+| DualSenseIntensity | ✅ | default/disabled/custom |
+
+### 10.5 待补充测试
+
+| 优先级 | 测试项 | 阻塞原因 |
+|--------|--------|----------|
+| P0 | ChiakiSession 连接流程 | 需要 Protocol + Mock |
+| P0 | ChiakiDiscovery 发现流程 | 需要网络 Mock |
+| P1 | StreamingViewModel 状态机 | 需要 Session Mock |
+| P1 | KeychainManager | 需要测试 Keychain |
+| P1 | PSNService OAuth | 需要网络 Mock |
+| P2 | E2E-002 流媒体页面 | 需要真实主机 |
+| P2 | E2E-003 设置页面 | UI 测试补充 |
+| P2 | E2E-004 tvOS 焦点导航 | 需要 tvOS 环境 |
 
 ---
 

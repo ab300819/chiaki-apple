@@ -10,11 +10,18 @@ class SettingsStore {
         }
     }
     
+    var useRemoteProfile: Bool {
+        didSet {
+            userDefaults.set(useRemoteProfile, forKey: "use_remote_profile")
+        }
+    }
+    
     private let key = "stream_settings"
     private let userDefaults: UserDefaults
     
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        self.useRemoteProfile = userDefaults.bool(forKey: "use_remote_profile")
         
         if let data = userDefaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode(StreamSettings.self, from: data) {
@@ -33,15 +40,27 @@ class SettingsStore {
     // MARK: - Accessors
     
     func updateResolution(_ resolution: StreamSettings.Resolution) {
-        streamSettings.resolution = resolution
+        if useRemoteProfile {
+            streamSettings.remoteProfile.resolution = resolution
+        } else {
+            streamSettings.localProfile.resolution = resolution
+        }
     }
     
     func updateFrameRate(_ frameRate: StreamSettings.FrameRate) {
-        streamSettings.frameRate = frameRate
+        if useRemoteProfile {
+            streamSettings.remoteProfile.frameRate = frameRate
+        } else {
+            streamSettings.localProfile.frameRate = frameRate
+        }
     }
     
     func updateBitrate(_ bitrate: Int) {
-        streamSettings.bitrate = bitrate
+        if useRemoteProfile {
+            streamSettings.remoteProfile.bitrate = bitrate
+        } else {
+            streamSettings.localProfile.bitrate = bitrate
+        }
     }
     
     func updateCodec(_ codec: StreamSettings.VideoCodec) {

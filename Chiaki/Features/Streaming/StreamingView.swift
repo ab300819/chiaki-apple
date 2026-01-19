@@ -86,7 +86,7 @@ struct StreamingView: View {
             if let renderer = rendererHolder.renderer {
                 viewModel.setVideoRenderer(renderer)
             }
-            viewModel.connect(settings: settingsStore.streamSettings)
+            viewModel.connect(settings: settingsStore.streamSettings, isRemote: settingsStore.useRemoteProfile)
         }
         .onDisappear {
             viewModel.disconnect()

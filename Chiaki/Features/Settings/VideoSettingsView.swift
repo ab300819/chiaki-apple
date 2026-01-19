@@ -5,15 +5,24 @@ struct VideoSettingsView: View {
 
     var body: some View {
         @Bindable var store = store
+        
         Form {
             Section {
-                Picker("Resolution", selection: $store.streamSettings.resolution) {
+                Picker("Profile", selection: $store.useRemoteProfile) {
+                    Text("Local").tag(false)
+                    Text("Remote").tag(true)
+                }
+                .pickerStyle(.segmented)
+                
+                let currentProfile = store.useRemoteProfile ? $store.streamSettings.remoteProfile : $store.streamSettings.localProfile
+                
+                Picker("Resolution", selection: currentProfile.resolution) {
                     ForEach(StreamSettings.Resolution.allCases) { resolution in
                         Text(resolution.rawValue).tag(resolution)
                     }
                 }
                 
-                Picker("Frame Rate", selection: $store.streamSettings.frameRate) {
+                Picker("Frame Rate", selection: currentProfile.frameRate) {
                     ForEach(StreamSettings.FrameRate.allCases) { fps in
                         Text("\(fps.rawValue) FPS").tag(fps)
                     }
@@ -23,15 +32,15 @@ struct VideoSettingsView: View {
                     HStack {
                         Text("Bitrate")
                         Spacer()
-                        Text("\(Int(store.streamSettings.bitrate / 1000)) Mbps")
+                        Text("\(Int(currentProfile.wrappedValue.bitrate / 1000)) Mbps")
                             .foregroundColor(.secondary)
                     }
                     Slider(
                         value: Binding(
-                            get: { Double(store.streamSettings.bitrate) },
-                            set: { store.streamSettings.bitrate = Int($0) }
+                            get: { Double(currentProfile.wrappedValue.bitrate) },
+                            set: { currentProfile.wrappedValue.bitrate = Int($0) }
                         ),
-                        in: 5000...50000,
+                        in: 5000...100000,
                         step: 1000
                     ) {
                         Text("Bitrate")

@@ -12,8 +12,9 @@ struct ContentView: View {
     
     var body: some View {
         #if os(macOS)
+        @Bindable var manager = navigationManager
         NavigationSplitView {
-            List(selection: $navigationManager.sidebarSelection) {
+            List(selection: $manager.sidebarSelection) {
                 NavigationLink(value: SidebarItem.hosts) {
                     Label("Hosts", systemImage: "gamecontroller")
                 }

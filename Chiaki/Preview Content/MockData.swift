@@ -29,13 +29,15 @@ struct MockData {
     
     static let hosts = [hostPS5, hostPS4, hostUnregistered]
     
-    static let streamSettings = StreamSettings(
-        resolution: .r1080p,
-        frameRate: .fps60,
-        bitrate: 30000,
-        codec: .h265,
-        hdrEnabled: true
-    )
+    static var streamSettings: StreamSettings {
+        var settings = StreamSettings()
+        settings.localProfile.resolution = .r1080p
+        settings.localProfile.frameRate = .fps60
+        settings.localProfile.bitrate = 30000
+        settings.codec = .h265
+        settings.hdrEnabled = true
+        return settings
+    }
 }
 
 extension ConsoleHost {
