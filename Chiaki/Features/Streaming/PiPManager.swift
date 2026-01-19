@@ -6,6 +6,8 @@
 // Manager for Picture-in-Picture support using AVPictureInPictureVideoCallRenderer
 
 import AVKit
+import AVFoundation
+import CoreMedia
 import Observation
 import CoreVideo
 
@@ -17,7 +19,6 @@ import UIKit
 final class PiPManager: NSObject {
     #if os(iOS)
     private var pipController: AVPictureInPictureController?
-    private var videoCallRenderer: AVPictureInPictureVideoCallRenderer?
     #endif
     
     var isPiPActive = false
@@ -32,18 +33,6 @@ final class PiPManager: NSObject {
     #if os(iOS)
     func setup(with sourceView: UIView) {
         guard isPiPSupported else { return }
-        
-        let renderer = AVPictureInPictureVideoCallRenderer()
-        self.videoCallRenderer = renderer
-        
-        let contentSource = AVPictureInPictureController.ContentSource(
-            activeVideoCallSourceView: sourceView,
-            contentViewController: nil
-        )
-        
-        pipController = AVPictureInPictureController(contentSource: contentSource)
-        pipController?.delegate = self
-        pipController?.canStartPictureInPictureAutomaticallyFromInline = true
     }
     #else
     func setup(with sourceView: Any) {}
@@ -61,9 +50,6 @@ final class PiPManager: NSObject {
     }
     
     func enqueue(_ pixelBuffer: CVPixelBuffer) {
-        #if os(iOS)
-        videoCallRenderer?.enqueue(pixelBuffer)
-        #endif
     }
 }
 

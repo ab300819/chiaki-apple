@@ -159,13 +159,24 @@ final class DiscoveryService: ObservableObject {
             throw DiscoveryError.invalidRegistrationKey
         }
 
-        let result = chiaki_discovery_wakeup(
-            ChiakiLogBridge.shared.getLogPointer(),
-            isInitialized ? &nativeService.discovery : nil,
-            host.address.cString(using: .utf8),
-            credential,
-            host.isPS5
-        )
+        let result: ChiakiErrorCode
+        if isInitialized {
+            result = chiaki_discovery_wakeup(
+                ChiakiLogBridge.shared.getLogPointer(),
+                &nativeService.discovery,
+                host.address.cString(using: .utf8),
+                credential,
+                host.isPS5
+            )
+        } else {
+            result = chiaki_discovery_wakeup(
+                ChiakiLogBridge.shared.getLogPointer(),
+                nil,
+                host.address.cString(using: .utf8),
+                credential,
+                host.isPS5
+            )
+        }
 
         if result != CHIAKI_ERR_SUCCESS {
             let error = ChiakiError.from(result) ?? .unknown

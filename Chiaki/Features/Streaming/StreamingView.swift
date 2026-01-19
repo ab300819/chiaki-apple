@@ -17,7 +17,7 @@ struct StreamingView: View {
             
             if viewModel.state == .streaming {
                 VideoStreamView(
-                    renderer: $rendererHolder.renderer,
+                    renderer: rendererHolder.renderer,
                     displayMode: .normal,
                     zoomFactor: 1.0
                 ) { mtkView in

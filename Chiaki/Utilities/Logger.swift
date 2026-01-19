@@ -49,21 +49,20 @@ final class OSLogHandler: LogHandler, @unchecked Sendable {
 /// Main application logger that bridges Swift and libchiaki logging
 @MainActor
 final class Logger {
-    static let shared = Logger()
+    nonisolated(unsafe) static let shared = Logger()
 
-    private var handlers: [LogHandler] = []
+    private var handlers: [LogHandler]
     private(set) var levelMask: ChiakiLogLevelMask
 
-    private init() {
+    private nonisolated init() {
         #if DEBUG
         self.levelMask = .all
         #else
         self.levelMask = .production
         #endif
 
-        // Add default OSLog handler
         let osLogHandler = OSLogHandler(subsystem: "ltd.hotter.chiaki", category: "App")
-        handlers.append(osLogHandler)
+        self.handlers = [osLogHandler]
     }
 
     func addHandler(_ handler: LogHandler) {

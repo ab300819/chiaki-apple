@@ -62,7 +62,14 @@ final class ChiakiRegistWrapper {
         registLock.lock()
         defer { registLock.unlock() }
         
-        guard state == .idle || (if case .error = state { true } else { false }) else {
+        let isErrorState: Bool
+        if case .error = state {
+            isErrorState = true
+        } else {
+            isErrorState = false
+        }
+        
+        guard state == .idle || isErrorState else {
             throw ChiakiError.uninitialized // Or a better error
         }
         
@@ -77,7 +84,7 @@ final class ChiakiRegistWrapper {
         
         // Host
         let hostCString = host.cString(using: .utf8)!
-        info.host = strdup(hostCString)
+        info.host = UnsafePointer(strdup(hostCString))
         info.broadcast = false
         
         // PIN
@@ -186,7 +193,7 @@ final class ChiakiRegistWrapper {
             logInfo("ChiakiRegistWrapper: Registration canceled")
             updateState(.idle)
             
-        @unknown default:
+        default:
             logWarning("ChiakiRegistWrapper: Unknown event type: \(event.type)")
         }
         

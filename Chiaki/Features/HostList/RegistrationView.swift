@@ -46,7 +46,9 @@ struct RegistrationView: View {
                     
                     TextField("PSN Account ID (Optional)", text: $viewModel.psnAccountId)
                         .autocorrectionDisabled()
+                        #if os(iOS) || os(tvOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                 }
                 
                 Section {

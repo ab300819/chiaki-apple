@@ -8,12 +8,6 @@
 import SwiftUI
 import WebKit
 
-#if os(iOS)
-typealias ViewRepresentable = UIViewRepresentable
-#elseif os(macOS)
-typealias ViewRepresentable = NSViewRepresentable
-#endif
-
 struct PSNLoginView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject private var service = PSNService.shared
@@ -33,7 +27,9 @@ struct PSNLoginView: View {
                     }
                 }
                 .navigationTitle("PSN Login")
+                #if os(iOS) || os(tvOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") {

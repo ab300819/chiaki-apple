@@ -128,20 +128,16 @@ final class StreamingViewModel {
         Logger.session.info("Connecting to \(host.nickname) at \(host.address)")
 
         // Verify host has registration data
-        guard host.registKey != 0 else {
+        guard !host.registKey.isEmpty else {
             state = .error("Host not registered")
             Logger.session.error("Connection failed: host not registered")
             return
         }
 
-        // Create host configuration
-        let registKeyData = withUnsafeBytes(of: host.registKey.bigEndian) { Data($0) }
-        let morningData = host.rpKey ?? Data(repeating: 0, count: 16)
-
         let hostConfig = HostConfig(
             address: host.address,
-            registKey: registKeyData,
-            morning: morningData,
+            registKey: host.registKey,
+            morning: host.rpKey,
             isPS5: host.isPS5,
             nickname: host.nickname
         )

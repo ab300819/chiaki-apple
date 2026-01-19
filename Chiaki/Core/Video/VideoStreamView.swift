@@ -12,13 +12,9 @@ import Combine
 
 #if os(iOS) || os(tvOS)
 import UIKit
-typealias ViewRepresentable = UIViewRepresentable
-typealias NativeView = UIView
 typealias NativeViewContext = UIViewRepresentableContext<VideoStreamView>
 #elseif os(macOS)
 import AppKit
-typealias ViewRepresentable = NSViewRepresentable
-typealias NativeView = NSView
 typealias NativeViewContext = NSViewRepresentableContext<VideoStreamView>
 #endif
 
@@ -26,28 +22,24 @@ typealias NativeViewContext = NSViewRepresentableContext<VideoStreamView>
 
 /// SwiftUI view for displaying video stream using Metal
 struct VideoStreamView: ViewRepresentable {
-    /// Binding to the video renderer
-    @Binding var renderer: MetalVideoRenderer?
+    var renderer: MetalVideoRenderer?
 
-    /// Display mode for the video
     var displayMode: VideoDisplayMode
 
-    /// Zoom factor (only used in zoom mode)
     var zoomFactor: Float
 
-    /// Preferred frames per second
     var preferredFramesPerSecond: Int
 
     var onMTKViewCreated: ((MTKView) -> Void)?
 
     init(
-        renderer: Binding<MetalVideoRenderer?>,
+        renderer: MetalVideoRenderer?,
         displayMode: VideoDisplayMode = .normal,
         zoomFactor: Float = 1.0,
         preferredFramesPerSecond: Int = 60,
         onMTKViewCreated: ((MTKView) -> Void)? = nil
     ) {
-        self._renderer = renderer
+        self.renderer = renderer
         self.displayMode = displayMode
         self.zoomFactor = zoomFactor
         self.preferredFramesPerSecond = preferredFramesPerSecond
@@ -198,7 +190,7 @@ private struct VideoStreamViewPreview: View {
 
     var body: some View {
         VideoStreamView(
-            renderer: $renderer,
+            renderer: renderer,
             displayMode: .normal,
             zoomFactor: 1.0
         )

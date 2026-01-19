@@ -26,11 +26,12 @@ final class HostListViewModel {
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-
-    init(hostManager: HostManager = .shared) {
-        self.hostManager = hostManager
+    
+    init(hostManager: HostManager? = nil) {
+        self.hostManager = hostManager ?? .shared
         setupBindings()
     }
+
 
     // MARK: - Setup
 

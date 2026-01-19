@@ -7,7 +7,7 @@ struct MockData {
         nickname: "Living Room PS5",
         address: "192.168.1.100",
         isPS5: true,
-        registKey: 12345678,
+        registKey: Data(count: 16),
         rpKey: Data(),
         rpKeyType: 0
     )
@@ -16,7 +16,7 @@ struct MockData {
         nickname: "Bedroom PS4",
         address: "192.168.1.101",
         isPS5: false,
-        registKey: 87654321,
+        registKey: Data(count: 16),
         rpKey: Data(),
         rpKeyType: 0
     )
