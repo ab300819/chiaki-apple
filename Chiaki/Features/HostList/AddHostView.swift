@@ -52,4 +52,6 @@ struct AddHostView: View {
 
 #Preview {
     AddHostView(viewModel: HostListViewModel())
+        .environment(SettingsStore())
+        .environment(NavigationManager())
 }

@@ -39,3 +39,11 @@ struct ControllerSettingsView: View {
         #endif
     }
 }
+
+#Preview {
+    NavigationStack {
+        ControllerSettingsView()
+            .environment(SettingsStore())
+            .environment(NavigationManager())
+    }
+}

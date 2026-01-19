@@ -76,4 +76,6 @@ private struct StatItem: View {
         Color.black
         StreamingOverlay(viewModel: StreamingViewModel(host: MockData.hostPS5))
     }
+    .environment(SettingsStore())
+    .environment(NavigationManager())
 }

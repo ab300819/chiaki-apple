@@ -30,3 +30,11 @@ struct AudioSettingsView: View {
         #endif
     }
 }
+
+#Preview {
+    NavigationStack {
+        AudioSettingsView()
+            .environment(SettingsStore())
+            .environment(NavigationManager())
+    }
+}

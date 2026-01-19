@@ -6,16 +6,22 @@
 //
 
 import SwiftUI
+import Observation
 import Combine
 
-class NavigationManager: ObservableObject {
+enum SidebarItem: Hashable {
+    case hosts
+    case settings
+}
+
+@Observable class NavigationManager {
     // Sidebar Navigation
-    @Published var sidebarSelection: SidebarItem? = .hosts
+    var sidebarSelection: SidebarItem? = .hosts
     
     // Command Triggers
-    @Published var showAddHostSheet: Bool = false
-    @Published var refreshDiscoveryTrigger: Bool = false
-    @Published var wakeUpSelectedHostTrigger: Bool = false
+    var showAddHostSheet: Bool = false
+    var refreshDiscoveryTrigger: Bool = false
+    var wakeUpSelectedHostTrigger: Bool = false
     
     // Actions
     func openAddHost() {

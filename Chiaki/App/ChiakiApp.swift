@@ -10,13 +10,13 @@ import SwiftUI
 @main
 struct ChiakiApp: App {
     @State private var settingsStore = SettingsStore()
-    @StateObject private var navigationManager = NavigationManager()
+    @State private var navigationManager = NavigationManager()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(settingsStore)
-                .environmentObject(navigationManager)
+                .environment(navigationManager)
         }
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)

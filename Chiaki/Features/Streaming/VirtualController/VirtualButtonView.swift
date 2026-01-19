@@ -68,4 +68,6 @@ struct VirtualButtonView: View {
             }
         }
     }
+    .environment(SettingsStore())
+    .environment(NavigationManager())
 }

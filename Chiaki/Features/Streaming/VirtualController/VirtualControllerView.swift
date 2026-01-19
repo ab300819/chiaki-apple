@@ -145,4 +145,6 @@ struct VirtualControllerView: View {
         }
     }
     .previewInterfaceOrientation(.landscapeLeft)
+    .environment(SettingsStore())
+    .environment(NavigationManager())
 }

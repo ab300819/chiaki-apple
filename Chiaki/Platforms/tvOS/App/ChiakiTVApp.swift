@@ -10,13 +10,13 @@ import SwiftUI
 @main
 struct ChiakiTVApp: App {
     @State private var settingsStore = SettingsStore()
-    @StateObject private var navigationManager = NavigationManager()
+    @State private var navigationManager = NavigationManager()
 
     var body: some Scene {
         WindowGroup {
             TVContentView()
                 .environment(settingsStore)
-                .environmentObject(navigationManager)
+                .environment(navigationManager)
         }
     }
 }
@@ -42,5 +42,5 @@ struct TVContentView: View {
 #Preview {
     TVContentView()
         .environment(SettingsStore())
-        .environmentObject(NavigationManager())
+        .environment(NavigationManager())
 }

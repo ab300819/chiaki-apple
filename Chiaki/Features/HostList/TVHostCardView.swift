@@ -85,4 +85,12 @@ struct TVHostCardView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
     }
 }
+
+#Preview {
+    TVHostCardView(host: ConsoleHost.mockOnline, onWakeUp: {})
+        .environment(SettingsStore())
+        .environment(NavigationManager())
+        .padding()
+        .background(Color.gray)
+}
 #endif

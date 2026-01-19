@@ -71,4 +71,6 @@ struct VirtualStickView: View {
             print("Stick: \(point)")
         }
     }
+    .environment(SettingsStore())
+    .environment(NavigationManager())
 }

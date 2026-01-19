@@ -79,4 +79,6 @@ struct HostRowView: View {
         HostRowView(host: ConsoleHost.mockStandby, onWakeUp: {})
         HostRowView(host: ConsoleHost.mockOffline, onWakeUp: {})
     }
+    .environment(SettingsStore())
+    .environment(NavigationManager())
 }

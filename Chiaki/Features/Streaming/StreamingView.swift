@@ -158,4 +158,5 @@ private struct GridPattern: Shape {
 #Preview(traits: .landscapeLeft) {
     StreamingView(host: MockData.hostPS5)
         .environment(SettingsStore())
+        .environment(NavigationManager())
 }

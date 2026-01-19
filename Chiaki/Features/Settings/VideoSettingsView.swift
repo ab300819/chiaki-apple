@@ -49,3 +49,11 @@ struct VideoSettingsView: View {
         #endif
     }
 }
+
+#Preview {
+    NavigationStack {
+        VideoSettingsView()
+            .environment(SettingsStore())
+            .environment(NavigationManager())
+    }
+}

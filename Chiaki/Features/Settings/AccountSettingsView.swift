@@ -67,7 +67,9 @@ struct AccountSettingsView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         AccountSettingsView()
+            .environment(SettingsStore())
+            .environment(NavigationManager())
     }
 }

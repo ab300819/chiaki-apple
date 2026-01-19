@@ -54,3 +54,9 @@ struct SettingsView: View {
         #endif
     }
 }
+
+#Preview {
+    SettingsView()
+        .environment(SettingsStore())
+        .environment(NavigationManager())
+}

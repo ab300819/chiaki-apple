@@ -108,4 +108,6 @@ struct RegistrationView: View {
 
 #Preview {
     RegistrationView(hostStore: HostStore())
+        .environment(SettingsStore())
+        .environment(NavigationManager())
 }

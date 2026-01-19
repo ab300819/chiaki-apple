@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HostListView: View {
-    @EnvironmentObject var navigationManager: NavigationManager
+    @Environment(NavigationManager.self) var navigationManager
     @State private var viewModel = HostListViewModel()
     @State private var registeringHost: ConsoleHost?
     @State private var showDeleteConfirmation = false
@@ -178,7 +178,7 @@ struct HostListView: View {
 #Preview {
     NavigationStack {
         HostListView()
-            .environmentObject(NavigationManager())
+            .environment(NavigationManager())
             .environment(SettingsStore())
     }
 }

@@ -7,13 +7,8 @@
 
 import SwiftUI
 
-enum SidebarItem: Hashable {
-    case hosts
-    case settings
-}
-
 struct ContentView: View {
-    @EnvironmentObject var navigationManager: NavigationManager
+    @Environment(NavigationManager.self) var navigationManager
     
     var body: some View {
         #if os(macOS)
@@ -78,5 +73,5 @@ struct WelcomeView: View {
 #Preview {
     ContentView()
         .environment(SettingsStore())
-        .environmentObject(NavigationManager())
+        .environment(NavigationManager())
 }

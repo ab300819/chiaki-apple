@@ -121,4 +121,6 @@ struct WebView: ViewRepresentable {
 
 #Preview {
     PSNLoginView()
+        .environment(SettingsStore())
+        .environment(NavigationManager())
 }
