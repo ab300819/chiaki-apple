@@ -111,7 +111,7 @@ private struct VolumeControlSection: View {
                     .font(.caption)
 
                 Slider(value: $volume, in: 0...1)
-                    .tint(.blue)
+                    .tint(Color.chiakiPurple)
 
                 Image(systemName: "speaker.wave.3.fill")
                     .foregroundColor(.secondary)
@@ -163,7 +163,7 @@ private struct DisplayModeSection: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(displayMode == mode ? Color.blue.opacity(0.3) : Color.clear)
+                        .background(displayMode == mode ? Color.chiakiPurple.opacity(0.3) : Color.clear)
                         .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -193,7 +193,7 @@ private struct DisplayModeSection: View {
                             .font(.caption)
 
                         Slider(value: $zoomFactor, in: 1.0...2.0)
-                            .tint(.blue)
+                            .tint(Color.chiakiPurple)
 
                         Image(systemName: "plus.magnifyingglass")
                             .foregroundColor(.secondary)

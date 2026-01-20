@@ -21,7 +21,7 @@ struct TVHostCardView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 80, height: 80)
-                        .foregroundStyle(isFocused ? .white : .blue)
+                        .foregroundStyle(isFocused ? .white : Color.chiakiPurple)
                         .shadow(radius: isFocused ? 10 : 0)
                     
                     VStack(spacing: 4) {

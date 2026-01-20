@@ -11,15 +11,34 @@ struct HostRowView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 40, height: 40)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.chiakiPurple)
                 .padding(.trailing, 8)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(host.nickname)
                     .font(.headline)
-                Text(host.address)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                
+                HStack(spacing: 8) {
+                    Text(host.address)
+                    if let version = host.systemVersion {
+                        Text("•")
+                        Text("FW \(version)")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                
+                if !host.macAddress.isEmpty {
+                    Text(host.macAddress)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                }
+                
+                if let lastConnected = host.lastConnectedAt {
+                    Text("Last seen: \(lastConnected.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
             }
             
             Spacer()

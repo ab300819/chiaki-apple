@@ -467,12 +467,12 @@ struct StreamStatisticsTests {
     @Test func testRecordVideoFrame() {
         let stats = StreamStatistics()
 
-        stats.recordVideoFrame(size: 50000, wasDropped: false)
+        stats.recordVideoFrame(size: 50000, droppedCount: 0, wasRecovered: false)
         #expect(stats.decodedFrames == 1)
         #expect(stats.droppedFrames == 0)
 
-        stats.recordVideoFrame(size: 50000, wasDropped: true)
-        #expect(stats.decodedFrames == 1)
+        stats.recordVideoFrame(size: 50000, droppedCount: 1, wasRecovered: false)
+        #expect(stats.decodedFrames == 2)
         #expect(stats.droppedFrames == 1)
     }
 
@@ -493,8 +493,8 @@ struct StreamStatisticsTests {
         let stats = StreamStatistics()
 
         // Record some data
-        stats.recordVideoFrame(size: 50000, wasDropped: false)
-        stats.recordVideoFrame(size: 50000, wasDropped: true)
+        stats.recordVideoFrame(size: 50000, droppedCount: 0, wasRecovered: false)
+        stats.recordVideoFrame(size: 50000, droppedCount: 1, wasRecovered: false)
 
         // Reset
         stats.reset()
@@ -546,9 +546,9 @@ struct StreamStatisticsTests {
         // No frames = 0 drop rate
         #expect(stats.frameDropRate == 0)
 
-        // 1 decoded, 1 dropped = 50% drop rate
-        stats.recordVideoFrame(size: 1000, wasDropped: false)
-        stats.recordVideoFrame(size: 1000, wasDropped: true)
+        // 2 decoded, 1 dropped = 50% drop rate
+        stats.recordVideoFrame(size: 1000, droppedCount: 0, wasRecovered: false)
+        stats.recordVideoFrame(size: 1000, droppedCount: 1, wasRecovered: false)
         #expect(stats.frameDropRate == 0.5)
     }
 }

@@ -68,13 +68,8 @@ final class HostManager: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: &$lastError)
 
-        // Observe host store changes
-        hostStore.$hosts
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] storedHosts in
-                self?.updateHostsFromStore(storedHosts)
-            }
-            .store(in: &cancellables)
+        // Note: HostStore uses @Observable, so changes are tracked via SwiftUI
+        // and we refresh hosts directly when needed via loadStoredHosts()
     }
 
     private func loadStoredHosts() {
@@ -108,6 +103,7 @@ final class HostManager: ObservableObject {
     /// Add a host manually
     func addHost(_ host: ConsoleHost) {
         hostStore.addHost(host)
+        syncHostsFromStore()
     }
 
     /// Add a host manually with basic info
@@ -118,21 +114,25 @@ final class HostManager: ObservableObject {
             isPS5: isPS5
         )
         hostStore.addHost(host)
+        syncHostsFromStore()
     }
 
     /// Update a host
     func updateHost(_ host: ConsoleHost) {
         hostStore.updateHost(host)
+        syncHostsFromStore()
     }
 
     /// Remove a host
     func removeHost(_ host: ConsoleHost) {
         hostStore.removeHost(host)
+        syncHostsFromStore()
     }
 
     /// Remove a host by ID
     func removeHost(id: UUID) {
         hostStore.removeHost(id: id)
+        syncHostsFromStore()
     }
 
     /// Get a host by ID
@@ -198,9 +198,9 @@ final class HostManager: ObservableObject {
         hosts = mergedHosts
     }
 
-    private func updateHostsFromStore(_ storedHosts: [ConsoleHost]) {
-        // Merge stored hosts with current state from discovery
-        var updatedHosts = storedHosts
+    /// Sync hosts from store, preserving discovery state
+    private func syncHostsFromStore() {
+        var updatedHosts = hostStore.hosts
 
         // Preserve state from currently discovered hosts
         for discoveredHost in discoveryService.discoveredHosts {

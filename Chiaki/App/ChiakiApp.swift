@@ -18,6 +18,7 @@ struct ChiakiApp: App {
             ContentView()
                 .environment(settingsStore)
                 .environment(navigationManager)
+                .tint(ChiakiTheme.brandPurple)
         }
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)

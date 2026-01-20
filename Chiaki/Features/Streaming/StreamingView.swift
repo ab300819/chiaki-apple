@@ -5,7 +5,10 @@ struct StreamingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(SettingsStore.self) private var settingsStore
     @Environment(NavigationManager.self) private var navigationManager
+    @Environment(HostStore.self) private var hostStore
     @StateObject private var rendererHolder = VideoRendererHolder()
+    @State private var showingDisconnectConfirmation = false
+    @State private var shouldGoToBedOnDisconnect = false
 
     init(host: ConsoleHost) {
         _viewModel = State(initialValue: StreamingViewModel(host: host))
@@ -43,8 +46,7 @@ struct StreamingView: View {
                 VStack {
                     HStack(alignment: .center) {
                         Button(action: {
-                            viewModel.disconnect()
-                            dismiss()
+                            showingDisconnectConfirmation = true
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 28))
@@ -72,6 +74,12 @@ struct StreamingView: View {
                     .padding(.top, 10)
 
                     Spacer()
+                    
+                    if viewModel.isOverlayVisible {
+                        ControllerHintView(controllerType: ControllerManager.shared.detectedControllerType)
+                            .padding(.bottom, 20)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
                 .transition(.opacity)
                 .zIndex(2)
@@ -93,8 +101,7 @@ struct StreamingView: View {
                     },
                     onDisconnect: {
                         viewModel.toggleControlMenu()
-                        viewModel.disconnect()
-                        dismiss()
+                        showingDisconnectConfirmation = true
                     },
                     onGoToBed: {
                         viewModel.goToBed()
@@ -112,6 +119,29 @@ struct StreamingView: View {
         .onTapGesture {
             viewModel.toggleOverlay()
         }
+        .confirmationDialog(
+            "End Session",
+            isPresented: $showingDisconnectConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Disconnect Only", role: .destructive) {
+                viewModel.disconnect()
+                dismiss()
+            }
+            
+            Button("Enter Rest Mode & Disconnect") {
+                viewModel.goToBed()
+                // Give it a tiny bit of time to send the command before disconnecting
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    viewModel.disconnect()
+                    dismiss()
+                }
+            }
+            
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Do you want to put the console into rest mode before disconnecting?")
+        }
         #if os(tvOS)
         .onExitCommand {
             viewModel.disconnect()
@@ -125,6 +155,12 @@ struct StreamingView: View {
             rendererHolder.initialize()
             if let renderer = rendererHolder.renderer {
                 viewModel.setVideoRenderer(renderer)
+            }
+            // Setup onConnected callback
+            viewModel.onConnected = {
+                var updatedHost = viewModel.host
+                updatedHost.lastConnectedAt = Date()
+                hostStore.updateHost(updatedHost)
             }
             // Apply saved playback settings
             viewModel.applySettings(from: settingsStore.streamSettings)

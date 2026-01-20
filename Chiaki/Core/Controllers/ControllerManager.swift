@@ -446,4 +446,30 @@ final class ControllerManager {
     var hasDualSense: Bool {
         connectedControllers.contains(where: { $0.isDualSense })
     }
+
+    /// Detected controller type for UI hints
+    var detectedControllerType: ControllerHintType {
+        guard let active = activeController else {
+            return .generic
+        }
+
+        if active.isPlayStationController {
+            return .playstation
+        }
+
+        // Check for Xbox controllers
+        let category = active.productCategory.lowercased()
+        if category.contains("xbox") || category.contains("microsoft") {
+            return .xbox
+        }
+
+        return .generic
+    }
+
+    /// Controller type for UI hint display
+    enum ControllerHintType {
+        case playstation
+        case xbox
+        case generic
+    }
 }

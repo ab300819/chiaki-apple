@@ -82,4 +82,25 @@ class SettingsStore {
     func updateZoomFactor(_ factor: Double) {
         streamSettings.zoomFactor = max(1.0, min(2.0, factor))
     }
+
+    // MARK: - Import/Export
+
+    /// Export settings as JSON data
+    func exportSettings() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(streamSettings)
+    }
+
+    /// Import settings from JSON data
+    func importSettings(from data: Data) throws {
+        let decoder = JSONDecoder()
+        let imported = try decoder.decode(StreamSettings.self, from: data)
+        streamSettings = imported
+    }
+
+    /// Reset settings to defaults
+    func resetToDefaults() {
+        streamSettings = StreamSettings()
+    }
 }
