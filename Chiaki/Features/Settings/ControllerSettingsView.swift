@@ -49,10 +49,11 @@ struct ControllerSettingsView: View {
             Section {
                 Toggle("Haptic Feedback", isOn: $store.streamSettings.hapticFeedbackEnabled)
                 Toggle("Motion Controls", isOn: $store.streamSettings.motionControlsEnabled)
+                Toggle("Show Controller Hints", isOn: $store.streamSettings.showControllerHints)
             } header: {
                 Text("Feedback")
             } footer: {
-                Text("Motion controls require a DualSense or compatible controller with gyroscope.")
+                Text("Controller hints show button shortcuts during streaming. Motion controls require a DualSense or compatible controller.")
             }
 
             // Input Settings Section

@@ -29,10 +29,27 @@ struct TVHostCardView: View {
                             .font(.headline)
                             .fontWeight(.bold)
                             .foregroundStyle(isFocused ? .white : .primary)
-                        
+
                         Text(host.address)
                             .font(.caption)
                             .foregroundStyle(isFocused ? .white.opacity(0.8) : .secondary)
+
+                        // Additional info (shown on focus)
+                        if isFocused {
+                            VStack(spacing: 2) {
+                                if let version = host.systemVersion {
+                                    Text("FW \(version)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
+                                if let lastConnected = host.lastConnectedAt {
+                                    Text("Last: \(lastConnected.formatted(date: .abbreviated, time: .omitted))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.6))
+                                }
+                            }
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                        }
                     }
                     
                     // Status Badge
@@ -80,9 +97,17 @@ struct TVHostCardView: View {
                 .padding(20)
             }
             .aspectRatio(1.2, contentMode: .fit) // Card aspect ratio
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        isFocused ? Color.chiakiPurple : Color.clear,
+                        lineWidth: isFocused ? 4 : 0
+                    )
+            )
         }
         .scaleEffect(isFocused ? 1.1 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
+        .brightness(isFocused ? 0.1 : 0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFocused)
     }
 }
 
