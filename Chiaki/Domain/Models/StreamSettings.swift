@@ -26,9 +26,16 @@ struct StreamSettings: Codable, Equatable {
     var displayMode: DisplayMode = .normal
     var zoomFactor: Double = 1.0
 
+    // Controller settings
+    var stickDeadzone: Double = 0.1 // 0.0 - 0.3
+    var swapCrossCircle: Bool = false // Japanese layout swap
+    var touchControllerOpacity: Double = 0.7 // 0.3 - 1.0
+    var motionControlsEnabled: Bool = false
+
     enum CodingKeys: String, CodingKey {
         case localProfile, remoteProfile, codec, hardwareDecodingEnabled, colorSpace, hdrEnabled, volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
+        case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled
     }
 
     /// Video display mode for streaming
@@ -85,6 +92,10 @@ struct StreamSettings: Codable, Equatable {
         self.isTouchControllerEnabled = (try? container.decode(Bool.self, forKey: .isTouchControllerEnabled)) ?? true
         self.displayMode = (try? container.decode(DisplayMode.self, forKey: .displayMode)) ?? .normal
         self.zoomFactor = (try? container.decode(Double.self, forKey: .zoomFactor)) ?? 1.0
+        self.stickDeadzone = (try? container.decode(Double.self, forKey: .stickDeadzone)) ?? 0.1
+        self.swapCrossCircle = (try? container.decode(Bool.self, forKey: .swapCrossCircle)) ?? false
+        self.touchControllerOpacity = (try? container.decode(Double.self, forKey: .touchControllerOpacity)) ?? 0.7
+        self.motionControlsEnabled = (try? container.decode(Bool.self, forKey: .motionControlsEnabled)) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -102,6 +113,10 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(isTouchControllerEnabled, forKey: .isTouchControllerEnabled)
         try container.encode(displayMode, forKey: .displayMode)
         try container.encode(zoomFactor, forKey: .zoomFactor)
+        try container.encode(stickDeadzone, forKey: .stickDeadzone)
+        try container.encode(swapCrossCircle, forKey: .swapCrossCircle)
+        try container.encode(touchControllerOpacity, forKey: .touchControllerOpacity)
+        try container.encode(motionControlsEnabled, forKey: .motionControlsEnabled)
     }
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {
