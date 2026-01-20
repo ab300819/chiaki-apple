@@ -6,16 +6,16 @@
 // Persistent storage for PlayStation hosts
 
 import Foundation
-import Combine
+import Observation
 
 // MARK: - Host Store
 
 /// Persistent storage for PlayStation hosts
-@MainActor
-final class HostStore: ObservableObject {
-    // MARK: - Published Properties
+@Observable
+final class HostStore {
+    // MARK: - Properties
 
-    @Published private(set) var hosts: [ConsoleHost] = []
+    private(set) var hosts: [ConsoleHost] = []
 
     // MARK: - Private Properties
 

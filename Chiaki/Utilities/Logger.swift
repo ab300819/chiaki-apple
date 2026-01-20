@@ -53,6 +53,19 @@ final class Logger {
 
     private var handlers: [LogHandler]
     private(set) var levelMask: ChiakiLogLevelMask
+    
+    // Log history for in-app viewer
+    private(set) var logHistory: [LogEntry] = []
+    private let maxHistory = 1000
+    private let historyLock = NSLock()
+
+    struct LogEntry: Identifiable, Sendable {
+        let id = UUID()
+        let timestamp = Date()
+        let level: ChiakiLogSeverity
+        let message: String
+        let category: String
+    }
 
     private nonisolated init() {
         #if DEBUG
@@ -90,6 +103,16 @@ final class Logger {
     ) {
         guard shouldLog(level: level) else { return }
         let msg = message()
+        
+        // Add to history
+        let entry = LogEntry(level: level, message: msg, category: "App")
+        historyLock.lock()
+        logHistory.append(entry)
+        if logHistory.count > maxHistory {
+            logHistory.removeFirst()
+        }
+        historyLock.unlock()
+
         for handler in handlers {
             handler.log(level: level, message: msg, file: file, function: function, line: line)
         }

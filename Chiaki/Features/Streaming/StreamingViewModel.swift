@@ -44,6 +44,7 @@ final class StreamingViewModel {
     var bitrate: Double = 0
     var packetLoss: Double = 0
     var droppedFrames: Int = 0
+    var recoveredFrames: Int = 0
     var isPoorConnection: Bool = false
     var connectionQuality: ConnectionQuality = .unknown
 
@@ -53,11 +54,14 @@ final class StreamingViewModel {
     var zoomFactor: Double = 1.0
     var isControlMenuVisible: Bool = false
 
+    /// Called when connection is established
+    var onConnected: (() -> Void)?
+
     let pipManager = PiPManager()
 
-    // MARK: - Private Properties
-
-    private let host: ConsoleHost
+    // MARK: - Internal state
+    
+    let host: ConsoleHost
     private let session: ChiakiSessionWrapper
     private let statistics: StreamStatistics
     private let videoDecoderBridge: VideoDecoderBridge
@@ -321,6 +325,7 @@ final class StreamingViewModel {
             state = .connected
         case .streaming:
             state = .streaming
+            onConnected?()
         case .disconnecting:
             state = .disconnected
         case .error(let error):
@@ -353,9 +358,17 @@ final class StreamingViewModel {
 
         currentFrameRate = statistics.currentFrameRate
         latency = statistics.networkLatency
-        bitrate = statistics.measuredBitrate
+        
+        // Use libchiaki bitrate if available, fallback to measured bitrate
+        if statistics.libchiakiBitrate > 0 {
+            bitrate = statistics.libchiakiBitrate
+        } else {
+            bitrate = statistics.measuredBitrate
+        }
+        
         packetLoss = statistics.packetLossPercentage
         droppedFrames = statistics.totalDroppedFrames
+        recoveredFrames = Int(statistics.recoveredFrames)
         connectionQuality = statistics.connectionQuality
 
         isPoorConnection = packetLoss > 5.0

@@ -77,6 +77,10 @@ struct VideoStreamView: ViewRepresentable {
         mtkView.preferredFramesPerSecond = preferredFramesPerSecond
         mtkView.isPaused = false
         mtkView.enableSetNeedsDisplay = false
+        
+        #if os(iOS) || os(tvOS)
+        mtkView.contentMode = .scaleToFill
+        #endif
 
         // Clear color (black background)
         mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)

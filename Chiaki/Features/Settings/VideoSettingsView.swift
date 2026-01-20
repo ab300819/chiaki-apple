@@ -51,6 +51,40 @@ struct VideoSettingsView: View {
             } header: {
                 Text("Quality")
             }
+
+            Section {
+                Toggle("Hardware Decoding", isOn: $store.streamSettings.hardwareDecodingEnabled)
+                
+                Picker("Color Space", selection: $store.streamSettings.colorSpace) {
+                    ForEach(StreamSettings.ColorSpace.allCases) { colorSpace in
+                        Text(colorSpace.rawValue).tag(colorSpace)
+                    }
+                }
+            } header: {
+                Text("Advanced")
+            }
+            
+            Section {
+                Picker("Display Mode", selection: $store.streamSettings.displayMode) {
+                    ForEach(StreamSettings.DisplayMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                
+                if store.streamSettings.displayMode == .zoom {
+                    VStack(alignment: .leading) {
+                        HStack {
+                            Text("Zoom Level")
+                            Spacer()
+                            Text(String(format: "%.1fx", store.streamSettings.zoomFactor))
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $store.streamSettings.zoomFactor, in: 1.0...2.0, step: 0.1)
+                    }
+                }
+            } header: {
+                Text("Scaling")
+            }
         }
         .navigationTitle("Video")
         #if os(macOS)

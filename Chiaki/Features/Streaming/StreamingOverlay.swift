@@ -33,7 +33,8 @@ struct StreamingOverlay: View {
                 // Packet loss with semantic color
                 PacketLossItem(
                     packetLoss: viewModel.packetLoss,
-                    droppedFrames: viewModel.droppedFrames
+                    droppedFrames: viewModel.droppedFrames,
+                    recoveredFrames: viewModel.recoveredFrames
                 )
 
                 #if os(iOS)
@@ -52,9 +53,9 @@ struct StreamingOverlay: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
-        .cornerRadius(16)
+        .cornerRadius(ChiakiTheme.Radius.medium)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: ChiakiTheme.Radius.medium)
                 .stroke(.white.opacity(0.1), lineWidth: 1)
         )
         .padding(.horizontal, 24)
@@ -81,11 +82,11 @@ private struct NetworkQualityIndicator: View {
 
     private var barColor: Color {
         switch quality {
-        case .excellent: return .green
-        case .good: return .green
-        case .fair: return .yellow
-        case .poor: return .red
-        case .unknown: return .gray
+        case .excellent: return ChiakiTheme.Status.excellent
+        case .good: return ChiakiTheme.Status.good
+        case .fair: return ChiakiTheme.Status.fair
+        case .poor: return ChiakiTheme.Status.poor
+        case .unknown: return ChiakiTheme.Status.offline
         }
     }
 
@@ -108,6 +109,7 @@ private struct NetworkQualityIndicator: View {
 private struct PacketLossItem: View {
     let packetLoss: Double
     let droppedFrames: Int
+    let recoveredFrames: Int
 
     var body: some View {
         HStack(spacing: 6) {
@@ -122,10 +124,19 @@ private struct PacketLossItem: View {
                     .fontWeight(.medium)
                     .foregroundColor(lossColor)
 
-                if droppedFrames > 0 {
-                    Text("\(droppedFrames) dropped")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                if droppedFrames > 0 || recoveredFrames > 0 {
+                    HStack(spacing: 8) {
+                        if droppedFrames > 0 {
+                            Text("\(droppedFrames) dropped")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        if recoveredFrames > 0 {
+                            Text("\(recoveredFrames) recov")
+                                .font(.system(size: 14))
+                                .foregroundColor(.green.opacity(0.8))
+                        }
+                    }
                 }
             }
             #else
@@ -139,26 +150,35 @@ private struct PacketLossItem: View {
                     .fontWeight(.medium)
                     .foregroundColor(lossColor)
 
-                if droppedFrames > 0 {
-                    Text("\(droppedFrames) drop")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                if droppedFrames > 0 || recoveredFrames > 0 {
+                    HStack(spacing: 4) {
+                        if droppedFrames > 0 {
+                            Text("\(droppedFrames) drop")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary)
+                        }
+                        if recoveredFrames > 0 {
+                            Text("\(recoveredFrames) rec")
+                                .font(.system(size: 9))
+                                .foregroundColor(.green.opacity(0.8))
+                        }
+                    }
                 }
             }
             #endif
         }
-        .accessibilityLabel("Packet loss \(String(format: "%.1f", packetLoss)) percent, \(droppedFrames) frames dropped")
+        .accessibilityLabel("Packet loss \(String(format: "%.1f", packetLoss)) percent, \(droppedFrames) frames dropped, \(recoveredFrames) frames recovered")
     }
 
     private var lossColor: Color {
         if packetLoss > 5.0 {
-            return .red
+            return ChiakiTheme.Status.poor
         } else if packetLoss > 1.0 {
-            return .yellow
+            return ChiakiTheme.Status.fair
         } else if packetLoss > 0.1 {
             return .orange
         } else {
-            return .green
+            return ChiakiTheme.Status.excellent
         }
     }
 }

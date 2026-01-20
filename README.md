@@ -4,8 +4,12 @@ Next-generation PlayStation Remote Play client for Apple platforms, powered by `
 
 ## Features
 
-- **Full-speed Streaming**: Support for H.264 and H.265 (HEVC) codecs.
-- **Apple Hardware Acceleration**: Leveraging VideoToolbox for low-latency decoding and Metal for high-performance rendering.
+- **Full-speed Streaming**: Support for H.264 and H.265 (HEVC) codecs with bitrates up to 100 Mbps.
+- **Dynamic Profiles**: Independent settings for Local and Remote (over the internet) streaming sessions.
+- **Hardcore Diagnostics**: Real-time overlay showing RTT latency, bitrate, packet loss, dropped frames, and FEC recovery metrics.
+- **Advanced Session Management**: Confirmation dialog on disconnect with "Sleep on Disconnect" (Rest Mode) support.
+- **Flexible Scaling**: Support for Normal (Fit), Stretch, and Zoom display modes with adjustable zoom factor.
+- **Apple Hardware Acceleration**: Leveraging VideoToolbox for low-latency decoding and Metal for zero-copy high-performance rendering.
 - **Native Input**: Full DualSense and DualShock 4 support with adaptive triggers and haptic feedback.
 - **Multi-platform**:
   - **iOS 17+**: Immersive touch controls, Picture-in-Picture support, and background audio.

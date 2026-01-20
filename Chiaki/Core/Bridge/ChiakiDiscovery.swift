@@ -50,11 +50,19 @@ struct DiscoveredHost: Identifiable, Equatable, Hashable {
         var host = existing ?? ConsoleHost(
             nickname: hostName,
             address: address,
+            macAddress: id,
+            systemVersion: systemVersion,
             isPS5: isPS5
         )
         host.state = state
         if host.address != address {
             host.address = address
+        }
+        if host.macAddress.isEmpty {
+            host.macAddress = id
+        }
+        if host.systemVersion == nil {
+            host.systemVersion = systemVersion
         }
         return host
     }

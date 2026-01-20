@@ -25,6 +25,9 @@ final class StreamStatistics {
     /// Successfully decoded frame count
     private(set) var decodedFrames: UInt64 = 0
 
+    /// Recovered frame count (was lost but recovered via FEC/retransmission)
+    private(set) var recoveredFrames: UInt64 = 0
+
     /// Current video frame rate (fps)
     private(set) var currentFrameRate: Double = 0
 
@@ -35,6 +38,9 @@ final class StreamStatistics {
 
     /// Network round-trip latency (ms)
     private(set) var networkLatency: Double = 0
+
+    /// Bitrate reported by libchiaki (Mbps)
+    private(set) var libchiakiBitrate: Double = 0
 
     /// Packets received count
     private(set) var packetsReceived: UInt64 = 0
@@ -82,17 +88,22 @@ final class StreamStatistics {
     /// Record a received video frame
     /// - Parameters:
     ///   - size: Frame size in bytes
-    ///   - wasDropped: Whether frame was dropped
-    func recordVideoFrame(size: Int, wasDropped: Bool) {
+    ///   - droppedCount: Number of frames lost before this one
+    ///   - wasRecovered: Whether this frame was recovered from loss
+    func recordVideoFrame(size: Int, droppedCount: Int, wasRecovered: Bool) {
         lock.lock()
         defer { lock.unlock() }
 
-        if wasDropped {
-            droppedFrames += 1
-        } else {
-            decodedFrames += 1
-            framesSinceLastUpdate += 1
+        if droppedCount > 0 {
+            droppedFrames += UInt64(droppedCount)
         }
+        
+        if wasRecovered {
+            recoveredFrames += 1
+        }
+        
+        decodedFrames += 1
+        framesSinceLastUpdate += 1
 
         bytesReceivedSinceLastUpdate += UInt64(size)
         totalBytesReceived += UInt64(size)
@@ -157,6 +168,15 @@ final class StreamStatistics {
         networkLatency = latency
     }
 
+    /// Update bitrate from libchiaki
+    /// - Parameter bitrate: Bitrate in Mbps
+    func updateLibchiakiBitrate(_ bitrate: Double) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        libchiakiBitrate = bitrate
+    }
+
     /// Mark session start
     func sessionStarted() {
         lock.lock()
@@ -182,6 +202,7 @@ final class StreamStatistics {
         measuredBitrate = 0
         droppedFrames = 0
         decodedFrames = 0
+        recoveredFrames = 0
         currentFrameRate = 0
         averagePacketLoss = 0
         networkLatency = 0

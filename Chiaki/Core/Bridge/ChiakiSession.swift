@@ -483,6 +483,7 @@ final class ChiakiSessionWrapper {
 
         let rtt = Double(session.pointee.rtt_us) / 1000.0
         let packetLoss = session.pointee.stream_connection.congestion_control.packet_loss
+        let libchiakiBitrate = Double(session.pointee.stream_connection.measured_bitrate) / 1_000_000.0
 
         var received: UInt64 = 0
         var lost: UInt64 = 0
@@ -492,6 +493,7 @@ final class ChiakiSessionWrapper {
         streamStatistics?.updateLatency(rtt)
         streamStatistics?.recordPacketLoss(packetLoss)
         streamStatistics?.recordPacketStats(received: received, lost: lost)
+        streamStatistics?.updateLibchiakiBitrate(libchiakiBitrate)
     }
 
     /// Toggle microphone mute
@@ -661,7 +663,7 @@ final class ChiakiSessionWrapper {
         frameRecovered: Bool
     ) -> Bool {
         // Update statistics
-        streamStatistics?.recordVideoFrame(size: bufSize, wasDropped: framesLost > 0)
+        streamStatistics?.recordVideoFrame(size: bufSize, droppedCount: Int(framesLost), wasRecovered: frameRecovered)
 
         // Forward to video decoder bridge
         // The video data needs NAL unit parsing before being sent to VideoToolbox

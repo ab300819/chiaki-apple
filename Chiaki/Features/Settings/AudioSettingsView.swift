@@ -23,6 +23,27 @@ struct AudioSettingsView: View {
             } header: {
                 Text("Output & Input")
             }
+            
+            Section {
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Buffer Size")
+                        Spacer()
+                        Text("\(store.streamSettings.audioBufferSize) ms")
+                            .foregroundColor(.secondary)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { Double(store.streamSettings.audioBufferSize) },
+                            set: { store.streamSettings.audioBufferSize = Int($0) }
+                        ),
+                        in: 10...100,
+                        step: 5
+                    )
+                }
+            } header: {
+                Text("Advanced")
+            }
         }
         .navigationTitle("Audio")
         #if os(macOS)

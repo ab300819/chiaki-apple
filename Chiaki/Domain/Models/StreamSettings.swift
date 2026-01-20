@@ -12,9 +12,12 @@ struct StreamSettings: Codable, Equatable {
     var remoteProfile: StreamProfile = StreamProfile(bitrate: 10000)
     
     var codec: VideoCodec = .h265
+    var hardwareDecodingEnabled: Bool = true
+    var colorSpace: ColorSpace = .bt709
     var hdrEnabled: Bool = false
     
     var volume: Double = 1.0
+    var audioBufferSize: Int = 20 // ms
     var microphoneEnabled: Bool = false
 
     var hapticFeedbackEnabled: Bool = true
@@ -24,7 +27,7 @@ struct StreamSettings: Codable, Equatable {
     var zoomFactor: Double = 1.0
 
     enum CodingKeys: String, CodingKey {
-        case localProfile, remoteProfile, codec, hdrEnabled, volume, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
+        case localProfile, remoteProfile, codec, hardwareDecodingEnabled, colorSpace, hdrEnabled, volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
     }
 
@@ -72,8 +75,11 @@ struct StreamSettings: Codable, Equatable {
         }
         
         self.codec = (try? container.decode(VideoCodec.self, forKey: .codec)) ?? .h265
+        self.hardwareDecodingEnabled = (try? container.decode(Bool.self, forKey: .hardwareDecodingEnabled)) ?? true
+        self.colorSpace = (try? container.decode(ColorSpace.self, forKey: .colorSpace)) ?? .bt709
         self.hdrEnabled = (try? container.decode(Bool.self, forKey: .hdrEnabled)) ?? false
         self.volume = (try? container.decode(Double.self, forKey: .volume)) ?? 1.0
+        self.audioBufferSize = (try? container.decode(Int.self, forKey: .audioBufferSize)) ?? 20
         self.microphoneEnabled = (try? container.decode(Bool.self, forKey: .microphoneEnabled)) ?? false
         self.hapticFeedbackEnabled = (try? container.decode(Bool.self, forKey: .hapticFeedbackEnabled)) ?? true
         self.isTouchControllerEnabled = (try? container.decode(Bool.self, forKey: .isTouchControllerEnabled)) ?? true
@@ -86,8 +92,11 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(localProfile, forKey: .localProfile)
         try container.encode(remoteProfile, forKey: .remoteProfile)
         try container.encode(codec, forKey: .codec)
+        try container.encode(hardwareDecodingEnabled, forKey: .hardwareDecodingEnabled)
+        try container.encode(colorSpace, forKey: .colorSpace)
         try container.encode(hdrEnabled, forKey: .hdrEnabled)
         try container.encode(volume, forKey: .volume)
+        try container.encode(audioBufferSize, forKey: .audioBufferSize)
         try container.encode(microphoneEnabled, forKey: .microphoneEnabled)
         try container.encode(hapticFeedbackEnabled, forKey: .hapticFeedbackEnabled)
         try container.encode(isTouchControllerEnabled, forKey: .isTouchControllerEnabled)
@@ -132,6 +141,13 @@ struct StreamSettings: Codable, Equatable {
     enum VideoCodec: String, Codable, CaseIterable, Identifiable {
         case h264 = "H.264"
         case h265 = "H.265 (HEVC)"
+        
+        var id: String { rawValue }
+    }
+
+    enum ColorSpace: String, Codable, CaseIterable, Identifiable {
+        case bt709 = "BT.709 (SDR)"
+        case bt2020 = "BT.2020 (HDR)"
         
         var id: String { rawValue }
     }
