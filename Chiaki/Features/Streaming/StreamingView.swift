@@ -160,6 +160,8 @@ struct StreamingView: View {
         #if os(iOS)
         .statusBar(hidden: true)
         .navigationBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+        .defersSystemGestures(on: .all)
         #endif
         .onTapGesture {
             viewModel.toggleOverlay()

@@ -726,6 +726,257 @@ jobs:
 
 ---
 
+## 10.7 新功能测试用例 (2026-01-22 补充)
+
+以下测试用例针对最近实现的新功能设计。
+
+### UT-006: 国际化 (i18n) 测试
+
+> 关联功能: F-010 多语言支持
+> 验收标准: 所有 UI 文本正确本地化，无 key 显示为 value 的情况
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-006.1 | testLocalizationKeysHaveValues | 所有本地化 key 都有对应的翻译值 | 无空翻译 | P0 |
+| UT-006.2 | testFormatStringPlaceholders | 格式化字符串占位符正确 | %@ 和 %lld 正确替换 | P0 |
+| UT-006.3 | testAccessibilityLabels | 无障碍标签已本地化 | 所有 accessibility 标签有值 | P1 |
+| UT-006.4 | testMenuItemsLocalized | 菜单项本地化 | 菜单显示正确文本 | P1 |
+
+```swift
+// LocalizationTests.swift
+import Testing
+import Foundation
+@testable import Chiaki
+
+struct LocalizationTests {
+
+    @Test func testCommonStringsLocalized() {
+        // 验证常用字符串不显示 key
+        let cancel = String(localized: "common.cancel")
+        #expect(cancel != "common.cancel")
+        #expect(!cancel.isEmpty)
+
+        let ok = String(localized: "common.ok")
+        #expect(ok != "common.ok")
+    }
+
+    @Test func testFormatStringWithPlaceholder() {
+        // 验证格式化字符串正确工作
+        let hostName = "PS5"
+        let enterPin = String(localized: "consolePin.enterPin \(hostName)")
+        #expect(enterPin.contains(hostName))
+        #expect(!enterPin.contains("consolePin.enterPin"))
+    }
+
+    @Test func testAccessibilityStrings() {
+        // 验证无障碍字符串
+        let quality = "Good"
+        let accessLabel = String(localized: "accessibility.networkQuality \(quality)")
+        #expect(accessLabel.contains(quality))
+        #expect(!accessLabel.contains("accessibility.networkQuality"))
+    }
+}
+```
+
+### UT-007: HostListViewModel 延迟初始化测试
+
+> 关联功能: F-002 PS 主机发现
+> 验收标准: AC-001 应用启动后 5 秒内显示在线主机列表
+> 关联 Bug 修复: iOS 启动白屏优化
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-007.1 | testInitialLoadingState | 初始化时 isLoading = true | 显示加载状态 | P0 |
+| UT-007.2 | testLazyInitialization | 延迟初始化不访问 HostManager.shared | 避免阻塞主线程 | P0 |
+| UT-007.3 | testInitializeIfNeededIdempotent | initializeIfNeeded 幂等性 | 多次调用只初始化一次 | P1 |
+| UT-007.4 | testLoadingStateAfterInit | 初始化后 isLoading = false | 加载完成 | P0 |
+
+```swift
+// HostListViewModelTests.swift
+import Testing
+import Foundation
+@testable import Chiaki
+
+@MainActor
+struct HostListViewModelTests {
+
+    @Test func testInitialLoadingState() {
+        // 不传入 hostManager，使用延迟初始化模式
+        let viewModel = HostListViewModel()
+
+        // 初始状态应为 loading
+        #expect(viewModel.isLoading == true)
+        #expect(viewModel.hosts.isEmpty)
+    }
+
+    @Test func testInjectedHostManagerSkipsLazyInit() {
+        // 传入 hostManager 时，直接初始化完成
+        let mockManager = HostManager()
+        let viewModel = HostListViewModel(hostManager: mockManager)
+
+        // 应该立即完成初始化
+        #expect(viewModel.isLoading == false)
+    }
+
+    @Test func testInitializeIfNeededIdempotent() {
+        let viewModel = HostListViewModel()
+
+        // 第一次调用
+        viewModel.initializeIfNeeded()
+        #expect(viewModel.isLoading == false)
+
+        // 第二次调用不应有副作用
+        viewModel.initializeIfNeeded()
+        #expect(viewModel.isLoading == false)
+    }
+}
+```
+
+### UT-008: 键盘映射 (macOS) 测试
+
+> 关联功能: F-009 虚拟输入
+> 验收标准: AC-033 控制器映射设置保存
+> 平台限制: macOS only
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-008.1 | testMappableButtonAllCases | MappableButton 包含所有按钮 | 18 个按钮 | P0 |
+| UT-008.2 | testKeyboardMappingCodable | 映射配置序列化 | 编码解码后相等 | P0 |
+| UT-008.3 | testDefaultMappings | 默认映射值正确 | WASD + 方向键等 | P1 |
+| UT-008.4 | testSetMapping | 设置单个按键映射 | 映射更新成功 | P0 |
+| UT-008.5 | testClearMapping | 清除按键映射 | keyCode = nil | P1 |
+| UT-008.6 | testButtonCategories | 按钮分类正确 | face/shoulder/dpad/system | P1 |
+
+```swift
+// KeyboardMappingTests.swift
+#if os(macOS)
+import Testing
+import Foundation
+@testable import Chiaki
+
+struct KeyboardMappingTests {
+
+    @Test func testMappableButtonAllCases() {
+        let buttons = MappableButton.allCases
+        #expect(buttons.count == 18)
+
+        // 验证包含所有必要按钮
+        #expect(buttons.contains(.cross))
+        #expect(buttons.contains(.circle))
+        #expect(buttons.contains(.l1))
+        #expect(buttons.contains(.r1))
+        #expect(buttons.contains(.dpadUp))
+        #expect(buttons.contains(.ps))
+    }
+
+    @Test func testKeyboardMappingCodable() throws {
+        var mapping = KeyboardMapping(button: .cross)
+        mapping.keyCode = 0x00 // A key
+        mapping.keyName = "A"
+
+        let data = try JSONEncoder().encode(mapping)
+        let decoded = try JSONDecoder().decode(KeyboardMapping.self, from: data)
+
+        #expect(decoded.button == .cross)
+        #expect(decoded.keyCode == 0x00)
+        #expect(decoded.keyName == "A")
+    }
+
+    @Test func testKeyboardMappingsCodable() throws {
+        let original = KeyboardMappings.defaultMappings
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(KeyboardMappings.self, from: data)
+
+        #expect(decoded == original)
+    }
+
+    @Test func testButtonCategories() {
+        // Face buttons
+        #expect(MappableButton.cross.category == .face)
+        #expect(MappableButton.circle.category == .face)
+
+        // Shoulder buttons
+        #expect(MappableButton.l1.category == .shoulder)
+        #expect(MappableButton.r2.category == .shoulder)
+
+        // D-Pad
+        #expect(MappableButton.dpadUp.category == .dpad)
+
+        // System
+        #expect(MappableButton.ps.category == .system)
+    }
+
+    @Test func testSetAndClearMapping() {
+        var mappings = KeyboardMappings.defaultMappings
+
+        // Set mapping
+        mappings.setMapping(for: .cross, keyCode: 0x06, keyName: "Z")
+        let crossMapping = mappings.mapping(for: .cross)
+        #expect(crossMapping.keyCode == 0x06)
+        #expect(crossMapping.keyName == "Z")
+
+        // Clear mapping
+        mappings.setMapping(for: .cross, keyCode: nil, keyName: nil)
+        let clearedMapping = mappings.mapping(for: .cross)
+        #expect(clearedMapping.hasMapping == false)
+    }
+
+    @Test func testButtonDisplayName() {
+        #expect(MappableButton.cross.displayName == "✕ Cross")
+        #expect(MappableButton.circle.displayName == "○ Circle")
+        #expect(MappableButton.l1.displayName == "L1")
+        #expect(MappableButton.ps.displayName == "PS Button")
+    }
+}
+#endif
+```
+
+### IT-004: HostManager 单例一致性测试
+
+> 关联 Bug 修复: HostStore 重复实例化导致数据不一致
+> 验收标准: 整个应用使用同一个 HostStore 实例
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-004.1 | testHostManagerUsesSingletonStore | HostManager 使用 HostStore.shared | 不创建新实例 | P0 |
+| IT-004.2 | testHostStoreSingletonConsistency | HostStore.shared 始终返回同一实例 | 引用相等 | P0 |
+
+```swift
+// HostManagerIntegrationTests.swift
+import Testing
+@testable import Chiaki
+
+@MainActor
+struct HostManagerIntegrationTests {
+
+    @Test func testHostManagerUsesSingletonStore() {
+        let manager = HostManager.shared
+
+        // HostManager 应使用 HostStore.shared
+        #expect(manager.hostStore === HostStore.shared)
+    }
+
+    @Test func testHostStoreSingletonConsistency() {
+        let store1 = HostStore.shared
+        let store2 = HostStore.shared
+
+        // 应该是同一个实例
+        #expect(store1 === store2)
+    }
+}
+```
+
+### 10.7.1 追溯矩阵更新
+
+| 功能编号 | 用户故事 | 验收标准 | 新增测试 |
+|----------|----------|----------|----------|
+| F-002 | US-001 | AC-001 | UT-007.1~4, IT-004.1~2 |
+| F-009 | US-005 | AC-033 | UT-008.1~6 |
+| F-010 | - | - | UT-006.1~4 |
+
+---
+
 ## 11. 附录
 
 ### 11.1 现有 libchiaki 测试
