@@ -15,50 +15,56 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
+                    NavigationLink(destination: GeneralSettingsView()) {
+                        Label(L10n.Nav.general, systemImage: "gearshape")
+                    }
                     NavigationLink(destination: VideoSettingsView()) {
-                        Label("Video", systemImage: "display")
+                        Label(L10n.Nav.video, systemImage: "display")
                     }
                     NavigationLink(destination: AudioSettingsView()) {
-                        Label("Audio", systemImage: "speaker.wave.2")
+                        Label(L10n.Nav.audio, systemImage: "speaker.wave.2")
                     }
                     NavigationLink(destination: ControllerSettingsView()) {
-                        Label("Controller", systemImage: "gamecontroller")
+                        Label(L10n.Nav.controller, systemImage: "gamecontroller")
                     }
                 }
-                
+
                 Section {
                     NavigationLink(destination: AccountSettingsView()) {
-                        Label("Account", systemImage: "person.crop.circle")
+                        Label(L10n.Nav.account, systemImage: "person.crop.circle")
+                    }
+                    NavigationLink(destination: ConsolesSettingsView()) {
+                        Label(L10n.Nav.consoles, systemImage: "server.rack")
                     }
                 }
 
-                Section("Diagnostics") {
+                Section {
                     NavigationLink(destination: LogViewerView()) {
-                        Label("Logs", systemImage: "doc.text")
+                        Label(L10n.Nav.logs, systemImage: "doc.text")
                     }
                 }
 
-                Section("Data") {
+                Section(L10n.Nav.data) {
                     Button {
                         exportSettings()
                     } label: {
-                        Label("Export Settings", systemImage: "square.and.arrow.up")
+                        Label(L10n.Settings.Data.exportSettings, systemImage: "square.and.arrow.up")
                     }
 
                     Button {
                         isImporting = true
                     } label: {
-                        Label("Import Settings", systemImage: "square.and.arrow.down")
+                        Label(L10n.Settings.Data.importSettings, systemImage: "square.and.arrow.down")
                     }
 
                     Button(role: .destructive) {
                         showResetConfirmation = true
                     } label: {
-                        Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
+                        Label(L10n.Settings.Data.resetToDefaults, systemImage: "arrow.counterclockwise")
                     }
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(L10n.Nav.settings)
             .fileExporter(
                 isPresented: $isExporting,
                 document: exportDocument,
@@ -72,53 +78,63 @@ struct SettingsView: View {
                 handleImport(result)
             }
             .confirmationDialog(
-                "Reset Settings",
+                L10n.Settings.Data.resetTitle,
                 isPresented: $showResetConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Reset to Defaults", role: .destructive) {
+                Button(L10n.Settings.Data.resetToDefaults, role: .destructive) {
                     store.resetToDefaults()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L10n.Common.cancel, role: .cancel) {}
             } message: {
-                Text("This will reset all settings to their default values. This cannot be undone.")
+                Text(L10n.Settings.Data.resetMessage)
             }
-            .alert("Import Failed", isPresented: $showImportError) {
-                Button("OK", role: .cancel) {}
+            .alert(String(localized: "settings.data.importFailed"), isPresented: $showImportError) {
+                Button(L10n.Common.ok, role: .cancel) {}
             } message: {
                 Text(importErrorMessage)
             }
         }
         #elseif os(macOS)
         TabView {
+            GeneralSettingsView()
+                .tabItem {
+                    Label(L10n.Nav.general, systemImage: "gearshape")
+                }
+
             VideoSettingsView()
                 .tabItem {
-                    Label("Video", systemImage: "display")
+                    Label(L10n.Nav.video, systemImage: "display")
                 }
-            
+
             AudioSettingsView()
                 .tabItem {
-                    Label("Audio", systemImage: "speaker.wave.2")
+                    Label(L10n.Nav.audio, systemImage: "speaker.wave.2")
                 }
-            
+
             ControllerSettingsView()
                 .tabItem {
-                    Label("Controller", systemImage: "gamecontroller")
+                    Label(L10n.Nav.controller, systemImage: "gamecontroller")
                 }
-            
+
             AccountSettingsView()
                 .tabItem {
-                    Label("Account", systemImage: "person.crop.circle")
+                    Label(L10n.Nav.account, systemImage: "person.crop.circle")
+                }
+
+            ConsolesSettingsView()
+                .tabItem {
+                    Label(L10n.Nav.consoles, systemImage: "server.rack")
                 }
 
             LogViewerView()
                 .tabItem {
-                    Label("Logs", systemImage: "doc.text")
+                    Label(L10n.Nav.logs, systemImage: "doc.text")
                 }
 
             DataSettingsView(store: store)
                 .tabItem {
-                    Label("Data", systemImage: "externaldrive")
+                    Label(L10n.Nav.data, systemImage: "externaldrive")
                 }
         }
         .padding()
@@ -136,7 +152,7 @@ private extension SettingsView {
             exportDocument = SettingsDocument(data: data)
             isExporting = true
         } catch {
-            importErrorMessage = "Failed to export: \(error.localizedDescription)"
+            importErrorMessage = L10n.Error.exportFailed(error.localizedDescription)
             showImportError = true
         }
     }
@@ -145,7 +161,7 @@ private extension SettingsView {
         switch result {
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                importErrorMessage = "Unable to access the selected file"
+                importErrorMessage = L10n.Error.unableToAccessFile
                 showImportError = true
                 return
             }
@@ -155,7 +171,7 @@ private extension SettingsView {
                 let data = try Data(contentsOf: url)
                 try store.importSettings(from: data)
             } catch {
-                importErrorMessage = "Failed to import: \(error.localizedDescription)"
+                importErrorMessage = L10n.Error.importFailed(error.localizedDescription)
                 showImportError = true
             }
         case .failure(let error):
@@ -180,17 +196,17 @@ private struct DataSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Button("Export Settings...") {
+                Button(L10n.Settings.Data.exportSettings) {
                     exportSettings()
                 }
 
-                Button("Import Settings...") {
+                Button(L10n.Settings.Data.importSettings) {
                     isImporting = true
                 }
             }
 
             Section {
-                Button("Reset to Defaults", role: .destructive) {
+                Button(L10n.Settings.Data.resetToDefaults, role: .destructive) {
                     showResetConfirmation = true
                 }
                 .foregroundColor(.red)
@@ -210,19 +226,19 @@ private struct DataSettingsView: View {
             handleImport(result)
         }
         .confirmationDialog(
-            "Reset Settings",
+            L10n.Settings.Data.resetTitle,
             isPresented: $showResetConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Reset to Defaults", role: .destructive) {
+            Button(L10n.Settings.Data.resetToDefaults, role: .destructive) {
                 store.resetToDefaults()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L10n.Common.cancel, role: .cancel) {}
         } message: {
-            Text("This will reset all settings to their default values.")
+            Text(String(localized: "settings.data.resetMessageShort"))
         }
-        .alert("Import Failed", isPresented: $showImportError) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "settings.data.importFailed"), isPresented: $showImportError) {
+            Button(L10n.Common.ok, role: .cancel) {}
         } message: {
             Text(importErrorMessage)
         }
@@ -234,7 +250,7 @@ private struct DataSettingsView: View {
             exportDocument = SettingsDocument(data: data)
             isExporting = true
         } catch {
-            importErrorMessage = "Failed to export: \(error.localizedDescription)"
+            importErrorMessage = L10n.Error.exportFailed(error.localizedDescription)
             showImportError = true
         }
     }
@@ -243,7 +259,7 @@ private struct DataSettingsView: View {
         switch result {
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                importErrorMessage = "Unable to access the selected file"
+                importErrorMessage = L10n.Error.unableToAccessFile
                 showImportError = true
                 return
             }
@@ -253,7 +269,7 @@ private struct DataSettingsView: View {
                 let data = try Data(contentsOf: url)
                 try store.importSettings(from: data)
             } catch {
-                importErrorMessage = "Failed to import: \(error.localizedDescription)"
+                importErrorMessage = L10n.Error.importFailed(error.localizedDescription)
                 showImportError = true
             }
         case .failure(let error):

@@ -15,6 +15,12 @@ struct StreamSettings: Codable, Equatable {
     var hardwareDecodingEnabled: Bool = true
     var colorSpace: ColorSpace = .bt709
     var hdrEnabled: Bool = false
+
+    // HDR Fine-tuning (only used when hdrEnabled is true)
+    // 0 = Auto, 10-10000 = manual nits value
+    var hdrTargetPeakNits: Int = 0
+    // 0 = Auto, -1 = Infinity, 10-1000000 = manual contrast ratio
+    var hdrTargetContrast: Int = 0
     
     var volume: Double = 1.0
     var audioBufferSize: Int = 20 // ms
@@ -34,7 +40,9 @@ struct StreamSettings: Codable, Equatable {
     var showControllerHints: Bool = true // Show button hints in streaming view
 
     enum CodingKeys: String, CodingKey {
-        case localProfile, remoteProfile, codec, hardwareDecodingEnabled, colorSpace, hdrEnabled, volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
+        case localProfile, remoteProfile, codec, hardwareDecodingEnabled, colorSpace, hdrEnabled
+        case hdrTargetPeakNits, hdrTargetContrast
+        case volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
         case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled, showControllerHints
     }
@@ -64,6 +72,31 @@ struct StreamSettings: Codable, Equatable {
         }
     }
 
+    /// Video rendering preset
+    enum VideoPreset: String, Codable, CaseIterable, Identifiable {
+        case `default` = "Default"
+        case highQuality = "High Quality"
+        case performance = "Performance"
+
+        var id: String { rawValue }
+
+        var description: String {
+            switch self {
+            case .default: return "Balanced quality and performance"
+            case .highQuality: return "Best visual quality, higher GPU usage"
+            case .performance: return "Optimized for smooth playback"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .default: return "sparkles"
+            case .highQuality: return "star.fill"
+            case .performance: return "hare.fill"
+            }
+        }
+    }
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -86,6 +119,8 @@ struct StreamSettings: Codable, Equatable {
         self.hardwareDecodingEnabled = (try? container.decode(Bool.self, forKey: .hardwareDecodingEnabled)) ?? true
         self.colorSpace = (try? container.decode(ColorSpace.self, forKey: .colorSpace)) ?? .bt709
         self.hdrEnabled = (try? container.decode(Bool.self, forKey: .hdrEnabled)) ?? false
+        self.hdrTargetPeakNits = (try? container.decode(Int.self, forKey: .hdrTargetPeakNits)) ?? 0
+        self.hdrTargetContrast = (try? container.decode(Int.self, forKey: .hdrTargetContrast)) ?? 0
         self.volume = (try? container.decode(Double.self, forKey: .volume)) ?? 1.0
         self.audioBufferSize = (try? container.decode(Int.self, forKey: .audioBufferSize)) ?? 20
         self.microphoneEnabled = (try? container.decode(Bool.self, forKey: .microphoneEnabled)) ?? false
@@ -108,6 +143,8 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(hardwareDecodingEnabled, forKey: .hardwareDecodingEnabled)
         try container.encode(colorSpace, forKey: .colorSpace)
         try container.encode(hdrEnabled, forKey: .hdrEnabled)
+        try container.encode(hdrTargetPeakNits, forKey: .hdrTargetPeakNits)
+        try container.encode(hdrTargetContrast, forKey: .hdrTargetContrast)
         try container.encode(volume, forKey: .volume)
         try container.encode(audioBufferSize, forKey: .audioBufferSize)
         try container.encode(microphoneEnabled, forKey: .microphoneEnabled)

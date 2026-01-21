@@ -27,25 +27,25 @@ struct LogViewerView: View {
             // Filters
             HStack {
                 Picker("Level", selection: $selectedLevel) {
-                    Text("All Levels").tag(nil as ChiakiLogSeverity?)
+                    Text(L10n.Settings.Logs.allLevels).tag(nil as ChiakiLogSeverity?)
                     Divider()
                     ForEach(ChiakiLogSeverity.allCases, id: \.self) { level in
                         Text(level.description).tag(level as ChiakiLogSeverity?)
                     }
                 }
                 .pickerStyle(.menu)
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     exportLogs()
                 }) {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    Label(L10n.Settings.Logs.export, systemImage: "square.and.arrow.up")
                 }
             }
             .padding()
             .background(Color.secondary.opacity(0.1))
-            
+
             // Log List
             List(filteredLogs) { entry in
                 LogEntryRow(entry: entry)
@@ -53,7 +53,7 @@ struct LogViewerView: View {
             .listStyle(.plain)
             .searchable(text: $searchText, prompt: "Search logs")
         }
-        .navigationTitle("Logs")
+        .navigationTitle(L10n.Settings.Logs.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif

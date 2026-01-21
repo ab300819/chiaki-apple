@@ -1,0 +1,261 @@
+/* Localizable.strings - Chiaki - Simplified Chinese */
+
+/* MARK: - Common */
+"common.cancel" = "取消";
+"common.save" = "保存";
+"common.delete" = "删除";
+"common.done" = "完成";
+"common.ok" = "确定";
+"common.hide" = "隐藏";
+"common.unhide" = "取消隐藏";
+"common.online" = "在线";
+"common.offline" = "离线";
+"common.standby" = "待机";
+
+/* MARK: - Navigation */
+"nav.hosts" = "主机";
+"nav.settings" = "设置";
+"nav.general" = "通用";
+"nav.video" = "视频";
+"nav.audio" = "音频";
+"nav.controller" = "手柄";
+"nav.account" = "账户";
+"nav.consoles" = "主机管理";
+"nav.logs" = "日志";
+"nav.data" = "数据";
+
+/* MARK: - Host List */
+"hostList.title" = "主机";
+"hostList.addHost" = "添加主机";
+"hostList.noHostsFound" = "未找到主机";
+"hostList.noHostsDescription" = "手动添加主机或等待自动发现。";
+"hostList.deleteConfirmTitle" = "删除主机？";
+"hostList.deleteConfirmMessage" = "此操作无法撤销。";
+"hostList.wakeUp" = "唤醒";
+"hostList.registerNeeded" = "需要注册";
+"hostList.lastSeen %@" = "最后连接: %@";
+"hostList.discover" = "发现";
+"hostList.stop" = "停止";
+"hostList.stopDiscovery" = "停止发现";
+"hostList.startDiscovery" = "开始发现";
+
+/* MARK: - Host Row */
+"hostRow.firmwareVersion %@" = "固件 %@";
+"hostRow.titleId %@" = "标题: %@";
+
+/* MARK: - Add Host */
+"addHost.title" = "添加主机";
+"addHost.nickname" = "昵称";
+"addHost.address" = "地址";
+"addHost.consoleType" = "主机类型";
+"addHost.ps5" = "PS5";
+"addHost.ps4" = "PS4";
+"addHost.playstation5" = "PlayStation 5";
+"addHost.playstation4" = "PlayStation 4";
+
+/* MARK: - Registration */
+"registration.title" = "注册主机";
+"registration.register" = "注册";
+"registration.success" = "注册成功！";
+"registration.pin" = "PIN 码";
+"registration.pinPlaceholder" = "输入主机上显示的 PIN 码";
+
+/* MARK: - Console PIN */
+"consolePin.title" = "设置主机 PIN";
+"consolePin.pinRequired" = "需要 PIN";
+"consolePin.enterPin %@" = "输入 %@ 的 PIN";
+"consolePin.pinDescription" = "远程游玩 PIN（4 位数字）";
+"consolePin.pinRequiredDescription %@" = "连接到 %@ 前需要输入此 PIN。";
+"consolePin.clearPin" = "清除 PIN";
+"consolePin.clearPinDescription" = "移除此主机的 PIN 要求。";
+"consolePin.clearPinConfirm %@" = "这将移除 %@ 的 PIN 要求。";
+"consolePin.incorrectPin %d" = "PIN 错误，剩余 %d 次尝试。";
+"consolePin.connect" = "连接";
+"consolePin.setPin" = "设置 PIN";
+"consolePin.changePin" = "更改 PIN";
+
+/* MARK: - PSN Login */
+"psnLogin.title" = "PSN 登录";
+"psnLogin.authenticating" = "正在验证...";
+"psnLogin.signIn" = "登录 PSN";
+"psnLogin.signOut" = "退出登录";
+"psnLogin.notSignedIn" = "未登录";
+"psnLogin.signInDescription" = "登录 PSN 以便轻松注册主机并启用互联网远程游玩。";
+"psnLogin.accountId %@" = "账户 ID: %@";
+"psnLogin.sectionTitle" = "PlayStation Network";
+"psnLogin.credentialsNote" = "您的凭据安全存储在系统钥匙串中。";
+"psnLogin.tokenExpires" = "令牌过期时间";
+"psnLogin.tokenExpired" = "已过期";
+"psnLogin.refreshToken" = "刷新令牌";
+"psnLogin.refreshFailed" = "刷新失败";
+"psnLogin.refreshSuccess" = "令牌已刷新";
+
+/* MARK: - Streaming */
+"streaming.controls" = "控制";
+"streaming.connecting" = "正在连接主机...";
+"streaming.videoPlaceholder" = "视频流占位符";
+"streaming.disconnectConfirmTitle" = "结束会话";
+"streaming.disconnectConfirmMessage" = "断开连接前是否要将主机置于休眠模式？";
+"streaming.disconnectOnly" = "仅断开连接";
+"streaming.restModeAndDisconnect" = "进入休眠模式并断开";
+"streaming.disconnect" = "断开连接";
+"streaming.restMode" = "休眠模式";
+
+/* MARK: - Streaming Controls */
+"streamingControls.audio" = "音频";
+"streamingControls.volume" = "音量";
+"streamingControls.displayMode" = "显示模式";
+"streamingControls.videoPreset" = "视频预设";
+"streamingControls.quickActions" = "快捷操作";
+"streamingControls.zoomLevel" = "缩放级别";
+"streamingControls.micMuted" = "麦克风已静音";
+"streamingControls.micActive" = "麦克风已启用";
+
+/* MARK: - Video Presets */
+"videoPreset.default" = "默认";
+"videoPreset.highQuality" = "高质量";
+"videoPreset.performance" = "性能优先";
+"videoPreset.defaultDescription" = "平衡画质与性能";
+"videoPreset.highQualityDescription" = "最佳画质，GPU 占用较高";
+"videoPreset.performanceDescription" = "针对流畅播放优化";
+
+/* MARK: - Display Modes */
+"displayMode.fit" = "适应";
+"displayMode.stretch" = "拉伸";
+"displayMode.zoom" = "缩放";
+"displayMode.fitDescription" = "适应（黑边）";
+"displayMode.stretchDescription" = "拉伸填充";
+"displayMode.zoomDescription" = "缩放填充";
+
+/* MARK: - Streaming Overlay */
+"overlay.dropped %d" = "%d 丢帧";
+"overlay.recovered %d" = "%d 恢复";
+"overlay.drop %d" = "%d 丢";
+"overlay.rec %d" = "%d 恢";
+
+/* MARK: - Settings - General */
+"settings.general.autoConnect" = "自动连接";
+"settings.general.autoConnectOnLaunch" = "启动时自动连接";
+"settings.general.autoConnectDescription" = "应用启动时自动连接到主机。";
+"settings.general.targetConsole" = "目标主机";
+"settings.general.lastConnected" = "上次连接";
+"settings.general.wakeConsole" = "如果主机处于休眠状态则唤醒";
+"settings.general.sessionActions" = "会话操作";
+"settings.general.sessionActionsDescription" = "选择断开连接或应用进入后台时的操作。";
+"settings.general.onDisconnect" = "断开连接时";
+"settings.general.onAppSuspend" = "应用挂起时";
+"settings.general.privacy" = "隐私";
+"settings.general.streamerMode" = "直播模式";
+"settings.general.streamerModeDescription" = "隐藏 IP 地址和 MAC 地址等敏感信息。适用于直播或录制时使用。";
+
+/* MARK: - Settings - Video */
+"settings.video.profile" = "配置文件";
+"settings.video.local" = "本地";
+"settings.video.remote" = "远程";
+"settings.video.resolution" = "分辨率";
+"settings.video.frameRate" = "帧率";
+"settings.video.fps %d" = "%d 帧";
+"settings.video.bitrate" = "码率";
+"settings.video.mbps %d" = "%d Mbps";
+"settings.video.hdr" = "HDR";
+"settings.video.quality" = "画质";
+"settings.video.hdrFineTuning" = "HDR 精调";
+"settings.video.hdrDescription" = "调整这些设置以匹配您显示器的能力，获得最佳 HDR 效果。";
+"settings.video.targetPeak" = "目标峰值";
+"settings.video.auto" = "自动";
+"settings.video.manual" = "手动";
+"settings.video.peakBrightness" = "峰值亮度";
+"settings.video.nits %d" = "%d 尼特";
+"settings.video.targetContrast" = "目标对比度";
+"settings.video.infinity" = "无限";
+"settings.video.contrastRatio" = "对比度";
+"settings.video.advanced" = "高级";
+"settings.video.hardwareDecoding" = "硬件解码";
+"settings.video.colorSpace" = "色彩空间";
+"settings.video.scaling" = "缩放";
+
+/* MARK: - Settings - Audio */
+"settings.audio.volume" = "音量";
+"settings.audio.outputInput" = "输出与输入";
+"settings.audio.microphone" = "麦克风";
+"settings.audio.bufferSize" = "缓冲区大小";
+"settings.audio.ms %d" = "%d 毫秒";
+
+/* MARK: - Settings - Controller */
+"settings.controller.connectedControllers" = "已连接的手柄";
+"settings.controller.noControllers" = "未连接手柄";
+"settings.controller.active" = "活动";
+"settings.controller.feedback" = "反馈";
+"settings.controller.feedbackDescription" = "手柄提示显示流媒体期间的按键快捷方式。体感控制需要 DualSense 或兼容的手柄。";
+"settings.controller.hapticFeedback" = "触觉反馈";
+"settings.controller.showControllerHints" = "显示手柄提示";
+"settings.controller.motionControls" = "体感控制";
+"settings.controller.input" = "输入";
+"settings.controller.stickDeadzone" = "摇杆死区";
+"settings.controller.swapCrossCircle" = "交换叉/圈";
+"settings.controller.touchController" = "触摸手柄";
+"settings.controller.touchControllerOpacity" = "触摸手柄透明度";
+
+/* MARK: - Settings - Consoles */
+"settings.consoles.title" = "主机管理";
+"settings.consoles.registeredConsoles" = "已注册的主机";
+"settings.consoles.registeredDescription" = "管理您已注册的 PlayStation 主机。隐藏的主机不会出现在主机列表中。";
+"settings.consoles.hiddenConsoles" = "已隐藏的主机";
+"settings.consoles.hiddenDescription" = "这些主机已从主列表隐藏，但仍保持注册状态。";
+"settings.consoles.noRegistered" = "暂无已注册的主机";
+"settings.consoles.hidden" = "已隐藏";
+"settings.consoles.deleteTitle" = "删除主机";
+"settings.consoles.deleteMessage %@" = "确定要删除\"%@\"吗？这将移除注册信息，您需要重新注册才能连接。";
+"settings.consoles.hideTitle" = "隐藏主机";
+"settings.consoles.hideMessage %@" = "确定要隐藏\"%@\"吗？它将不再出现在主机列表中，但会保持注册状态。";
+"settings.consoles.unhideTitle" = "取消隐藏主机";
+"settings.consoles.unhideMessage %@" = "确定要取消隐藏\"%@\"吗？它将重新出现在主机列表中。";
+
+/* MARK: - Settings - Data */
+"settings.data.exportSettings" = "导出设置";
+"settings.data.importSettings" = "导入设置";
+"settings.data.resetToDefaults" = "恢复默认设置";
+"settings.data.resetTitle" = "重置设置";
+"settings.data.resetMessage" = "这将把所有设置重置为默认值。此操作无法撤销。";
+"settings.data.resetMessageShort" = "这将把所有设置重置为默认值。";
+"settings.data.importFailed" = "导入失败";
+
+/* MARK: - Settings - Logs */
+"settings.logs.title" = "日志";
+"settings.logs.export" = "导出";
+"settings.logs.allLevels" = "所有级别";
+
+/* MARK: - Disconnect Actions */
+"disconnectAction.doNothing" = "不执行操作";
+"disconnectAction.enterSleepMode" = "进入休眠模式";
+"disconnectAction.ask" = "询问";
+"disconnectAction.doNothingDescription" = "直接断开连接，不改变主机状态";
+"disconnectAction.enterSleepModeDescription" = "断开连接时将主机置于休眠模式";
+"disconnectAction.askDescription" = "显示对话框询问操作";
+
+/* MARK: - Suspend Actions */
+"suspendAction.doNothing" = "不执行操作";
+"suspendAction.enterSleepMode" = "进入休眠模式";
+
+/* MARK: - Auto-Connect View */
+"autoConnect.connectingTo %@" = "正在连接到 %@...";
+"autoConnect.pressToCancel" = "按任意键取消";
+
+/* MARK: - Welcome View */
+"welcome.title" = "Chiaki";
+"welcome.subtitle" = "PlayStation 远程游玩";
+"welcome.selectHost" = "选择一个主机开始串流";
+
+/* MARK: - Errors */
+"error.hostNotRegistered" = "主机未注册。请先注册。";
+"error.connectionFailed" = "连接失败";
+"error.unableToAccessFile" = "无法访问所选文件";
+"error.exportFailed %@" = "导出失败: %@";
+"error.importFailed %@" = "导入失败: %@";
+
+/* MARK: - Accessibility */
+"accessibility.disconnectStream" = "断开连接并关闭串流";
+"accessibility.openControlsMenu" = "打开控制菜单";
+"accessibility.addHostManually" = "手动添加新主机";
+"accessibility.networkQuality %@" = "网络质量: %@";
+"accessibility.packetLossStats" = "丢包率 %.1f%%，%d 帧丢失，%d 帧恢复";

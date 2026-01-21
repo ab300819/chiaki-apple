@@ -129,6 +129,26 @@ final class PSNService: ObservableObject {
         }
         return accessToken
     }
+
+    /// Manually refresh the access token
+    func manualRefresh() async throws {
+        guard tokens?.refreshToken != nil else {
+            throw NSError(domain: "PSNService", code: 6, userInfo: [NSLocalizedDescriptionKey: "Not authenticated - no refresh token"])
+        }
+        Logger.psn.info("Manual PSN token refresh requested")
+        try await refreshTokens()
+        Logger.psn.info("PSN token refreshed successfully")
+    }
+
+    /// Get the token expiration date (if available)
+    var tokenExpirationDate: Date? {
+        tokens?.expirationDate
+    }
+
+    /// Check if token is currently expired
+    var isTokenExpired: Bool {
+        tokens?.isExpired ?? true
+    }
     
     // MARK: - Private Methods
     

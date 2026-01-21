@@ -73,8 +73,9 @@ final class HostManager: ObservableObject {
     }
 
     private func loadStoredHosts() {
-        hosts = hostStore.hosts
-        Logger.discovery.info("Loaded \(self.hosts.count) stored hosts")
+        // Filter out hidden hosts from the main list
+        hosts = hostStore.hosts.filter { !$0.isHidden }
+        Logger.discovery.info("Loaded \(self.hosts.count) visible hosts")
     }
 
     // MARK: - Discovery Control
@@ -162,19 +163,24 @@ final class HostManager: ObservableObject {
     // MARK: - Host Merging
 
     private func mergeDiscoveredHosts(_ discovered: [DiscoveredHost]) {
-        var mergedHosts = hostStore.hosts
+        // Filter out hidden hosts from merge
+        var mergedHosts = hostStore.hosts.filter { !$0.isHidden }
 
         for discoveredHost in discovered {
             // Find existing host by address or create new
             if let index = mergedHosts.firstIndex(where: { $0.address == discoveredHost.address }) {
-                // Update state of existing host
+                // Update state and running app info of existing host
                 mergedHosts[index].state = discoveredHost.state
+                mergedHosts[index].runningApp = discoveredHost.runningApp
+                mergedHosts[index].runningAppId = discoveredHost.runningAppId
             } else {
                 // Check if we have a stored host with same MAC/hostId
                 if let index = mergedHosts.firstIndex(where: { $0.macAddress == discoveredHost.id && !$0.macAddress.isEmpty }) {
-                    // Update address and state
+                    // Update address, state, and running app info
                     mergedHosts[index].address = discoveredHost.address
                     mergedHosts[index].state = discoveredHost.state
+                    mergedHosts[index].runningApp = discoveredHost.runningApp
+                    mergedHosts[index].runningAppId = discoveredHost.runningAppId
                 } else {
                     // New discovered host - add as unregistered
                     let newHost = discoveredHost.toConsoleHost()
@@ -191,6 +197,9 @@ final class HostManager: ObservableObject {
                 // Only mark as offline if we're actively discovering
                 if isDiscovering {
                     mergedHosts[index].state = .offline
+                    // Clear running app info when offline
+                    mergedHosts[index].runningApp = nil
+                    mergedHosts[index].runningAppId = nil
                 }
             }
         }
@@ -200,12 +209,15 @@ final class HostManager: ObservableObject {
 
     /// Sync hosts from store, preserving discovery state
     private func syncHostsFromStore() {
-        var updatedHosts = hostStore.hosts
+        // Filter out hidden hosts
+        var updatedHosts = hostStore.hosts.filter { !$0.isHidden }
 
-        // Preserve state from currently discovered hosts
+        // Preserve state and running app info from currently discovered hosts
         for discoveredHost in discoveryService.discoveredHosts {
             if let index = updatedHosts.firstIndex(where: { $0.address == discoveredHost.address }) {
                 updatedHosts[index].state = discoveredHost.state
+                updatedHosts[index].runningApp = discoveredHost.runningApp
+                updatedHosts[index].runningAppId = discoveredHost.runningAppId
             }
         }
 

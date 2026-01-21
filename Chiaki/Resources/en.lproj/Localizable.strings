@@ -1,0 +1,294 @@
+/*
+  Localizable.strings
+  Chiaki - PlayStation Remote Play Client for Apple Platforms
+
+  English (Base) localization
+*/
+
+/* Localizable.strings - Chiaki - English (Base) */
+
+/* MARK: - Common */
+
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.done" = "Done";
+"common.ok" = "OK";
+"common.hide" = "Hide";
+"common.unhide" = "Unhide";
+"common.online" = "Online";
+"common.offline" = "Offline";
+"common.standby" = "Standby";
+
+/* MARK: - Navigation */
+
+"nav.hosts" = "Hosts";
+"nav.settings" = "Settings";
+"nav.general" = "General";
+"nav.video" = "Video";
+"nav.audio" = "Audio";
+"nav.controller" = "Controller";
+"nav.account" = "Account";
+"nav.consoles" = "Consoles";
+"nav.logs" = "Logs";
+"nav.data" = "Data";
+
+/* MARK: - Host List */
+
+"hostList.title" = "Hosts";
+"hostList.addHost" = "Add Host";
+"hostList.noHostsFound" = "No Hosts Found";
+"hostList.noHostsDescription" = "Add a host manually or wait for discovery.";
+"hostList.deleteConfirmTitle" = "Delete Host?";
+"hostList.deleteConfirmMessage" = "This action cannot be undone.";
+"hostList.wakeUp" = "Wake Up";
+"hostList.registerNeeded" = "Register Needed";
+"hostList.lastSeen" = "Last seen: %@";
+"hostList.discover" = "Discover";
+"hostList.stop" = "Stop";
+"hostList.stopDiscovery" = "Stop Discovery";
+"hostList.startDiscovery" = "Start Discovery";
+
+/* MARK: - Host Row */
+
+"hostRow.firmwareVersion" = "FW %@";
+"hostRow.titleId" = "Title: %@";
+
+/* MARK: - Add Host */
+
+"addHost.title" = "Add Host";
+"addHost.nickname" = "Nickname";
+"addHost.address" = "Address";
+"addHost.consoleType" = "Console Type";
+"addHost.ps5" = "PS5";
+"addHost.ps4" = "PS4";
+"addHost.playstation5" = "PlayStation 5";
+"addHost.playstation4" = "PlayStation 4";
+
+/* MARK: - Registration */
+
+"registration.title" = "Register Console";
+"registration.register" = "Register";
+"registration.success" = "Registration Successful!";
+"registration.pin" = "PIN";
+"registration.pinPlaceholder" = "Enter PIN from console";
+
+/* MARK: - Console PIN */
+
+"consolePin.title" = "Set Console PIN";
+"consolePin.pinRequired" = "PIN Required";
+"consolePin.enterPin" = "Enter PIN for %@";
+"consolePin.pinDescription" = "Remote Play PIN (4 digits)";
+"consolePin.pinRequiredDescription" = "This PIN will be required before connecting to %@.";
+"consolePin.clearPin" = "Clear PIN";
+"consolePin.clearPinDescription" = "Remove the PIN requirement for this console.";
+"consolePin.clearPinConfirm" = "This will remove the PIN requirement for %@.";
+"consolePin.incorrectPin" = "Incorrect PIN. %d attempts remaining.";
+"consolePin.connect" = "Connect";
+"consolePin.setPin" = "Set PIN";
+"consolePin.changePin" = "Change PIN";
+
+/* MARK: - PSN Login */
+
+"psnLogin.title" = "PSN Login";
+"psnLogin.authenticating" = "Authenticating...";
+"psnLogin.signIn" = "Sign In to PSN";
+"psnLogin.signOut" = "Sign Out";
+"psnLogin.notSignedIn" = "Not Signed In";
+"psnLogin.signInDescription" = "Sign in to PSN to easily register your consoles and enable remote play over the internet.";
+"psnLogin.accountId" = "Account ID: %@";
+"psnLogin.sectionTitle" = "PlayStation Network";
+"psnLogin.credentialsNote" = "Your credentials are stored securely in the system Keychain.";
+"psnLogin.tokenExpires" = "Token Expires";
+"psnLogin.tokenExpired" = "Expired";
+"psnLogin.refreshToken" = "Refresh Token";
+"psnLogin.refreshFailed" = "Refresh Failed";
+"psnLogin.refreshSuccess" = "Token Refreshed";
+
+/* MARK: - Streaming */
+
+"streaming.controls" = "Controls";
+"streaming.connecting" = "Connecting to Console...";
+"streaming.videoPlaceholder" = "Video Stream Placeholder";
+"streaming.disconnectConfirmTitle" = "End Session";
+"streaming.disconnectConfirmMessage" = "Do you want to put the console into rest mode before disconnecting?";
+"streaming.disconnectOnly" = "Disconnect Only";
+"streaming.restModeAndDisconnect" = "Enter Rest Mode & Disconnect";
+"streaming.disconnect" = "Disconnect";
+"streaming.restMode" = "Rest Mode";
+
+/* MARK: - Streaming Controls */
+
+"streamingControls.audio" = "Audio";
+"streamingControls.volume" = "Volume";
+"streamingControls.displayMode" = "Display Mode";
+"streamingControls.videoPreset" = "Video Preset";
+"streamingControls.quickActions" = "Quick Actions";
+"streamingControls.zoomLevel" = "Zoom Level";
+"streamingControls.micMuted" = "Mic Muted";
+"streamingControls.micActive" = "Mic Active";
+
+/* MARK: - Video Presets */
+
+"videoPreset.default" = "Default";
+"videoPreset.highQuality" = "High Quality";
+"videoPreset.performance" = "Performance";
+"videoPreset.defaultDescription" = "Balanced quality and performance";
+"videoPreset.highQualityDescription" = "Best visual quality, higher GPU usage";
+"videoPreset.performanceDescription" = "Optimized for smooth playback";
+
+/* MARK: - Display Modes */
+
+"displayMode.fit" = "Fit";
+"displayMode.stretch" = "Stretch";
+"displayMode.zoom" = "Zoom";
+"displayMode.fitDescription" = "Fit (letterbox)";
+"displayMode.stretchDescription" = "Stretch to fill";
+"displayMode.zoomDescription" = "Zoom to fill";
+
+/* MARK: - Streaming Overlay */
+
+"overlay.dropped" = "%d dropped";
+"overlay.recovered" = "%d recov";
+"overlay.drop" = "%d drop";
+"overlay.rec" = "%d rec";
+
+/* MARK: - Settings - General */
+
+"settings.general.autoConnect" = "Auto-Connect";
+"settings.general.autoConnectOnLaunch" = "Auto-Connect on Launch";
+"settings.general.autoConnectDescription" = "Automatically connect to a console when the app launches.";
+"settings.general.targetConsole" = "Target Console";
+"settings.general.lastConnected" = "Last Connected";
+"settings.general.wakeConsole" = "Wake Console if Sleeping";
+"settings.general.sessionActions" = "Session Actions";
+"settings.general.sessionActionsDescription" = "Choose what happens when you disconnect or the app goes to background.";
+"settings.general.onDisconnect" = "On Disconnect";
+"settings.general.onAppSuspend" = "On App Suspend";
+"settings.general.privacy" = "Privacy";
+"settings.general.streamerMode" = "Streamer Mode";
+"settings.general.streamerModeDescription" = "Hide sensitive information like IP addresses and MAC addresses. Useful when streaming or recording.";
+
+/* MARK: - Settings - Video */
+
+"settings.video.profile" = "Profile";
+"settings.video.local" = "Local";
+"settings.video.remote" = "Remote";
+"settings.video.resolution" = "Resolution";
+"settings.video.frameRate" = "Frame Rate";
+"settings.video.fps" = "%d FPS";
+"settings.video.bitrate" = "Bitrate";
+"settings.video.mbps" = "%d Mbps";
+"settings.video.hdr" = "HDR";
+"settings.video.quality" = "Quality";
+"settings.video.hdrFineTuning" = "HDR Fine-tuning";
+"settings.video.hdrDescription" = "Adjust these settings to match your display's capabilities for optimal HDR performance.";
+"settings.video.targetPeak" = "Target Peak";
+"settings.video.auto" = "Auto";
+"settings.video.manual" = "Manual";
+"settings.video.peakBrightness" = "Peak Brightness";
+"settings.video.nits" = "%d nits";
+"settings.video.targetContrast" = "Target Contrast";
+"settings.video.infinity" = "Infinity";
+"settings.video.contrastRatio" = "Contrast Ratio";
+"settings.video.advanced" = "Advanced";
+"settings.video.hardwareDecoding" = "Hardware Decoding";
+"settings.video.colorSpace" = "Color Space";
+"settings.video.scaling" = "Scaling";
+
+/* MARK: - Settings - Audio */
+
+"settings.audio.volume" = "Volume";
+"settings.audio.outputInput" = "Output & Input";
+"settings.audio.microphone" = "Microphone";
+"settings.audio.bufferSize" = "Buffer Size";
+"settings.audio.ms" = "%d ms";
+
+/* MARK: - Settings - Controller */
+
+"settings.controller.connectedControllers" = "Connected Controllers";
+"settings.controller.noControllers" = "No controllers connected";
+"settings.controller.active" = "Active";
+"settings.controller.feedback" = "Feedback";
+"settings.controller.feedbackDescription" = "Controller hints show button shortcuts during streaming. Motion controls require a DualSense or compatible controller.";
+"settings.controller.hapticFeedback" = "Haptic Feedback";
+"settings.controller.showControllerHints" = "Show Controller Hints";
+"settings.controller.motionControls" = "Motion Controls";
+"settings.controller.input" = "Input";
+"settings.controller.stickDeadzone" = "Stick Deadzone";
+"settings.controller.swapCrossCircle" = "Swap Cross/Circle";
+"settings.controller.touchController" = "Touch Controller";
+"settings.controller.touchControllerOpacity" = "Touch Controller Opacity";
+
+/* MARK: - Settings - Consoles */
+
+"settings.consoles.title" = "Consoles";
+"settings.consoles.registeredConsoles" = "Registered Consoles";
+"settings.consoles.registeredDescription" = "Manage your registered PlayStation consoles. Hidden consoles won't appear in the host list.";
+"settings.consoles.hiddenConsoles" = "Hidden Consoles";
+"settings.consoles.hiddenDescription" = "These consoles are hidden from the main host list but remain registered.";
+"settings.consoles.noRegistered" = "No registered consoles";
+"settings.consoles.hidden" = "Hidden";
+"settings.consoles.deleteTitle" = "Delete Console";
+"settings.consoles.deleteMessage" = "Are you sure you want to delete \"%@\"? This will remove its registration and you'll need to re-register to connect.";
+"settings.consoles.hideTitle" = "Hide Console";
+"settings.consoles.hideMessage" = "Are you sure you want to hide \"%@\"? It will no longer appear in the host list but will remain registered.";
+"settings.consoles.unhideTitle" = "Unhide Console";
+"settings.consoles.unhideMessage" = "Are you sure you want to unhide \"%@\"? It will appear in the host list again.";
+
+/* MARK: - Settings - Data */
+
+"settings.data.exportSettings" = "Export Settings";
+"settings.data.importSettings" = "Import Settings";
+"settings.data.resetToDefaults" = "Reset to Defaults";
+"settings.data.resetTitle" = "Reset Settings";
+"settings.data.resetMessage" = "This will reset all settings to their default values. This cannot be undone.";
+"settings.data.resetMessageShort" = "This will reset all settings to their default values.";
+"settings.data.importFailed" = "Import Failed";
+
+/* MARK: - Settings - Logs */
+
+"settings.logs.title" = "Logs";
+"settings.logs.export" = "Export";
+"settings.logs.allLevels" = "All Levels";
+
+/* MARK: - Disconnect Actions */
+
+"disconnectAction.doNothing" = "Do Nothing";
+"disconnectAction.enterSleepMode" = "Enter Rest Mode";
+"disconnectAction.ask" = "Ask";
+"disconnectAction.doNothingDescription" = "Simply disconnect without changing console state";
+"disconnectAction.enterSleepModeDescription" = "Put the console into rest mode when disconnecting";
+"disconnectAction.askDescription" = "Show a dialog asking what to do";
+
+/* MARK: - Suspend Actions */
+
+"suspendAction.doNothing" = "Do Nothing";
+"suspendAction.enterSleepMode" = "Enter Rest Mode";
+
+/* MARK: - Auto-Connect View */
+
+"autoConnect.connectingTo" = "Connecting to %@...";
+"autoConnect.pressToCancel" = "Press any button to cancel";
+
+/* MARK: - Welcome View */
+
+"welcome.title" = "Chiaki";
+"welcome.subtitle" = "PlayStation Remote Play";
+"welcome.selectHost" = "Select a host to start streaming";
+
+/* MARK: - Errors */
+
+"error.hostNotRegistered" = "Host is not registered. Please register first.";
+"error.connectionFailed" = "Connection failed";
+"error.unableToAccessFile" = "Unable to access the selected file";
+"error.exportFailed" = "Failed to export: %@";
+"error.importFailed" = "Failed to import: %@";
+
+/* MARK: - Accessibility */
+
+"accessibility.disconnectStream" = "Disconnect and close stream";
+"accessibility.openControlsMenu" = "Open controls menu";
+"accessibility.addHostManually" = "Add a new host manually";
+"accessibility.networkQuality" = "Network quality: %@";
+"accessibility.packetLossStats" = "Packet loss %.1f percent, %d frames dropped, %d frames recovered";

@@ -20,21 +20,21 @@ struct RegistrationView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Console Information") {
-                    Picker("Console Type", selection: $viewModel.isPS5) {
-                        Text("PlayStation 5").tag(true)
-                        Text("PlayStation 4").tag(false)
+                Section {
+                    Picker(String(localized: "addHost.consoleType"), selection: $viewModel.isPS5) {
+                        Text(String(localized: "addHost.playstation5")).tag(true)
+                        Text(String(localized: "addHost.playstation4")).tag(false)
                     }
                     .pickerStyle(.segmented)
-                    
-                    TextField("IP Address", text: $viewModel.hostAddress)
+
+                    TextField(String(localized: "addHost.address"), text: $viewModel.hostAddress)
                         #if os(iOS)
                         .keyboardType(.decimalPad)
                         #endif
                 }
-                
-                Section("Credentials") {
-                    TextField("PIN (8 digits)", text: $viewModel.pin)
+
+                Section {
+                    TextField(String(localized: "registration.pinPlaceholder"), text: $viewModel.pin)
                         #if os(iOS)
                         .keyboardType(.numberPad)
                         #endif
@@ -43,18 +43,18 @@ struct RegistrationView: View {
                                 viewModel.pin = String(newValue.prefix(8))
                             }
                         }
-                    
+
                     TextField("PSN Account ID (Optional)", text: $viewModel.psnAccountId)
                         .autocorrectionDisabled()
                         #if os(iOS) || os(tvOS)
                         .textInputAutocapitalization(.never)
                         #endif
                 }
-                
+
                 Section {
                     Button(action: viewModel.startRegistration) {
                         HStack {
-                            Text("Register")
+                            Text(String(localized: "registration.register"))
                             if viewModel.state == .registering {
                                 Spacer()
                                 ProgressView()
@@ -63,7 +63,7 @@ struct RegistrationView: View {
                     }
                     .disabled(viewModel.state == .registering || viewModel.hostAddress.isEmpty || viewModel.pin.count < 8)
                 }
-                
+
                 if case .error(let message) = viewModel.state {
                     Section {
                         Text(message)
@@ -71,32 +71,32 @@ struct RegistrationView: View {
                             .font(.caption)
                     }
                 }
-                
+
                 if case .success = viewModel.state {
                     Section {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("Registration Successful!")
+                            Text(String(localized: "registration.success"))
                         }
                     }
                 }
             }
-            .navigationTitle("Register Console")
+            .navigationTitle(String(localized: "registration.title"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.Common.cancel) {
                         viewModel.cancelRegistration()
                         dismiss()
                     }
                 }
-                
+
                 if case .success = viewModel.state {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") {
+                        Button(L10n.Common.done) {
                             dismiss()
                         }
                     }

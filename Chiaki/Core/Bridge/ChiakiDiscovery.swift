@@ -55,6 +55,8 @@ struct DiscoveredHost: Identifiable, Equatable, Hashable {
             isPS5: isPS5
         )
         host.state = state
+        host.runningApp = runningApp
+        host.runningAppId = runningAppId
         if host.address != address {
             host.address = address
         }

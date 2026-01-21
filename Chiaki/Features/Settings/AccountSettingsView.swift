@@ -10,7 +10,10 @@ import SwiftUI
 struct AccountSettingsView: View {
     @StateObject private var psnService = PSNService.shared
     @State private var showingLogin = false
-    
+    @State private var isRefreshing = false
+    @State private var refreshError: String?
+    @State private var showRefreshSuccess = false
+
     var body: some View {
         List {
             Section {
@@ -19,50 +22,109 @@ struct AccountSettingsView: View {
                         VStack(alignment: .leading) {
                             Text(account.onlineId)
                                 .font(.headline)
-                            Text("Account ID: \(account.accountId)")
+                            Text(String(localized: "psnLogin.accountId \(account.accountId)"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                     }
-                    
+
+                    // Token status
+                    if let expirationDate = psnService.tokenExpirationDate {
+                        HStack {
+                            Text(String(localized: "psnLogin.tokenExpires"))
+                            Spacer()
+                            if psnService.isTokenExpired {
+                                Text(String(localized: "psnLogin.tokenExpired"))
+                                    .foregroundColor(.red)
+                            } else {
+                                Text(expirationDate.formatted(date: .abbreviated, time: .shortened))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .font(.caption)
+                    }
+
+                    // Manual refresh button
+                    Button {
+                        Task {
+                            await refreshToken()
+                        }
+                    } label: {
+                        HStack {
+                            if isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                            Text(String(localized: "psnLogin.refreshToken"))
+                        }
+                    }
+                    .disabled(isRefreshing)
+
                     Button(role: .destructive) {
                         psnService.signOut()
                     } label: {
-                        Text("Sign Out")
+                        Text(String(localized: "psnLogin.signOut"))
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Not Signed In")
+                        Text(String(localized: "psnLogin.notSignedIn"))
                             .font(.headline)
-                        Text("Sign in to PSN to easily register your consoles and enable remote play over the internet.")
+                        Text(String(localized: "psnLogin.signInDescription"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 4)
-                    
+
                     Button {
                         showingLogin = true
                     } label: {
-                        Text("Sign In to PSN")
+                        Text(String(localized: "psnLogin.signIn"))
                     }
                 }
             } header: {
-                Text("PlayStation Network")
+                Text(String(localized: "psnLogin.sectionTitle"))
             } footer: {
                 if !psnService.isAuthenticated {
-                    Text("Your credentials are stored securely in the system Keychain.")
+                    Text(String(localized: "psnLogin.credentialsNote"))
                 }
             }
         }
-        .navigationTitle("Account Settings")
+        .navigationTitle(L10n.Nav.account)
         .sheet(isPresented: $showingLogin) {
             PSNLoginView()
         }
+        .alert(String(localized: "psnLogin.refreshFailed"), isPresented: .init(
+            get: { refreshError != nil },
+            set: { if !$0 { refreshError = nil } }
+        )) {
+            Button(L10n.Common.ok, role: .cancel) {}
+        } message: {
+            if let error = refreshError {
+                Text(error)
+            }
+        }
+        .alert(String(localized: "psnLogin.refreshSuccess"), isPresented: $showRefreshSuccess) {
+            Button(L10n.Common.ok, role: .cancel) {}
+        }
+    }
+
+    private func refreshToken() async {
+        isRefreshing = true
+        refreshError = nil
+
+        do {
+            try await psnService.manualRefresh()
+            showRefreshSuccess = true
+        } catch {
+            refreshError = error.localizedDescription
+        }
+
+        isRefreshing = false
     }
 }
 

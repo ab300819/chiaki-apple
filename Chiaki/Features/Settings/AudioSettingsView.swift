@@ -9,27 +9,27 @@ struct AudioSettingsView: View {
             Section {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text("Volume")
+                        Text(L10n.Settings.Audio.volume)
                         Spacer()
                         Text("\(Int(store.streamSettings.volume * 100))%")
                             .foregroundColor(.secondary)
                     }
                     Slider(value: $store.streamSettings.volume, in: 0...1) {
-                        Text("Volume")
+                        Text(L10n.Settings.Audio.volume)
                     }
                 }
-                
-                Toggle("Microphone", isOn: $store.streamSettings.microphoneEnabled)
+
+                Toggle(L10n.Settings.Audio.microphone, isOn: $store.streamSettings.microphoneEnabled)
             } header: {
-                Text("Output & Input")
+                Text(L10n.Settings.Audio.outputInput)
             }
-            
+
             Section {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text("Buffer Size")
+                        Text(String(localized: "settings.audio.bufferSize"))
                         Spacer()
-                        Text("\(store.streamSettings.audioBufferSize) ms")
+                        Text(String(localized: "settings.audio.ms \(store.streamSettings.audioBufferSize)"))
                             .foregroundColor(.secondary)
                     }
                     Slider(
@@ -42,10 +42,10 @@ struct AudioSettingsView: View {
                     )
                 }
             } header: {
-                Text("Advanced")
+                Text(L10n.Settings.Video.advanced)
             }
         }
-        .navigationTitle("Audio")
+        .navigationTitle(L10n.Nav.audio)
         #if os(macOS)
         .formStyle(.grouped)
         #endif

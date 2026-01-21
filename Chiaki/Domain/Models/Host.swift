@@ -26,9 +26,14 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
     
     // Last successful connection time
     var lastConnectedAt: Date?
-    
+
+    // Whether this host is hidden from the main list
+    var isHidden: Bool = false
+
     // Transient state (not persisted)
     var state: HostState = .offline
+    var runningApp: String?
+    var runningAppId: String?
     
     var isRegistered: Bool {
         !registKey.isEmpty
@@ -49,6 +54,7 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
         case rpKey
         case rpKeyType
         case lastConnectedAt
+        case isHidden
     }
 
     init(
@@ -61,7 +67,8 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
         registKey: Data = Data(),
         rpKey: Data = Data(),
         rpKeyType: UInt32 = 0,
-        lastConnectedAt: Date? = nil
+        lastConnectedAt: Date? = nil,
+        isHidden: Bool = false
     ) {
         self.id = id
         self.nickname = nickname
@@ -73,5 +80,6 @@ struct ConsoleHost: Identifiable, Codable, Equatable, Hashable {
         self.rpKey = rpKey
         self.rpKeyType = rpKeyType
         self.lastConnectedAt = lastConnectedAt
+        self.isHidden = isHidden
     }
 }

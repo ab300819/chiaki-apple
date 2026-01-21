@@ -17,25 +17,40 @@ struct HostRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(host.nickname)
                     .font(.headline)
-                
+
+                // Running app info (when online)
+                if let runningApp = host.runningApp, host.state == .online {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 9))
+                        Text(runningApp)
+                        if let titleId = host.runningAppId {
+                            Text("(\(titleId))")
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                }
+
                 HStack(spacing: 8) {
                     Text(host.address)
                     if let version = host.systemVersion {
                         Text("•")
-                        Text("FW \(version)")
+                        Text(String(localized: "hostRow.firmwareVersion \(version)"))
                     }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                
+
                 if !host.macAddress.isEmpty {
                     Text(host.macAddress)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }
-                
+
                 if let lastConnected = host.lastConnectedAt {
-                    Text("Last seen: \(lastConnected.formatted(date: .abbreviated, time: .shortened))")
+                    Text(L10n.HostList.lastSeen(lastConnected.formatted(date: .abbreviated, time: .shortened)))
                         .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
                 }
@@ -46,7 +61,7 @@ struct HostRowView: View {
             // Status
             Group {
                 if !host.isRegistered {
-                    Text("Register Needed")
+                    Text(L10n.HostList.registerNeeded)
                         .font(.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -56,7 +71,7 @@ struct HostRowView: View {
                 } else {
                     switch host.state {
                     case .online:
-                        Text("Online")
+                        Text(L10n.Common.online)
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -65,7 +80,7 @@ struct HostRowView: View {
                             .clipShape(Capsule())
                     case .standby:
                         Button(action: onWakeUp) {
-                            Text("Wake Up")
+                            Text(L10n.HostList.wakeUp)
                                 .font(.caption)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -75,7 +90,7 @@ struct HostRowView: View {
                         }
                         .buttonStyle(.plain)
                     case .offline:
-                        Text("Offline")
+                        Text(L10n.Common.offline)
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)

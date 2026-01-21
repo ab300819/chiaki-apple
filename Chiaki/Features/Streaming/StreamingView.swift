@@ -9,13 +9,57 @@ struct StreamingView: View {
     @StateObject private var rendererHolder = VideoRendererHolder()
     @State private var showingDisconnectConfirmation = false
     @State private var shouldGoToBedOnDisconnect = false
+    @State private var pinVerified = false
+
+    private let host: ConsoleHost
+
+    private var requiresPin: Bool {
+        ConsolePinManager.shared.requiresPinEntry(for: host)
+    }
 
     init(host: ConsoleHost) {
+        self.host = host
         _viewModel = State(initialValue: StreamingViewModel(host: host))
     }
     
     var body: some View {
-            ZStack {
+        Group {
+            if requiresPin && !pinVerified {
+                pinEntryContent
+            } else {
+                streamingContent
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pinEntryContent: some View {
+        ConsolePinEntryView(host: host) {
+            pinVerified = true
+        } onCancel: {
+            dismiss()
+        }
+    }
+
+    private func handleDisconnectAction() {
+        switch settingsStore.disconnectAction {
+        case .doNothing:
+            viewModel.disconnect()
+            dismiss()
+        case .enterSleepMode:
+            viewModel.goToBed()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                viewModel.disconnect()
+                dismiss()
+            }
+        case .ask:
+            showingDisconnectConfirmation = true
+        }
+    }
+
+    @ViewBuilder
+    private var streamingContent: some View {
+        ZStack {
             Color.black
                 .ignoresSafeArea()
             
@@ -46,14 +90,14 @@ struct StreamingView: View {
                 VStack {
                     HStack(alignment: .center) {
                         Button(action: {
-                            showingDisconnectConfirmation = true
+                            handleDisconnectAction()
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 28))
                                 .foregroundColor(.white)
                                 .shadow(radius: 4)
                         }
-                        .accessibilityLabel("Disconnect and close stream")
+                        .accessibilityLabel(String(localized: "accessibility.disconnectStream"))
 
                         Spacer()
 
@@ -66,7 +110,7 @@ struct StreamingView: View {
                                 .background(.ultraThinMaterial)
                                 .clipShape(Circle())
                         }
-                        .accessibilityLabel("Open controls menu")
+                        .accessibilityLabel(String(localized: "accessibility.openControlsMenu"))
 
                         StreamingOverlay(viewModel: viewModel)
                     }
@@ -101,12 +145,13 @@ struct StreamingView: View {
                     },
                     onDisconnect: {
                         viewModel.toggleControlMenu()
-                        showingDisconnectConfirmation = true
+                        handleDisconnectAction()
                     },
                     onGoToBed: {
                         viewModel.goToBed()
                         viewModel.toggleControlMenu()
-                    }
+                    },
+                    onToggleMic: viewModel.isMicEnabled ? { viewModel.toggleMic() } : nil
                 )
                 .transition(.scale.combined(with: .opacity))
                 .zIndex(4)
@@ -120,16 +165,16 @@ struct StreamingView: View {
             viewModel.toggleOverlay()
         }
         .confirmationDialog(
-            "End Session",
+            L10n.Streaming.disconnectConfirmTitle,
             isPresented: $showingDisconnectConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Disconnect Only", role: .destructive) {
+            Button(L10n.Streaming.disconnectOnly, role: .destructive) {
                 viewModel.disconnect()
                 dismiss()
             }
-            
-            Button("Enter Rest Mode & Disconnect") {
+
+            Button(L10n.Streaming.restModeAndDisconnect) {
                 viewModel.goToBed()
                 // Give it a tiny bit of time to send the command before disconnecting
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -137,15 +182,14 @@ struct StreamingView: View {
                     dismiss()
                 }
             }
-            
-            Button("Cancel", role: .cancel) { }
+
+            Button(L10n.Common.cancel, role: .cancel) { }
         } message: {
-            Text("Do you want to put the console into rest mode before disconnecting?")
+            Text(L10n.Streaming.disconnectConfirmMessage)
         }
         #if os(tvOS)
         .onExitCommand {
-            viewModel.disconnect()
-            dismiss()
+            handleDisconnectAction()
         }
         .onPlayPauseCommand {
             viewModel.toggleOverlay()
@@ -209,8 +253,8 @@ private struct VideoPlaceholderView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(1.5)
-                    
-                    Text("Connecting to Console...")
+
+                    Text(L10n.Streaming.connecting)
                         .font(.headline)
                         .foregroundColor(.white.opacity(0.8))
                 } else if case .error(let message) = state {
@@ -226,8 +270,8 @@ private struct VideoPlaceholderView: View {
                     Image(systemName: "gamecontroller.fill")
                         .font(.system(size: 60))
                         .foregroundColor(.white.opacity(0.1))
-                    
-                    Text("Video Stream Placeholder")
+
+                    Text(String(localized: "streaming.videoPlaceholder"))
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.3))
                 }

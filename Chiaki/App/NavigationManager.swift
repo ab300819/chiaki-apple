@@ -28,6 +28,10 @@ enum SidebarItem: Hashable {
     var toggleControlMenuTrigger: Bool = false
     var displayModeChangeTrigger: StreamSettings.DisplayMode?
     var volumeChangeTrigger: Double?
+
+    // Auto-Connect State
+    var isAutoConnecting: Bool = false
+    var autoConnectHost: ConsoleHost?
     
     // Actions
     func openAddHost() {
@@ -51,5 +55,19 @@ enum SidebarItem: Hashable {
     
     func wakeUpSelectedHost() {
         wakeUpSelectedHostTrigger = true
+    }
+
+    // MARK: - Auto-Connect
+
+    /// Start auto-connect process for a specific host
+    func startAutoConnect(host: ConsoleHost) {
+        autoConnectHost = host
+        isAutoConnecting = true
+    }
+
+    /// Cancel or complete auto-connect process
+    func endAutoConnect() {
+        isAutoConnecting = false
+        autoConnectHost = nil
     }
 }

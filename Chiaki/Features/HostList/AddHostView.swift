@@ -11,30 +11,30 @@ struct AddHostView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Host Details") {
-                    TextField("Nickname", text: $nickname)
-                    TextField("IP Address", text: $address)
+                Section {
+                    TextField(String(localized: "addHost.nickname"), text: $nickname)
+                    TextField(String(localized: "addHost.address"), text: $address)
                         #if os(iOS)
                         .keyboardType(.numbersAndPunctuation)
                         #endif
-                    Picker("Console Type", selection: $isPS5) {
-                        Text("PS5").tag(true)
-                        Text("PS4").tag(false)
+                    Picker(String(localized: "addHost.consoleType"), selection: $isPS5) {
+                        Text(String(localized: "addHost.ps5")).tag(true)
+                        Text(String(localized: "addHost.ps4")).tag(false)
                     }
                 }
             }
-            .navigationTitle("Add Host")
+            .navigationTitle(String(localized: "addHost.title"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.Common.cancel) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L10n.Common.save) {
                         let host = ConsoleHost(
                             nickname: nickname.isEmpty ? "PlayStation" : nickname,
                             address: address,

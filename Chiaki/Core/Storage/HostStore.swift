@@ -17,6 +17,21 @@ final class HostStore {
 
     private(set) var hosts: [ConsoleHost] = []
 
+    /// Registered hosts that are not hidden
+    var visibleRegisteredHosts: [ConsoleHost] {
+        hosts.filter { $0.isRegistered && !$0.isHidden }
+    }
+
+    /// All registered hosts (including hidden)
+    var registeredHosts: [ConsoleHost] {
+        hosts.filter { $0.isRegistered }
+    }
+
+    /// Hidden hosts only
+    var hiddenHosts: [ConsoleHost] {
+        hosts.filter { $0.isHidden }
+    }
+
     // MARK: - Private Properties
 
     private let userDefaults: UserDefaults
@@ -62,6 +77,41 @@ final class HostStore {
     /// Remove host by ID
     func removeHost(id: UUID) {
         hosts.removeAll { $0.id == id }
+        saveHosts()
+    }
+
+    /// Hide a host (removes from main list but keeps registration)
+    func hideHost(_ host: ConsoleHost) {
+        guard let index = hosts.firstIndex(where: { $0.id == host.id }) else { return }
+        hosts[index].isHidden = true
+        saveHosts()
+    }
+
+    /// Hide host by ID
+    func hideHost(id: UUID) {
+        guard let index = hosts.firstIndex(where: { $0.id == id }) else { return }
+        hosts[index].isHidden = true
+        saveHosts()
+    }
+
+    /// Unhide a host (restore to main list)
+    func unhideHost(_ host: ConsoleHost) {
+        guard let index = hosts.firstIndex(where: { $0.id == host.id }) else { return }
+        hosts[index].isHidden = false
+        saveHosts()
+    }
+
+    /// Unhide host by ID
+    func unhideHost(id: UUID) {
+        guard let index = hosts.firstIndex(where: { $0.id == id }) else { return }
+        hosts[index].isHidden = false
+        saveHosts()
+    }
+
+    /// Unhide host by MAC address
+    func unhideHost(byMac mac: String) {
+        guard let index = hosts.firstIndex(where: { $0.macAddress == mac }) else { return }
+        hosts[index].isHidden = false
         saveHosts()
     }
 

@@ -13,12 +13,13 @@ struct StreamingControlsView: View {
     var onSaveSettings: (Double, StreamSettings.DisplayMode, Double) -> Void
     var onDisconnect: () -> Void
     var onGoToBed: () -> Void
+    var onToggleMic: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Controls")
+                Text(L10n.Streaming.controls)
                     .font(.headline)
                     .foregroundColor(.primary)
 
@@ -38,12 +39,15 @@ struct StreamingControlsView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    // Volume Control
-                    VolumeControlSection(
+                    // Volume & Mic Control
+                    AudioControlSection(
                         volume: Binding(
                             get: { viewModel.volume },
                             set: { viewModel.setVolume($0) }
-                        )
+                        ),
+                        isMicEnabled: viewModel.isMicEnabled,
+                        isMicMuted: viewModel.isMicMuted,
+                        onToggleMic: onToggleMic
                     )
 
                     Divider()
@@ -57,6 +61,16 @@ struct StreamingControlsView: View {
                         zoomFactor: Binding(
                             get: { viewModel.zoomFactor },
                             set: { viewModel.setZoomFactor($0) }
+                        )
+                    )
+
+                    Divider()
+
+                    // Video Preset Control
+                    VideoPresetSection(
+                        preset: Binding(
+                            get: { viewModel.videoPreset },
+                            set: { viewModel.setVideoPreset($0) }
                         )
                     )
 
@@ -94,14 +108,17 @@ struct StreamingControlsView: View {
     #endif
 }
 
-// MARK: - Volume Control Section
+// MARK: - Audio Control Section
 
-private struct VolumeControlSection: View {
+private struct AudioControlSection: View {
     @Binding var volume: Double
+    let isMicEnabled: Bool
+    let isMicMuted: Bool
+    var onToggleMic: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Volume", systemImage: volumeIcon)
+            Label(L10n.StreamingControls.audio, systemImage: volumeIcon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(.secondary)
 
@@ -121,6 +138,27 @@ private struct VolumeControlSection: View {
                     .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.secondary)
                     .frame(width: 40, alignment: .trailing)
+            }
+
+            // Microphone toggle (if enabled)
+            if isMicEnabled, let toggleMic = onToggleMic {
+                HStack {
+                    Button(action: toggleMic) {
+                        HStack(spacing: 8) {
+                            Image(systemName: isMicMuted ? "mic.slash.fill" : "mic.fill")
+                                .foregroundColor(isMicMuted ? .red : .green)
+                            Text(isMicMuted ? L10n.StreamingControls.micMuted : L10n.StreamingControls.micActive)
+                                .font(.caption)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(isMicMuted ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                }
             }
         }
     }
@@ -146,7 +184,7 @@ private struct DisplayModeSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Display Mode", systemImage: "rectangle.on.rectangle")
+            Label(L10n.StreamingControls.displayMode, systemImage: "rectangle.on.rectangle")
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(.secondary)
 
@@ -183,7 +221,7 @@ private struct DisplayModeSection: View {
             // Zoom factor slider (only shown in zoom mode)
             if displayMode == .zoom {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Zoom Level")
+                    Text(L10n.StreamingControls.zoomLevel)
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -212,6 +250,55 @@ private struct DisplayModeSection: View {
     }
 }
 
+// MARK: - Video Preset Section
+
+private struct VideoPresetSection: View {
+    @Binding var preset: StreamSettings.VideoPreset
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(L10n.StreamingControls.videoPreset, systemImage: "sparkles.rectangle.stack")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+
+            #if os(tvOS)
+            // tvOS: Horizontal buttons for focus navigation
+            HStack(spacing: 12) {
+                ForEach(StreamSettings.VideoPreset.allCases) { presetOption in
+                    Button(action: { preset = presetOption }) {
+                        VStack(spacing: 8) {
+                            Image(systemName: presetOption.iconName)
+                                .font(.title2)
+                            Text(presetOption.rawValue)
+                                .font(.caption)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(preset == presetOption ? Color.chiakiPurple.opacity(0.3) : Color.clear)
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            #else
+            // iOS/macOS: Segmented picker
+            Picker("Video Preset", selection: $preset) {
+                ForEach(StreamSettings.VideoPreset.allCases) { presetOption in
+                    Label(presetOption.rawValue, systemImage: presetOption.iconName)
+                        .tag(presetOption)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            // Description
+            Text(preset.description)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            #endif
+        }
+    }
+}
+
 // MARK: - Quick Actions Section
 
 private struct QuickActionsSection: View {
@@ -220,14 +307,14 @@ private struct QuickActionsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Quick Actions", systemImage: "bolt.fill")
+            Label(L10n.StreamingControls.quickActions, systemImage: "bolt.fill")
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(.secondary)
 
             HStack(spacing: 12) {
                 // Go to Bed (Rest Mode)
                 ActionButton(
-                    title: "Rest Mode",
+                    title: L10n.Streaming.restMode,
                     icon: "moon.fill",
                     color: .orange,
                     action: onGoToBed
@@ -235,7 +322,7 @@ private struct QuickActionsSection: View {
 
                 // Disconnect
                 ActionButton(
-                    title: "Disconnect",
+                    title: L10n.Streaming.disconnect,
                     icon: "xmark.circle.fill",
                     color: .red,
                     action: onDisconnect

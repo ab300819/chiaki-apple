@@ -4,6 +4,7 @@ struct HostListView: View {
     @Environment(NavigationManager.self) var navigationManager
     @State private var viewModel = HostListViewModel()
     @State private var registeringHost: ConsoleHost?
+    @State private var settingPinHost: ConsoleHost?
     @State private var showDeleteConfirmation = false
     @State private var indexSetToDelete: IndexSet?
     @State private var selectedHostId: ConsoleHost.ID?
@@ -18,23 +19,34 @@ struct HostListView: View {
             iOSBody
             #endif
         }
-        .confirmationDialog("Delete Host?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
+        .confirmationDialog(L10n.HostList.deleteConfirmTitle, isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button(L10n.Common.delete, role: .destructive) {
                 if let indexSet = indexSetToDelete {
                     viewModel.deleteHost(at: indexSet)
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L10n.Common.cancel, role: .cancel) {}
         } message: {
-            Text("This action cannot be undone.")
+            Text(L10n.HostList.deleteConfirmMessage)
         }
         .navigationDestination(for: ConsoleHost.self) { host in
             StreamingView(host: host)
         }
         .toolbar {
+            #if !os(tvOS)
+            ToolbarItem(placement: .navigation) {
+                Button(action: { viewModel.toggleDiscovery() }) {
+                    Label(
+                        viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery,
+                        systemImage: viewModel.isDiscovering ? "wifi" : "wifi.slash"
+                    )
+                }
+                .help(viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery)
+            }
+            #endif
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { navigationManager.showAddHostSheet = true }) {
-                    Label("Add Host", systemImage: "plus")
+                    Label(L10n.HostList.addHost, systemImage: "plus")
                 }
             }
         }
@@ -43,6 +55,15 @@ struct HostListView: View {
         }
         .sheet(item: $registeringHost) { host in
             RegistrationView(hostStore: HostManager.shared.hostStore, initialAddress: host.address)
+        }
+        .sheet(item: $settingPinHost) { host in
+            ConsolePinView(host: host) { pin in
+                if let pin = pin {
+                    ConsolePinManager.shared.setPin(pin, for: host)
+                } else {
+                    ConsolePinManager.shared.clearPin(for: host)
+                }
+            }
         }
         .onChange(of: navigationManager.refreshDiscoveryTrigger) { _, newValue in
             if newValue {
@@ -80,11 +101,19 @@ struct HostListView: View {
                             .focused($focusedHost, equals: host.id)
                             .contextMenu {
                                 if host.state == .standby {
-                                    Button("Wake Up") {
+                                    Button(L10n.HostList.wakeUp) {
                                         viewModel.wakeUp(host)
                                     }
                                 }
-                                Button("Delete", role: .destructive) {
+                                Button {
+                                    settingPinHost = host
+                                } label: {
+                                    Label(
+                                        ConsolePinManager.shared.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
+                                        systemImage: "lock"
+                                    )
+                                }
+                                Button(L10n.Common.delete, role: .destructive) {
                                     if let index = viewModel.hosts.firstIndex(of: host) {
                                         viewModel.deleteHost(at: IndexSet(integer: index))
                                     }
@@ -104,7 +133,21 @@ struct HostListView: View {
                 .padding(50)
             }
         }
-        .navigationTitle("Hosts")
+        .navigationTitle(L10n.HostList.title)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                HStack(spacing: 8) {
+                    if viewModel.isDiscovering {
+                        Image(systemName: "wifi")
+                            .foregroundStyle(.green)
+                            .symbolEffect(.pulse)
+                    }
+                    Button(action: { viewModel.toggleDiscovery() }) {
+                        Text(viewModel.isDiscovering ? L10n.HostList.stop : L10n.HostList.discover)
+                    }
+                }
+            }
+        }
         .onAppear {
             if focusedHost == nil {
                 focusedHost = viewModel.hosts.first?.id
@@ -125,6 +168,27 @@ struct HostListView: View {
                                 viewModel.wakeUp(host)
                             }
                         }
+                        .contextMenu {
+                            if host.state == .standby {
+                                Button(L10n.HostList.wakeUp, systemImage: "power") {
+                                    viewModel.wakeUp(host)
+                                }
+                            }
+                            Button {
+                                settingPinHost = host
+                            } label: {
+                                Label(
+                                    ConsolePinManager.shared.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
+                                    systemImage: "lock"
+                                )
+                            }
+                            Button(L10n.Common.delete, systemImage: "trash", role: .destructive) {
+                                if let index = viewModel.hosts.firstIndex(of: host) {
+                                    indexSetToDelete = IndexSet(integer: index)
+                                    showDeleteConfirmation = true
+                                }
+                            }
+                        }
                     } else {
                         Button(action: { registeringHost = host }) {
                             HostRowView(host: host) {
@@ -143,23 +207,23 @@ struct HostListView: View {
         .refreshable {
             await viewModel.refresh()
         }
-        .navigationTitle("Hosts")
+        .navigationTitle(L10n.HostList.title)
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 12) {
             Image(systemName: "gamecontroller.slash")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
-            Text("No Hosts Found")
+            Text(L10n.HostList.noHostsFound)
                 .font(.headline)
-            Text("Add a host manually or wait for discovery.")
+            Text(L10n.HostList.noHostsDescription)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             Button(action: { navigationManager.showAddHostSheet = true }) {
-                Text("Add Host")
+                Text(L10n.HostList.addHost)
                     .fontWeight(.semibold)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
@@ -169,7 +233,7 @@ struct HostListView: View {
             }
             .padding(.top, 12)
             .buttonStyle(.plain)
-            .accessibilityLabel("Add a new host manually")
+            .accessibilityLabel(String(localized: "accessibility.addHostManually"))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .listRowBackground(Color.clear)

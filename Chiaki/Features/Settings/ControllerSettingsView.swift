@@ -13,7 +13,7 @@ struct ControllerSettingsView: View {
                     HStack {
                         Image(systemName: "gamecontroller")
                             .foregroundColor(.secondary)
-                        Text("No controllers connected")
+                        Text(L10n.Settings.Controller.noControllers)
                             .foregroundColor(.secondary)
                     }
                 } else {
@@ -30,7 +30,7 @@ struct ControllerSettingsView: View {
                             }
                             Spacer()
                             if controller.isActive {
-                                Text("Active")
+                                Text(String(localized: "settings.controller.active"))
                                     .font(.caption)
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 8)
@@ -42,25 +42,25 @@ struct ControllerSettingsView: View {
                     }
                 }
             } header: {
-                Text("Connected Controllers")
+                Text(L10n.Settings.Controller.connectedControllers)
             }
 
             // Feedback Section
             Section {
-                Toggle("Haptic Feedback", isOn: $store.streamSettings.hapticFeedbackEnabled)
-                Toggle("Motion Controls", isOn: $store.streamSettings.motionControlsEnabled)
-                Toggle("Show Controller Hints", isOn: $store.streamSettings.showControllerHints)
+                Toggle(String(localized: "settings.controller.hapticFeedback"), isOn: $store.streamSettings.hapticFeedbackEnabled)
+                Toggle(String(localized: "settings.controller.motionControls"), isOn: $store.streamSettings.motionControlsEnabled)
+                Toggle(String(localized: "settings.controller.showControllerHints"), isOn: $store.streamSettings.showControllerHints)
             } header: {
-                Text("Feedback")
+                Text(L10n.Settings.Controller.feedback)
             } footer: {
-                Text("Controller hints show button shortcuts during streaming. Motion controls require a DualSense or compatible controller.")
+                Text(L10n.Settings.Controller.feedbackDescription)
             }
 
             // Input Settings Section
             Section {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text("Stick Deadzone")
+                        Text(String(localized: "settings.controller.stickDeadzone"))
                         Spacer()
                         Text(String(format: "%.0f%%", store.streamSettings.stickDeadzone * 100))
                             .foregroundColor(.secondary)
@@ -73,22 +73,20 @@ struct ControllerSettingsView: View {
                     .tint(Color.chiakiPurple)
                 }
 
-                Toggle("Swap ✕/○ Buttons", isOn: $store.streamSettings.swapCrossCircle)
+                Toggle(String(localized: "settings.controller.swapCrossCircle"), isOn: $store.streamSettings.swapCrossCircle)
             } header: {
-                Text("Input")
-            } footer: {
-                Text("Enable button swap for Japanese-style controls where ○ is confirm.")
+                Text(L10n.Settings.Controller.input)
             }
 
             #if os(iOS)
             // Touch Controller Section (iOS only)
             Section {
-                Toggle("Touch Controller", isOn: $store.streamSettings.isTouchControllerEnabled)
+                Toggle(String(localized: "settings.controller.touchController"), isOn: $store.streamSettings.isTouchControllerEnabled)
 
                 if store.streamSettings.isTouchControllerEnabled {
                     VStack(alignment: .leading) {
                         HStack {
-                            Text("Opacity")
+                            Text(String(localized: "settings.controller.touchControllerOpacity"))
                             Spacer()
                             Text(String(format: "%.0f%%", store.streamSettings.touchControllerOpacity * 100))
                                 .foregroundColor(.secondary)
@@ -102,13 +100,11 @@ struct ControllerSettingsView: View {
                     }
                 }
             } header: {
-                Text("Touch Controller")
-            } footer: {
-                Text("Show virtual controller buttons on screen when no physical controller is connected.")
+                Text(String(localized: "settings.controller.touchController"))
             }
             #endif
         }
-        .navigationTitle("Controller")
+        .navigationTitle(L10n.Nav.controller)
         #if os(macOS)
         .formStyle(.grouped)
         #endif

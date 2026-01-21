@@ -30,6 +30,18 @@ struct TVHostCardView: View {
                             .fontWeight(.bold)
                             .foregroundStyle(isFocused ? .white : .primary)
 
+                        // Running app info (when online)
+                        if let runningApp = host.runningApp, host.state == .online {
+                            HStack(spacing: 4) {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 10))
+                                Text(runningApp)
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(isFocused ? .white : .blue)
+                            .lineLimit(1)
+                        }
+
                         Text(host.address)
                             .font(.caption)
                             .foregroundStyle(isFocused ? .white.opacity(0.8) : .secondary)
@@ -37,6 +49,11 @@ struct TVHostCardView: View {
                         // Additional info (shown on focus)
                         if isFocused {
                             VStack(spacing: 2) {
+                                if let titleId = host.runningAppId, host.state == .online {
+                                    Text("Title: \(titleId)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
                                 if let version = host.systemVersion {
                                     Text("FW \(version)")
                                         .font(.caption2)

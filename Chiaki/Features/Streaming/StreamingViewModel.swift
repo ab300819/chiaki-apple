@@ -53,6 +53,11 @@ final class StreamingViewModel {
     var displayMode: StreamSettings.DisplayMode = .normal
     var zoomFactor: Double = 1.0
     var isControlMenuVisible: Bool = false
+    var videoPreset: StreamSettings.VideoPreset = .default
+
+    // Microphone controls
+    var isMicEnabled: Bool = false
+    var isMicMuted: Bool = true
 
     /// Called when connection is established
     var onConnected: (() -> Void)?
@@ -285,6 +290,21 @@ final class StreamingViewModel {
     func setZoomFactor(_ factor: Double) {
         zoomFactor = max(1.0, min(2.0, factor))
         videoRenderer?.zoomFactor = Float(zoomFactor)
+    }
+
+    /// Set video rendering preset
+    func setVideoPreset(_ preset: StreamSettings.VideoPreset) {
+        videoPreset = preset
+        // TODO: Apply preset to video renderer when libplacebo integration is added
+        Logger.session.info("Video preset changed to: \(preset.rawValue)")
+    }
+
+    /// Toggle microphone mute state
+    func toggleMic() {
+        guard isMicEnabled else { return }
+        isMicMuted.toggle()
+        session.toggleMicrophone(muted: isMicMuted)
+        Logger.session.info("Microphone \(isMicMuted ? "muted" : "unmuted")")
     }
 
     /// Apply settings from SettingsStore
