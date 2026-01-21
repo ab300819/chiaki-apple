@@ -128,8 +128,8 @@
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
-            "value": "accessibility.packetLossStats %1$lf %2$lld %3$lld"
+            "state": "translated",
+            "value": "Packet loss %.1f%%, %lld frames dropped, %lld frames recovered"
           }
         }
       }
