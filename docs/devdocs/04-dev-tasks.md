@@ -360,6 +360,11 @@
 - [x] T9.4.2: 提取剩余所有硬编码字符串至 `Localizable.xcstrings` ✅
 - [x] T9.4.3: 还原 PSN Token 手动刷新机制 ✅
 
+**实现说明**:
+- `ConsolesSettingsView.swift` - 已使用 L10n 和 String(localized:) 完成国际化
+- `LogViewerView.swift` - 新增 L10n.Settings.Logs 和 L10n.LogLevel 键
+- 新增中英文翻译：日志级别筛选、搜索提示、导出文本
+
 ### M9 优先级矩阵
 
 ```
@@ -395,4 +400,4 @@
 | T9.2.1: GeneralSettingsView | 断开动作生效 | 配置持久化 | ✅ |
 | T9.2.2: ConsolesSettingsView | 主机可管理 | 隐藏/取消隐藏正常 | ✅ |
 | T9.3: UI 细节 | 信息显示完整 | 控件响应正常 | ✅ |
-| T9.4: i18n | 字符串已提取 | 切换语言生效 | ⏳ |
+| T9.4: i18n | 字符串已提取 | 切换语言生效 | ✅ |

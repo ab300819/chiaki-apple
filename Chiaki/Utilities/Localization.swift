@@ -156,7 +156,22 @@ enum L10n {
             static let title = String(localized: "settings.logs.title")
             static let export = String(localized: "settings.logs.export")
             static let allLevels = String(localized: "settings.logs.allLevels")
+            static let levelFilter = String(localized: "settings.logs.levelFilter")
+            static let searchPrompt = String(localized: "settings.logs.searchPrompt")
+            static let exportHeader = String(localized: "settings.logs.exportHeader")
+            static let exportGenerated = String(localized: "settings.logs.exportGenerated")
+            static let exportTotalEntries = String(localized: "settings.logs.exportTotalEntries")
         }
+    }
+
+    // MARK: - Log Levels
+
+    enum LogLevel {
+        static let error = String(localized: "logLevel.error")
+        static let warning = String(localized: "logLevel.warning")
+        static let info = String(localized: "logLevel.info")
+        static let debug = String(localized: "logLevel.debug")
+        static let verbose = String(localized: "logLevel.verbose")
     }
 
     // MARK: - Errors

@@ -26,11 +26,11 @@ struct LogViewerView: View {
         VStack(spacing: 0) {
             // Filters
             HStack {
-                Picker("Level", selection: $selectedLevel) {
+                Picker(L10n.Settings.Logs.levelFilter, selection: $selectedLevel) {
                     Text(L10n.Settings.Logs.allLevels).tag(nil as ChiakiLogSeverity?)
                     Divider()
                     ForEach(ChiakiLogSeverity.allCases, id: \.self) { level in
-                        Text(level.description).tag(level as ChiakiLogSeverity?)
+                        Text(level.localizedDescription).tag(level as ChiakiLogSeverity?)
                     }
                 }
                 .pickerStyle(.menu)
@@ -51,7 +51,7 @@ struct LogViewerView: View {
                 LogEntryRow(entry: entry)
             }
             .listStyle(.plain)
-            .searchable(text: $searchText, prompt: "Search logs")
+            .searchable(text: $searchText, prompt: L10n.Settings.Logs.searchPrompt)
         }
         .navigationTitle(L10n.Settings.Logs.title)
         #if os(iOS)
@@ -77,15 +77,15 @@ struct LogViewerView: View {
 
     private func formatLogsForExport() -> String {
         var lines: [String] = []
-        lines.append("Chiaki Logs Export")
-        lines.append("Generated: \(Date().formatted())")
-        lines.append("Total entries: \(filteredLogs.count)")
+        lines.append(L10n.Settings.Logs.exportHeader)
+        lines.append("\(L10n.Settings.Logs.exportGenerated) \(Date().formatted())")
+        lines.append("\(L10n.Settings.Logs.exportTotalEntries) \(filteredLogs.count)")
         lines.append(String(repeating: "-", count: 80))
         lines.append("")
 
         for entry in filteredLogs.reversed() {
             let timestamp = entry.timestamp.formatted(date: .abbreviated, time: .standard)
-            let level = entry.level.description.uppercased().padding(toLength: 7, withPad: " ", startingAt: 0)
+            let level = entry.level.localizedDescription.uppercased().padding(toLength: 7, withPad: " ", startingAt: 0)
             let category = "[\(entry.category)]".padding(toLength: 15, withPad: " ", startingAt: 0)
             lines.append("\(timestamp) \(level) \(category) \(entry.message)")
         }
@@ -121,11 +121,11 @@ struct LogDocument: FileDocument {
 
 private struct LogEntryRow: View {
     let entry: Logger.LogEntry
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(entry.level.description.uppercased())
+                Text(entry.level.localizedDescription.uppercased())
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
@@ -167,7 +167,7 @@ extension ChiakiLogSeverity: CaseIterable {
     public static var allCases: [ChiakiLogSeverity] {
         [.error, .warning, .info, .debug, .verbose]
     }
-    
+
     var description: String {
         switch self {
         case .error: return "Error"
@@ -175,6 +175,16 @@ extension ChiakiLogSeverity: CaseIterable {
         case .info: return "Info"
         case .debug: return "Debug"
         case .verbose: return "Verbose"
+        }
+    }
+
+    var localizedDescription: String {
+        switch self {
+        case .error: return L10n.LogLevel.error
+        case .warning: return L10n.LogLevel.warning
+        case .info: return L10n.LogLevel.info
+        case .debug: return L10n.LogLevel.debug
+        case .verbose: return L10n.LogLevel.verbose
         }
     }
 }
