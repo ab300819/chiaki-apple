@@ -137,14 +137,13 @@ struct VirtualControllerView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .landscapeLeft) {
     ZStack {
         Color.blue.edgesIgnoringSafeArea(.all)
         VirtualControllerView { input in
             print("Input: \(input)")
         }
     }
-    .previewInterfaceOrientation(.landscapeLeft)
     .environment(SettingsStore())
     .environment(NavigationManager())
 }

@@ -1,15 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "(%@)" : {
-
-    },
-    "%lld drop" : {
-
-    },
-    "%lld rec" : {
-
-    },
     "%lld%%" : {
 
     },
@@ -69,6 +60,9 @@
         }
       }
     },
+    "accessibility.networkQuality %@" : {
+
+    },
     "accessibility.openControlsMenu" : {
       "localizations" : {
         "en" : {
@@ -98,6 +92,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "丢包率 %.1f%%，%d 帧丢失，%d 帧恢复"
+          }
+        }
+      }
+    },
+    "accessibility.packetLossStats %lf %lld %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "accessibility.packetLossStats %1$lf %2$lld %3$lld"
           }
         }
       }
@@ -234,15 +238,6 @@
         }
       }
     },
-    "Are you sure you want to delete \"%@\"? This will remove its registration and you'll need to re-register to connect." : {
-
-    },
-    "Are you sure you want to hide \"%@\"? It will no longer appear in the host list but will remain registered." : {
-
-    },
-    "Are you sure you want to unhide \"%@\"? It will appear in the host list again." : {
-
-    },
     "Authenticating..." : {
 
     },
@@ -288,12 +283,6 @@
 
     },
     "Chiaki" : {
-
-    },
-    "Clear PIN" : {
-
-    },
-    "Clear PIN?" : {
 
     },
     "common.cancel" : {
@@ -344,6 +333,9 @@
           }
         }
       }
+    },
+    "common.hidden" : {
+
     },
     "common.hide" : {
       "localizations" : {
@@ -409,6 +401,9 @@
         }
       }
     },
+    "common.playstation" : {
+
+    },
     "common.save" : {
       "localizations" : {
         "en" : {
@@ -456,9 +451,6 @@
           }
         }
       }
-    },
-    "Connect" : {
-
     },
     "consolePin.changePin" : {
       "localizations" : {
@@ -510,6 +502,9 @@
         }
       }
     },
+    "consolePin.clearPinConfirm %@" : {
+
+    },
     "consolePin.clearPinDescription" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -526,6 +521,9 @@
           }
         }
       }
+    },
+    "consolePin.clearPinTitle" : {
+
     },
     "consolePin.connect" : {
       "extractionState" : "manual",
@@ -561,6 +559,9 @@
         }
       }
     },
+    "consolePin.enterPin %@" : {
+
+    },
     "consolePin.incorrectPin" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -577,6 +578,9 @@
           }
         }
       }
+    },
+    "consolePin.incorrectPin %lld" : {
+
     },
     "consolePin.pinDescription" : {
       "extractionState" : "manual",
@@ -629,6 +633,9 @@
         }
       }
     },
+    "consolePin.pinRequiredDescription %@" : {
+
+    },
     "consolePin.setPin" : {
       "localizations" : {
         "en" : {
@@ -662,15 +669,6 @@
           }
         }
       }
-    },
-    "Consoles" : {
-
-    },
-    "Delete" : {
-
-    },
-    "Delete Console" : {
-
     },
     "disconnectAction.ask" : {
       "extractionState" : "manual",
@@ -881,9 +879,6 @@
         }
       }
     },
-    "Enter PIN for %@" : {
-
-    },
     "error.connectionFailed" : {
       "localizations" : {
         "en" : {
@@ -974,18 +969,6 @@
           }
         }
       }
-    },
-    "Hidden" : {
-
-    },
-    "Hidden Consoles" : {
-
-    },
-    "Hide" : {
-
-    },
-    "Hide Console" : {
-
     },
     "hostList.addHost" : {
       "localizations" : {
@@ -1241,16 +1224,13 @@
         }
       }
     },
+    "hostRow.titleIdParentheses %@" : {
+
+    },
     "Hosts" : {
 
     },
-    "Incorrect PIN. %lld attempts remaining." : {
-
-    },
     "Level" : {
-
-    },
-    "Manage your registered PlayStation consoles. Hidden consoles won't appear in the host list." : {
 
     },
     "Mute" : {
@@ -1417,12 +1397,6 @@
         }
       }
     },
-    "Network quality: %@" : {
-
-    },
-    "No registered consoles" : {
-
-    },
     "OK" : {
 
     },
@@ -1442,6 +1416,9 @@
           }
         }
       }
+    },
+    "overlay.drop %lld" : {
+
     },
     "overlay.dropped" : {
       "comment" : "MARK: - Streaming Overlay",
@@ -1478,6 +1455,9 @@
         }
       }
     },
+    "overlay.rec %lld" : {
+
+    },
     "overlay.recovered" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1495,23 +1475,7 @@
         }
       }
     },
-    "Packet loss %@ percent, %lld frames dropped, %lld frames recovered" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Packet loss %1$@ percent, %2$lld frames dropped, %3$lld frames recovered"
-          }
-        }
-      }
-    },
-    "PIN Required" : {
-
-    },
     "PlayStation Remote Play" : {
-
-    },
-    "PSN Account ID (Optional)" : {
 
     },
     "PSN Login" : {
@@ -1537,6 +1501,9 @@
           }
         }
       }
+    },
+    "psnLogin.accountIdPlaceholder" : {
+
     },
     "psnLogin.authenticating" : {
       "extractionState" : "manual",
@@ -1752,9 +1719,6 @@
     "Refresh Discovery" : {
 
     },
-    "Registered Consoles" : {
-
-    },
     "registration.pin" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1837,22 +1801,10 @@
         }
       }
     },
-    "Remote Play PIN (4 digits)" : {
-
-    },
-    "Remove the PIN requirement for this console." : {
-
-    },
-    "Save" : {
-
-    },
     "Search logs" : {
 
     },
     "Select a host to start streaming" : {
-
-    },
-    "Set Console PIN" : {
 
     },
     "Settings" : {
@@ -1934,6 +1886,9 @@
         }
       }
     },
+    "settings.audio.percent %lld" : {
+
+    },
     "settings.audio.volume" : {
       "comment" : "MARK: - Settings - Audio",
       "localizations" : {
@@ -1968,7 +1923,9 @@
         }
       }
     },
+    "settings.consoles.deleteConfirm %@" : {
 
+    },
     "settings.consoles.deleteMessage %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2063,7 +2020,9 @@
         }
       }
     },
+    "settings.consoles.hideConfirm %@" : {
 
+    },
     "settings.consoles.hideMessage %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2174,7 +2133,9 @@
         }
       }
     },
+    "settings.consoles.unhideConfirm %@" : {
 
+    },
     "settings.consoles.unhideMessage %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3504,22 +3465,7 @@
         }
       }
     },
-    "These consoles are hidden from the main host list but remain registered." : {
-
-    },
-    "This PIN will be required before connecting to %@." : {
-
-    },
-    "This will remove the PIN requirement for %@." : {
-
-    },
     "Toggle Controls" : {
-
-    },
-    "Unhide" : {
-
-    },
-    "Unhide Console" : {
 
     },
     "Video Preset" : {

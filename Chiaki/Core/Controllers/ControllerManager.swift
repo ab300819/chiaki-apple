@@ -106,9 +106,9 @@ final class ControllerManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let controller = notification.object as? GCController else { return }
+            guard let self, let controller = notification.object as? GCController else { return }
             Task { @MainActor in
-                self?.handleControllerConnected(controller)
+                self.handleControllerConnected(controller)
             }
         }
         notificationObservers.append(connectObserver)
@@ -119,9 +119,9 @@ final class ControllerManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let controller = notification.object as? GCController else { return }
+            guard let self, let controller = notification.object as? GCController else { return }
             Task { @MainActor in
-                self?.handleControllerDisconnected(controller)
+                self.handleControllerDisconnected(controller)
             }
         }
         notificationObservers.append(disconnectObserver)
@@ -132,9 +132,9 @@ final class ControllerManager {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let controller = notification.object as? GCController else { return }
+            guard let self, let controller = notification.object as? GCController else { return }
             Task { @MainActor in
-                self?.setActiveController(controller)
+                self.setActiveController(controller)
             }
         }
         notificationObservers.append(becomeCurrentObserver)

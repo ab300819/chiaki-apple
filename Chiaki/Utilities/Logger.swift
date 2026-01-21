@@ -48,8 +48,8 @@ final class OSLogHandler: LogHandler, @unchecked Sendable {
 
 /// Main application logger that bridges Swift and libchiaki logging
 @MainActor
-final class Logger {
-    nonisolated(unsafe) static let shared = Logger()
+final class Logger: Sendable {
+    static let shared = Logger()
 
     private var handlers: [LogHandler]
     private(set) var levelMask: ChiakiLogLevelMask
@@ -67,7 +67,7 @@ final class Logger {
         let category: String
     }
 
-    private nonisolated init() {
+    private init() {
         #if DEBUG
         self.levelMask = .all
         #else
@@ -170,28 +170,28 @@ final class Logger {
 /// Category-specific loggers for different subsystems
 extension Logger {
     /// Logger for session/streaming related events
-    nonisolated static let session = CategoryLogger(category: "Session")
+    static let session = CategoryLogger(category: "Session")
 
     /// Logger for discovery related events
-    nonisolated static let discovery = CategoryLogger(category: "Discovery")
+    static let discovery = CategoryLogger(category: "Discovery")
 
     /// Logger for storage related events
-    nonisolated static let storage = CategoryLogger(category: "Storage")
+    static let storage = CategoryLogger(category: "Storage")
 
     /// Logger for video related events
-    nonisolated static let video = CategoryLogger(category: "Video")
+    static let video = CategoryLogger(category: "Video")
 
     /// Logger for audio related events
-    nonisolated static let audio = CategoryLogger(category: "Audio")
+    static let audio = CategoryLogger(category: "Audio")
 
     /// Logger for controller input events
-    nonisolated static let controller = CategoryLogger(category: "Controller")
+    static let controller = CategoryLogger(category: "Controller")
 
     /// Logger for network events
-    nonisolated static let network = CategoryLogger(category: "Network")
+    static let network = CategoryLogger(category: "Network")
 
     /// Logger for PSN authentication events
-    nonisolated static let psn = CategoryLogger(category: "PSN")
+    static let psn = CategoryLogger(category: "PSN")
 }
 
 /// A category-specific logger that uses OSLog directly
