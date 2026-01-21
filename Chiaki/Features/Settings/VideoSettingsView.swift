@@ -99,6 +99,7 @@ struct VideoSettingsView: View {
                         Spacer()
                         Text(String(localized: "settings.video.mbps \(Int(currentProfile.wrappedValue.bitrate / 1000))"))
                             .foregroundColor(.secondary)
+                            .monospacedDigit()
                     }
                     Slider(
                         value: Binding(

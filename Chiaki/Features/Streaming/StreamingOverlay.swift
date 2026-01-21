@@ -77,7 +77,7 @@ private struct NetworkQualityIndicator: View {
             }
         }
         .frame(height: maxBarHeight)
-        .accessibilityLabel("Network quality: \(quality.rawValue)")
+        .accessibilityLabel(String(localized: "accessibility.networkQuality \(quality.rawValue)"))
     }
 
     private var barColor: Color {
@@ -127,12 +127,12 @@ private struct PacketLossItem: View {
                 if droppedFrames > 0 || recoveredFrames > 0 {
                     HStack(spacing: 8) {
                         if droppedFrames > 0 {
-                            Text("\(droppedFrames) dropped")
+                            Text(String(localized: "overlay.dropped \(droppedFrames)"))
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
                         }
                         if recoveredFrames > 0 {
-                            Text("\(recoveredFrames) recov")
+                            Text(String(localized: "overlay.recovered \(recoveredFrames)"))
                                 .font(.system(size: 14))
                                 .foregroundColor(.green.opacity(0.8))
                         }
@@ -153,12 +153,12 @@ private struct PacketLossItem: View {
                 if droppedFrames > 0 || recoveredFrames > 0 {
                     HStack(spacing: 4) {
                         if droppedFrames > 0 {
-                            Text("\(droppedFrames) drop")
+                            Text(String(localized: "overlay.drop \(droppedFrames)"))
                                 .font(.system(size: 9))
                                 .foregroundColor(.secondary)
                         }
                         if recoveredFrames > 0 {
-                            Text("\(recoveredFrames) rec")
+                            Text(String(localized: "overlay.rec \(recoveredFrames)"))
                                 .font(.system(size: 9))
                                 .foregroundColor(.green.opacity(0.8))
                         }
@@ -167,7 +167,7 @@ private struct PacketLossItem: View {
             }
             #endif
         }
-        .accessibilityLabel("Packet loss \(String(format: "%.1f", packetLoss)) percent, \(droppedFrames) frames dropped, \(recoveredFrames) frames recovered")
+        .accessibilityLabel(String(localized: "accessibility.packetLossStats \(packetLoss) \(droppedFrames) \(recoveredFrames)"))
     }
 
     private var lossColor: Color {

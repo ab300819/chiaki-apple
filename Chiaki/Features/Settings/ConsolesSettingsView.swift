@@ -14,7 +14,7 @@ struct ConsolesSettingsView: View {
             // Registered Consoles Section
             Section {
                 if hostStore.registeredHosts.isEmpty {
-                    Text("No registered consoles")
+                    Text(L10n.Settings.Consoles.noRegistered)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(hostStore.registeredHosts) { host in
@@ -33,9 +33,9 @@ struct ConsolesSettingsView: View {
                     }
                 }
             } header: {
-                Text("Registered Consoles")
+                Text(L10n.Settings.Consoles.registeredConsoles)
             } footer: {
-                Text("Manage your registered PlayStation consoles. Hidden consoles won't appear in the host list.")
+                Text(L10n.Settings.Consoles.registeredDescription)
             }
 
             // Hidden Consoles Section
@@ -52,71 +52,71 @@ struct ConsolesSettingsView: View {
                         )
                     }
                 } header: {
-                    Text("Hidden Consoles")
+                    Text(L10n.Settings.Consoles.hiddenConsoles)
                 } footer: {
-                    Text("These consoles are hidden from the main host list but remain registered.")
+                    Text(L10n.Settings.Consoles.hiddenDescription)
                 }
             }
         }
-        .navigationTitle("Consoles")
+        .navigationTitle(L10n.Settings.Consoles.title)
         #if os(macOS)
         .formStyle(.grouped)
         #endif
         .confirmationDialog(
-            "Delete Console",
+            String(localized: "settings.consoles.deleteTitle"),
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L10n.Common.delete, role: .destructive) {
                 if let host = selectedHost {
                     hostStore.removeHost(host)
                 }
                 selectedHost = nil
             }
-            Button("Cancel", role: .cancel) {
+            Button(L10n.Common.cancel, role: .cancel) {
                 selectedHost = nil
             }
         } message: {
             if let host = selectedHost {
-                Text("Are you sure you want to delete \"\(host.nickname)\"? This will remove its registration and you'll need to re-register to connect.")
+                Text(String(localized: "settings.consoles.deleteConfirm \(host.nickname)"))
             }
         }
         .confirmationDialog(
-            "Hide Console",
+            String(localized: "settings.consoles.hideTitle"),
             isPresented: $showHideConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Hide") {
+            Button(L10n.Common.hide) {
                 if let host = selectedHost {
                     hostStore.hideHost(host)
                 }
                 selectedHost = nil
             }
-            Button("Cancel", role: .cancel) {
+            Button(L10n.Common.cancel, role: .cancel) {
                 selectedHost = nil
             }
         } message: {
             if let host = selectedHost {
-                Text("Are you sure you want to hide \"\(host.nickname)\"? It will no longer appear in the host list but will remain registered.")
+                Text(String(localized: "settings.consoles.hideConfirm \(host.nickname)"))
             }
         }
         .confirmationDialog(
-            "Unhide Console",
+            String(localized: "settings.consoles.unhideTitle"),
             isPresented: $showUnhideConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Unhide") {
+            Button(L10n.Common.unhide) {
                 if let host = selectedHost {
                     hostStore.unhideHost(host)
                 }
                 selectedHost = nil
             }
-            Button("Cancel", role: .cancel) {
+            Button(L10n.Common.cancel, role: .cancel) {
                 selectedHost = nil
             }
         } message: {
             if let host = selectedHost {
-                Text("Are you sure you want to unhide \"\(host.nickname)\"? It will appear in the host list again.")
+                Text(String(localized: "settings.consoles.unhideConfirm \(host.nickname)"))
             }
         }
     }
@@ -141,7 +141,7 @@ private struct RegisteredHostRow: View {
                         .font(.headline)
 
                     if host.isHidden {
-                        Text("Hidden")
+                        Text(String(localized: "common.hidden"))
                             .font(.caption)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -160,10 +160,10 @@ private struct RegisteredHostRow: View {
             #if os(iOS)
             Menu {
                 Button(action: onHide) {
-                    Label("Hide", systemImage: "eye.slash")
+                    Label(L10n.Common.hide, systemImage: "eye.slash")
                 }
                 Button(role: .destructive, action: onDelete) {
-                    Label("Delete", systemImage: "trash")
+                    Label(L10n.Common.delete, systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -172,10 +172,10 @@ private struct RegisteredHostRow: View {
             }
             #else
             HStack(spacing: 12) {
-                Button("Hide", action: onHide)
+                Button(L10n.Common.hide, action: onHide)
                     .buttonStyle(.bordered)
 
-                Button("Delete", role: .destructive, action: onDelete)
+                Button(L10n.Common.delete, role: .destructive, action: onDelete)
                     .buttonStyle(.bordered)
             }
             #endif
@@ -215,7 +215,7 @@ private struct HiddenHostRow: View {
 
             Spacer()
 
-            Button("Unhide", action: onUnhide)
+            Button(L10n.Common.unhide, action: onUnhide)
                 .buttonStyle(.bordered)
         }
         .padding(.vertical, 4)

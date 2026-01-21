@@ -36,7 +36,7 @@ struct AddHostView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L10n.Common.save) {
                         let host = ConsoleHost(
-                            nickname: nickname.isEmpty ? "PlayStation" : nickname,
+                            nickname: nickname.isEmpty ? String(localized: "common.playstation") : nickname,
                             address: address,
                             isPS5: isPS5
                         )

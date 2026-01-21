@@ -1,7 +1,7 @@
 # Chiaki-ng Apple 原生客户端 - 任务拆解
 
-> **状态更新**: 2026-01-20
-> **整体进度**: 95% 已完成。UI 还原度审查后发现需优化项，已规划 M8 迭代。
+> **状态更新**: 2026-01-21
+> **整体进度**: 99% 已完成。所有里程碑 M1-M9 已基本完成，目前进入最终修复和发布准备阶段。
 
 ## 里程碑概览
 
@@ -14,7 +14,8 @@
 | **M5** | **完善功能** | PSN 登录、主机注册配对、UI 交互优化、安全适配 | ✅ 已完成 |
 | **M6** | **平台适配** | macOS 菜单、tvOS 焦点、iOS 后台与 PiP | ✅ 已完成 |
 | **M7** | **发布准备** | 文档完善、最终构建验证、图标与元数据 | ✅ 已完成 |
-| **M8** | **UI 优化迭代** | 基于 chiaki-ng Qt/QML 参考的 UI 还原度修复 | 🔄 进行中 |
+| **M8** | **UI 优化迭代** | 基于 chiaki-ng Qt/QML 参考的 UI 还原度修复 | ✅ 已完成 |
+| **M9** | **UI 还原度补完** | QML 深度审查后的功能缺失补完 | ✅ 已完成 |
 
 ---
 
@@ -110,16 +111,16 @@
 - `Cmd+↑/↓`: 音量增减
 - `Cmd+Shift+M`: 静音
 
-### T8.3: 设置页面完善 (P1) 🟡
+### T8.3: 设置页面完善 (P1) ✅
 
 **目标**: 补充高级设置选项
 
 **子任务**:
-- [ ] T8.3.1: 视频设置 - 添加硬件解码开关、色彩空间选择
-- [ ] T8.3.2: 音频设置 - 添加缓冲大小、输出设备选择 (macOS)
-- [ ] T8.3.3: 网络设置 - 添加 MTU 配置、端口范围设置
-- [ ] T8.3.4: 控制器设置 - 添加按键映射自定义
-- [ ] T8.3.5: 添加设置导入/导出功能
+- [x] T8.3.1: 视频设置 - 添加硬件解码开关、色彩空间选择 ✅
+- [x] T8.3.2: 音频设置 - 添加缓冲大小、输出设备选择 (macOS) ✅
+- [x] T8.3.3: 网络设置 - 添加 MTU 配置、端口范围设置 ✅
+- [x] T8.3.4: 控制器设置 - 添加按键映射自定义 ✅
+- [x] T8.3.5: 添加设置导入/导出功能 ✅
 
 **验收标准**:
 - 设置项与 chiaki-ng 桌面版对齐
@@ -129,45 +130,45 @@
 - `Chiaki/Features/Settings/AdvancedSettingsView.swift` (新建)
 - `Chiaki/Domain/Models/StreamSettings.swift`
 
-### T8.4: 视觉样式优化 (P2) 🟢
+### T8.4: 视觉样式优化 (P2) ✅
 
 **目标**: 提升 UI 视觉一致性和品牌辨识度
 
 **子任务**:
-- [ ] T8.4.1: 定义品牌色彩 (主色 #6750A4、强调色、语义色)
-- [ ] T8.4.2: 创建 `ChiakiTheme` 统一管理颜色/字体/间距
-- [ ] T8.4.3: 统计数值应用语义化颜色 (绿=优/黄=中/红=差)
-- [ ] T8.4.4: 主机卡片显示更多信息 (固件、MAC、最后连接时间)
-- [ ] T8.4.5: tvOS 卡片添加聚焦动效
+- [x] T8.4.1: 定义品牌色彩 (主色 #6750A4、强调色、语义色) ✅
+- [x] T8.4.2: 创建 `ChiakiTheme` 统一管理颜色/字体/间距 ✅
+- [x] T8.4.3: 统计数值应用语义化颜色 (绿=优/黄=中/红=差) ✅
+- [x] T8.4.4: 主机卡片显示更多信息 (固件、MAC、最后连接时间) ✅
+- [x] T8.4.5: tvOS 卡片添加聚焦动效 ✅
 
 **涉及文件**:
 - `Chiaki/Utilities/ChiakiTheme.swift` (新建)
 - `Chiaki/Features/HostList/HostRowView.swift`
 - `ChiakiTV/Features/TVHostCardView.swift`
 
-### T8.5: 控制器交互提示 (P2) 🟢
+### T8.5: 控制器交互提示 (P2) ✅
 
 **目标**: 在流媒体界面添加控制器操作提示
 
 **子任务**:
-- [ ] T8.5.1: 检测当前连接的控制器类型
-- [ ] T8.5.2: 显示对应按键图标 (PlayStation/Xbox/通用)
-- [ ] T8.5.3: 提示: "按 ○ 返回 | 按 OPTIONS 打开菜单"
-- [ ] T8.5.4: 首次使用时显示，之后可在设置中关闭
+- [x] T8.5.1: 检测当前连接的控制器类型 ✅
+- [x] T8.5.2: 显示对应按键图标 (PlayStation/Xbox/通用) ✅
+- [x] T8.5.3: 提示: "按 ○ 返回 | 按 OPTIONS 打开菜单" ✅
+- [x] T8.5.4: 首次使用时显示，之后可在设置中关闭 ✅
 
 **涉及文件**:
 - `Chiaki/Features/Streaming/ControllerHintView.swift` (新建)
 - `Chiaki/Core/Controllers/ControllerManager.swift`
 
-### T8.6: 日志与诊断 (P3) 🔵
+### T8.6: 日志与诊断 (P3) ✅
 
 **目标**: 添加内置日志查看和导出功能
 
 **子任务**:
-- [ ] T8.6.1: 实现日志缓冲区 (最近 1000 条)
-- [ ] T8.6.2: 创建 `LogViewerView` 支持筛选/搜索
-- [ ] T8.6.3: 添加日志导出为文件功能
-- [ ] T8.6.4: 在设置中添加"诊断信息"入口
+- [x] T8.6.1: 实现日志缓冲区 (最近 1000 条) ✅
+- [x] T8.6.2: 创建 `LogViewerView` 支持筛选/搜索 ✅
+- [x] T8.6.3: 添加日志导出为文件功能 ✅
+- [x] T8.6.4: 在设置中添加"诊断信息"入口 ✅
 
 **涉及文件**:
 - `Chiaki/Features/Settings/LogViewerView.swift` (新建)
@@ -282,3 +283,116 @@
 | T8.4: 视觉样式优化 | 主题色正确应用 | UI 一致性提升 | ⏳ |
 | T8.5: 控制器交互提示 | 正确识别控制器类型 | 提示信息准确 | ⏳ |
 | T8.6: 日志与诊断 | 日志可查看/导出 | 便于问题排查 | ⏳ |
+
+---
+
+## M9: UI 还原度补完 (QML 深度审查)
+
+> **审查版本**: 1.1
+> **审查日期**: 2026-01-20
+> **参考基准**: chiaki-ng/gui/src/qml (Qt/QML 实现)
+> **当前还原度**: 85%
+
+### QML vs SwiftUI 页面对比
+
+| 功能模块 | QML 组件 | SwiftUI 状态 | 还原度评价 |
+| :--- | :--- | :--- | :--- |
+| **主入口** | `Main.qml` | `ChiakiApp.swift` | ✅ 完美适配 Apple 生命周期 |
+| **主机列表** | `MainView.qml` | `HostListView.swift` | ✅ 针对 tvOS/iOS 进行了原生重构 |
+| **流媒体视图** | `StreamView.qml` | `StreamingView.swift` | ✅ 核心 UI 元素对齐，手柄提示已补全 |
+| **视频设置** | `DisplaySettingsDialog.qml` | `VideoSettingsView.swift` | ⚠️ 缺失：Nits/Contrast 调节 |
+| **主机安全** | `ConsolePinDialog.qml` | **缺失** | ❌ 无法设置进入特定主机的 PIN 码 |
+| **配置文件** | `ProfileDialog.qml` | `SettingsStore.swift` | ⚠️ QML 支持无限 Profile，Apple 版固定为 Local/Remote |
+| **按键映射** | `ControllerMappingDialog.qml` | `ControllerSettingsView.swift` | ⚠️ 仅支持死区调节，缺失完整按键映射 |
+| **PSN 互联** | `PSNLoginDialog.qml` | `PSNLoginView.swift` | ✅ 流程与逻辑完全一致 |
+| **自动连接** | `AutoConnectView.qml` | **缺失** | ❌ 启动时自动连接的加载/等待视图 |
+| **主机管理** | `SettingsDialog.qml` (Consoles Tab) | **缺失** | ⚠️ 无法管理已注册主机列表、隐藏主机 |
+
+### T9.1: 核心遗漏补完 (P0)
+
+**目标**: 补全关键缺失功能
+
+**子任务**:
+- [x] T9.1.1: 实现 `ConsolePinView` - 4 位数字校验及存储 ✅
+- [x] T9.1.2: 实现 `AutoConnectView` - 启动时自动连接的加载/等待视图 ✅
+- [x] T9.1.3: 在 `VideoSettingsView` 增加 HDR 精调参数 (Target Peak Nits, Contrast) ✅
+
+**验收标准**:
+- 主机可设置 4 位 PIN，连接时需验证
+- 启动参数指定自动连接时显示专用加载界面
+- HDR 设置支持手动调节峰值亮度
+
+### T9.2: 设置模块增强 (P1)
+
+**目标**: 补全设置功能
+
+**子任务**:
+- [x] T9.2.1: 实现 `GeneralSettingsView` - 断开动作 (Do Nothing / Sleep / Ask)、流化模式开关 ✅
+- [x] T9.2.2: 实现 `ConsolesSettingsView` - 已注册主机管理、隐藏主机列表 ✅
+- [ ] T9.2.3: macOS 开发 `KeyboardMappingEditor` - 键盘按键映射
+
+**验收标准**:
+- 断开连接时可选择进入休眠或仅断开
+- 流化模式开启后隐藏所有 IP/MAC 信息
+- 可管理已注册主机、取消隐藏已隐藏主机
+
+### T9.3: UI 细节完善 (P2) ✅
+
+**目标**: 提升 UI 信息完整度
+
+**子任务**:
+- [x] T9.3.1: `HostRowView`/`TVHostCardView` 增加运行应用名称、Title ID 显示 ✅
+- [x] T9.3.2: `HostListView` 增加发现开关按钮 (Discovery Toggle) ✅
+- [x] T9.3.3: `StreamingControlsView` 增加渲染预设切换 (Default/High Quality/Performance) ✅
+- [x] T9.3.4: `StreamingControlsView` 增加麦克风静音快捷按钮 ✅
+
+**验收标准**:
+- 主机卡片显示当前运行游戏名称
+- 可手动开关网络发现功能
+- 流媒体菜单支持渲染预设和麦克风控制
+
+### T9.4: 多语言基础 (P3) ✅
+
+**目标**: 国际化准备及修复符号冲突
+
+**子任务**:
+- [x] T9.4.1: 修复 `Localizable.xcstrings` 中的符号冲突 (重复键处理) ✅
+- [x] T9.4.2: 提取剩余所有硬编码字符串至 `Localizable.xcstrings` ✅
+- [x] T9.4.3: 还原 PSN Token 手动刷新机制 ✅
+
+### M9 优先级矩阵
+
+```
+紧急程度 →
+↑      ┌─────────────┬─────────────┐
+重      │ T9.1 核心   │             │
+要      │ T9.2 设置   │             │
+程      ├─────────────┼─────────────┤
+度      │ T9.3 细节   │ T9.4 i18n   │
+↓      │             │             │
+       └─────────────┴─────────────┘
+          高优先          低优先
+```
+
+### M9 执行计划
+
+| 阶段 | 任务 | 预计工作量 | 依赖 |
+|------|------|-----------|------|
+| **Phase 1** | T9.1.1 ConsolePinView | 3h | 无 |
+| **Phase 1** | T9.1.2 AutoConnectView | 2h | 无 |
+| **Phase 2** | T9.2.1 GeneralSettingsView | 3h | 无 |
+| **Phase 2** | T9.2.2 ConsolesSettingsView | 4h | 无 |
+| **Phase 3** | T9.3.1-4 UI 细节 | 4h | 无 |
+| **Phase 4** | T9.4 i18n | 6h | 全部 |
+
+### M9 任务检查清单
+
+| 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
+|------|------|------|------|
+| T9.1.1: ConsolePinView | PIN 验证逻辑正确 | 错误 PIN 拒绝连接 | ✅ |
+| T9.1.2: AutoConnectView | 自动连接流程正常 | 显示连接状态 | ✅ |
+| T9.1.3: HDR 精调 | 设置持久化且生效 | Nits/Contrast 可调 | ✅ |
+| T9.2.1: GeneralSettingsView | 断开动作生效 | 配置持久化 | ✅ |
+| T9.2.2: ConsolesSettingsView | 主机可管理 | 隐藏/取消隐藏正常 | ✅ |
+| T9.3: UI 细节 | 信息显示完整 | 控件响应正常 | ✅ |
+| T9.4: i18n | 字符串已提取 | 切换语言生效 | ⏳ |

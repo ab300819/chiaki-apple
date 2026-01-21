@@ -52,33 +52,33 @@ struct ConsolePinView: View {
                         }
                     }
                 } header: {
-                    Text("Remote Play PIN (4 digits)")
+                    Text(String(localized: "consolePin.pinDescription"))
                 } footer: {
-                    Text("This PIN will be required before connecting to \(host.nickname).")
+                    Text(String(localized: "consolePin.pinRequiredDescription \(host.nickname)"))
                 }
 
                 if hasExistingPin {
                     Section {
-                        Button("Clear PIN", role: .destructive) {
+                        Button(String(localized: "consolePin.clearPin"), role: .destructive) {
                             showClearConfirmation = true
                         }
                     } footer: {
-                        Text("Remove the PIN requirement for this console.")
+                        Text(String(localized: "consolePin.clearPinDescription"))
                     }
                 }
             }
-            .navigationTitle("Set Console PIN")
+            .navigationTitle(String(localized: "consolePin.title"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.Common.cancel) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L10n.Common.save) {
                         onSave(pin)
                         dismiss()
                     }
@@ -86,17 +86,17 @@ struct ConsolePinView: View {
                 }
             }
             .confirmationDialog(
-                "Clear PIN?",
+                String(localized: "consolePin.clearPinTitle"),
                 isPresented: $showClearConfirmation,
                 titleVisibility: .visible
             ) {
-                Button("Clear PIN", role: .destructive) {
+                Button(String(localized: "consolePin.clearPin"), role: .destructive) {
                     onSave(nil)
                     dismiss()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L10n.Common.cancel, role: .cancel) {}
             } message: {
-                Text("This will remove the PIN requirement for \(host.nickname).")
+                Text(String(localized: "consolePin.clearPinConfirm \(host.nickname)"))
             }
             .onAppear {
                 isPinFieldFocused = true
@@ -134,7 +134,7 @@ struct ConsolePinEntryView: View {
                     .font(.system(size: 60))
                     .foregroundColor(.accentColor)
 
-                Text("Enter PIN for \(host.nickname)")
+                Text(String(localized: "consolePin.enterPin \(host.nickname)"))
                     .font(.headline)
 
                 VStack(spacing: 8) {
@@ -177,14 +177,14 @@ struct ConsolePinEntryView: View {
                     }
 
                     if showError {
-                        Text("Incorrect PIN. \(maxAttempts - attempts) attempts remaining.")
+                        Text(String(localized: "consolePin.incorrectPin \(maxAttempts - attempts)"))
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                 }
 
                 Button(action: verifyPin) {
-                    Text("Connect")
+                    Text(String(localized: "consolePin.connect"))
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -198,13 +198,13 @@ struct ConsolePinEntryView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("PIN Required")
+            .navigationTitle(String(localized: "consolePin.pinRequired"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.Common.cancel) {
                         onCancel?()
                         dismiss()
                     }

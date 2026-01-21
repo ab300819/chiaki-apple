@@ -11,8 +11,9 @@ struct AudioSettingsView: View {
                     HStack {
                         Text(L10n.Settings.Audio.volume)
                         Spacer()
-                        Text("\(Int(store.streamSettings.volume * 100))%")
+                        Text(String(localized: "settings.audio.percent \(Int(store.streamSettings.volume * 100))"))
                             .foregroundColor(.secondary)
+                            .monospacedDigit()
                     }
                     Slider(value: $store.streamSettings.volume, in: 0...1) {
                         Text(L10n.Settings.Audio.volume)

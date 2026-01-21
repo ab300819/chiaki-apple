@@ -25,7 +25,7 @@ struct HostRowView: View {
                             .font(.system(size: 9))
                         Text(runningApp)
                         if let titleId = host.runningAppId {
-                            Text("(\(titleId))")
+                            Text(String(localized: "hostRow.titleIdParentheses \(titleId)"))
                                 .foregroundStyle(.tertiary)
                         }
                     }

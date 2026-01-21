@@ -50,17 +50,17 @@ struct TVHostCardView: View {
                         if isFocused {
                             VStack(spacing: 2) {
                                 if let titleId = host.runningAppId, host.state == .online {
-                                    Text("Title: \(titleId)")
+                                    Text(String(localized: "hostRow.titleId \(titleId)"))
                                         .font(.caption2)
                                         .foregroundStyle(.white.opacity(0.7))
                                 }
                                 if let version = host.systemVersion {
-                                    Text("FW \(version)")
+                                    Text(String(localized: "hostRow.firmwareVersion \(version)"))
                                         .font(.caption2)
                                         .foregroundStyle(.white.opacity(0.7))
                                 }
                                 if let lastConnected = host.lastConnectedAt {
-                                    Text("Last: \(lastConnected.formatted(date: .abbreviated, time: .omitted))")
+                                    Text(L10n.HostList.lastSeen(lastConnected.formatted(date: .abbreviated, time: .omitted)))
                                         .font(.caption2)
                                         .foregroundStyle(.white.opacity(0.6))
                                 }
@@ -69,10 +69,10 @@ struct TVHostCardView: View {
                         }
                     }
                     
-                    // Status Badge
+                        // Status Badge
                     Group {
                         if !host.isRegistered {
-                            Text("Register Needed")
+                            Text(L10n.HostList.registerNeeded)
                                 .font(.caption2)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -82,7 +82,7 @@ struct TVHostCardView: View {
                         } else {
                             switch host.state {
                             case .online:
-                                Text("Online")
+                                Text(L10n.Common.online)
                                     .font(.caption2)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
@@ -90,7 +90,7 @@ struct TVHostCardView: View {
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
                             case .standby:
-                                Text("Standby") // Wake Up handled by action, but badge shows state
+                                Text(L10n.Common.standby) // Wake Up handled by action, but badge shows state
                                     .font(.caption2)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
@@ -98,7 +98,7 @@ struct TVHostCardView: View {
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
                             case .offline:
-                                Text("Offline")
+                                Text(L10n.Common.offline)
                                     .font(.caption2)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)

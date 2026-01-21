@@ -80,17 +80,17 @@ class SettingsStore {
 
         var title: String {
             switch self {
-            case .doNothing: return "Do Nothing"
-            case .enterSleepMode: return "Enter Rest Mode"
-            case .ask: return "Ask"
+            case .doNothing: return String(localized: "disconnectAction.doNothing")
+            case .enterSleepMode: return String(localized: "disconnectAction.enterSleepMode")
+            case .ask: return String(localized: "disconnectAction.ask")
             }
         }
 
         var description: String {
             switch self {
-            case .doNothing: return "Simply disconnect without changing console state"
-            case .enterSleepMode: return "Put the console into rest mode when disconnecting"
-            case .ask: return "Show a dialog asking what to do"
+            case .doNothing: return String(localized: "disconnectAction.doNothingDescription")
+            case .enterSleepMode: return String(localized: "disconnectAction.enterSleepModeDescription")
+            case .ask: return String(localized: "disconnectAction.askDescription")
             }
         }
     }
@@ -104,8 +104,8 @@ class SettingsStore {
 
         var title: String {
             switch self {
-            case .doNothing: return "Do Nothing"
-            case .enterSleepMode: return "Enter Rest Mode"
+            case .doNothing: return String(localized: "suspendAction.doNothing")
+            case .enterSleepMode: return String(localized: "suspendAction.enterSleepMode")
             }
         }
     }
