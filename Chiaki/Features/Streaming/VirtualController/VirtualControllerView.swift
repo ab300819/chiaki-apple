@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if os(iOS)
 struct VirtualControllerView: View {
     var onInput: (VirtualControllerInput) -> Void
     var opacity: Double = 0.5
@@ -147,3 +148,4 @@ struct VirtualControllerView: View {
     .environment(SettingsStore())
     .environment(NavigationManager())
 }
+#endif

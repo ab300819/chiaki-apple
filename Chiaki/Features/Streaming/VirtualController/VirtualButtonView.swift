@@ -3,21 +3,18 @@ import SwiftUI
 import UIKit
 #endif
 
+#if os(iOS)
 struct VirtualButtonView: View {
     let iconName: String
     var size: CGFloat = 60
     var color: Color = .white
-    #if canImport(UIKit)
     var hapticStyle: UIImpactFeedbackGenerator.FeedbackStyle = .light
-    #endif
     var onStateChanged: (Bool) -> Void
     
     @State private var isPressed: Bool = false
     
     // Cache the generator to reduce latency
-    #if canImport(UIKit)
     @State private var hapticGenerator: UIImpactFeedbackGenerator?
-    #endif
     
     var body: some View {
         ZStack {
@@ -76,18 +73,14 @@ struct VirtualButtonView: View {
     }
     
     private func prepareHaptics() {
-        #if canImport(UIKit)
         hapticGenerator = UIImpactFeedbackGenerator(style: hapticStyle)
         hapticGenerator?.prepare()
-        #endif
     }
     
     private func triggerHaptic() {
-        #if canImport(UIKit)
         hapticGenerator?.impactOccurred()
         // Re-prepare for next tap
         hapticGenerator?.prepare()
-        #endif
     }
 }
 
@@ -106,3 +99,4 @@ struct VirtualButtonView: View {
     .environment(SettingsStore())
     .environment(NavigationManager())
 }
+#endif
