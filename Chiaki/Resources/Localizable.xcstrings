@@ -1,9 +1,36 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "%lld%%": {},
-    "•": {},
-    "0000": {},
+    "%lld%%": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%%"
+          }
+        }
+      }
+    },
+    "•": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "•"
+          }
+        }
+      }
+    },
+    "0000": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0000"
+          }
+        }
+      }
+    },
     "accessibility.addHostManually": {
       "localizations": {
         "en": {
@@ -54,7 +81,16 @@
         }
       }
     },
-    "accessibility.networkQuality %@": {},
+    "accessibility.networkQuality %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network quality: %@"
+          }
+        }
+      }
+    },
     "accessibility.openControlsMenu": {
       "localizations": {
         "en": {
@@ -391,7 +427,16 @@
         }
       }
     },
-    "common.hidden": {},
+    "common.hidden": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden"
+          }
+        }
+      }
+    },
     "common.hide": {
       "localizations": {
         "en": {
@@ -456,7 +501,16 @@
         }
       }
     },
-    "common.playstation": {},
+    "common.playstation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PlayStation"
+          }
+        }
+      }
+    },
     "common.save": {
       "localizations": {
         "en": {
@@ -555,7 +609,16 @@
         }
       }
     },
-    "consolePin.clearPinConfirm %@": {},
+    "consolePin.clearPinConfirm %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear PIN for %@?"
+          }
+        }
+      }
+    },
     "consolePin.clearPinDescription": {
       "extractionState": "manual",
       "localizations": {
@@ -573,7 +636,16 @@
         }
       }
     },
-    "consolePin.clearPinTitle": {},
+    "consolePin.clearPinTitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear PIN"
+          }
+        }
+      }
+    },
     "consolePin.connect": {
       "extractionState": "manual",
       "localizations": {
@@ -608,7 +680,16 @@
         }
       }
     },
-    "consolePin.enterPin %@": {},
+    "consolePin.enterPin %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter PIN for %@"
+          }
+        }
+      }
+    },
     "consolePin.incorrectPin": {
       "extractionState": "manual",
       "localizations": {
@@ -626,7 +707,16 @@
         }
       }
     },
-    "consolePin.incorrectPin %lld": {},
+    "consolePin.incorrectPin %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incorrect PIN. %lld attempts remaining."
+          }
+        }
+      }
+    },
     "consolePin.pinDescription": {
       "extractionState": "manual",
       "localizations": {
@@ -678,7 +768,16 @@
         }
       }
     },
-    "consolePin.pinRequiredDescription %@": {},
+    "consolePin.pinRequiredDescription %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A PIN is required to connect to %@"
+          }
+        }
+      }
+    },
     "consolePin.setPin": {
       "localizations": {
         "en": {
@@ -964,10 +1063,10 @@
     },
     "error.exportFailed %@": {
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "导出失败: %@"
+            "value": "Export failed: %@"
           }
         }
       }
@@ -1002,10 +1101,10 @@
     },
     "error.importFailed %@": {
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入失败: %@"
+            "value": "Import failed: %@"
           }
         }
       }
@@ -1103,10 +1202,10 @@
     },
     "hostList.lastSeen %@": {
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "最后连接: %@"
+            "value": "Last seen %@"
           }
         }
       }
@@ -1255,10 +1354,10 @@
     "hostRow.firmwareVersion %@": {
       "comment": "MARK: - Host Row",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "固件 %@"
+            "value": "Firmware %@"
           }
         }
       }
@@ -1280,7 +1379,16 @@
         }
       }
     },
-    "hostRow.titleIdParentheses %@": {},
+    "hostRow.titleIdParentheses %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(%@)"
+          }
+        }
+      }
+    },
     "Hosts": {
       "localizations": {
         "en": {
@@ -1604,7 +1712,16 @@
         }
       }
     },
-    "overlay.drop %lld": {},
+    "overlay.drop %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop: %lld"
+          }
+        }
+      }
+    },
     "overlay.dropped": {
       "comment": "MARK: - Streaming Overlay",
       "extractionState": "manual",
@@ -1640,7 +1757,16 @@
         }
       }
     },
-    "overlay.rec %lld": {},
+    "overlay.rec %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rec: %lld"
+          }
+        }
+      }
+    },
     "overlay.recovered": {
       "extractionState": "manual",
       "localizations": {
@@ -1703,15 +1829,24 @@
     },
     "psnLogin.accountId %@": {
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "账户 ID: %@"
+            "value": "Account ID: %@"
           }
         }
       }
     },
-    "psnLogin.accountIdPlaceholder": {},
+    "psnLogin.accountIdPlaceholder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account ID"
+          }
+        }
+      }
+    },
     "psnLogin.authenticating": {
       "extractionState": "manual",
       "localizations": {
@@ -2115,15 +2250,24 @@
     "settings.audio.ms %d": {
       "extractionState": "migrated",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d 毫秒"
+            "value": "%d ms"
           }
         }
       }
     },
-    "settings.audio.ms %lld": {},
+    "settings.audio.ms %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ms"
+          }
+        }
+      }
+    },
     "settings.audio.outputInput": {
       "localizations": {
         "en": {
@@ -2140,7 +2284,16 @@
         }
       }
     },
-    "settings.audio.percent %lld": {},
+    "settings.audio.percent %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%%"
+          }
+        }
+      }
+    },
     "settings.audio.volume": {
       "comment": "MARK: - Settings - Audio",
       "localizations": {
@@ -2175,14 +2328,23 @@
         }
       }
     },
-    "settings.consoles.deleteConfirm %@": {},
+    "settings.consoles.deleteConfirm %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %@?"
+          }
+        }
+      }
+    },
     "settings.consoles.deleteMessage %@": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要删除\"%@\"吗？这将移除注册信息，您需要重新注册才能连接。"
+            "value": "This will remove %@ from your saved consoles."
           }
         }
       }
@@ -2270,14 +2432,23 @@
         }
       }
     },
-    "settings.consoles.hideConfirm %@": {},
+    "settings.consoles.hideConfirm %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide %@?"
+          }
+        }
+      }
+    },
     "settings.consoles.hideMessage %@": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要隐藏\"%@\"吗？它将不再出现在主机列表中，但会保持注册状态。"
+            "value": "This console will be hidden from the main list."
           }
         }
       }
@@ -2381,14 +2552,23 @@
         }
       }
     },
-    "settings.consoles.unhideConfirm %@": {},
+    "settings.consoles.unhideConfirm %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unhide %@?"
+          }
+        }
+      }
+    },
     "settings.consoles.unhideMessage %@": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要取消隐藏\"%@\"吗？它将重新出现在主机列表中。"
+            "value": "This console will be shown in the main list."
           }
         }
       }
@@ -3309,15 +3489,24 @@
     "settings.video.fps %d": {
       "extractionState": "migrated",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d 帧"
+            "value": "%d FPS"
           }
         }
       }
     },
-    "settings.video.fps %lld": {},
+    "settings.video.fps %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld FPS"
+          }
+        }
+      }
+    },
     "settings.video.frameRate": {
       "localizations": {
         "en": {
@@ -3460,7 +3649,7 @@
     "settings.video.mbps %d": {
       "extractionState": "migrated",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "%d Mbps"
@@ -3468,7 +3657,16 @@
         }
       }
     },
-    "settings.video.mbps %lld": {},
+    "settings.video.mbps %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Mbps"
+          }
+        }
+      }
+    },
     "settings.video.nits": {
       "extractionState": "manual",
       "localizations": {
@@ -3483,15 +3681,24 @@
     "settings.video.nits %d": {
       "extractionState": "migrated",
       "localizations": {
-        "zh-Hans": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d 尼特"
+            "value": "%d nits"
           }
         }
       }
     },
-    "settings.video.nits %lld": {},
+    "settings.video.nits %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nits"
+          }
+        }
+      }
+    },
     "settings.video.peakBrightness": {
       "localizations": {
         "en": {
