@@ -12,12 +12,14 @@ import SwiftUI
 struct ChiakiApp: App {
     @State private var settingsStore = SettingsStore()
     @State private var navigationManager = NavigationManager()
+    @State private var hostStore = HostStore.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(settingsStore)
                 .environment(navigationManager)
+                .environment(hostStore)
                 .tint(ChiakiTheme.brandPurple)
         }
         #if os(macOS)

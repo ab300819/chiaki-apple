@@ -13,6 +13,10 @@ import Observation
 /// Persistent storage for PlayStation hosts
 @Observable
 final class HostStore {
+    // MARK: - Singleton
+
+    @MainActor static let shared = HostStore()
+
     // MARK: - Properties
 
     private(set) var hosts: [ConsoleHost] = []
