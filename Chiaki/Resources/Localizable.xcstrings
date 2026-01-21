@@ -1230,8 +1230,86 @@
     "Hosts" : {
 
     },
-    "Level" : {
-
+    "logLevel.debug" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Debug"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调试"
+          }
+        }
+      }
+    },
+    "logLevel.error" : {
+      "comment" : "MARK: - Log Levels",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "错误"
+          }
+        }
+      }
+    },
+    "logLevel.info" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Info"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信息"
+          }
+        }
+      }
+    },
+    "logLevel.verbose" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbose"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "详细"
+          }
+        }
+      }
+    },
+    "logLevel.warning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warning"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "警告"
+          }
+        }
+      }
     },
     "Mute" : {
 
@@ -1345,6 +1423,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "主机"
+          }
+        }
+      }
+    },
+    "nav.keyboard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘"
           }
         }
       }
@@ -1801,9 +1895,6 @@
         }
       }
     },
-    "Search logs" : {
-
-    },
     "Select a host to start streaming" : {
 
     },
@@ -2193,6 +2284,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已连接的手柄"
+          }
+        }
+      }
+    },
+    "settings.controller.enabled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enabled"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已启用"
           }
         }
       }
@@ -2695,6 +2802,30 @@
         }
       }
     },
+    "settings.keyboard.clearMapping" : {
+
+    },
+    "settings.keyboard.enableDescription" : {
+
+    },
+    "settings.keyboard.enableKeyboardInput" : {
+
+    },
+    "settings.keyboard.notAssigned" : {
+
+    },
+    "settings.keyboard.pressKey" : {
+
+    },
+    "settings.keyboard.pressKeyDescription" : {
+
+    },
+    "settings.keyboard.resetToDefaults" : {
+
+    },
+    "settings.keyboard.title" : {
+
+    },
     "settings.logs.allLevels" : {
       "localizations" : {
         "en" : {
@@ -2727,19 +2858,50 @@
         }
       }
     },
-    "settings.logs.title" : {
-      "comment" : "MARK: - Settings - Logs",
+    "settings.logs.exportGenerated" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logs"
+            "value" : "Generated:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "日志"
+            "value" : "生成时间:"
+          }
+        }
+      }
+    },
+    "settings.logs.exportHeader" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiaki Logs Export"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiaki 日志导出"
+          }
+        }
+      }
+    },
+    "settings.logs.exportTotalEntries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total entries:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总条目数:"
           }
         }
       }
@@ -2776,131 +2938,148 @@
         }
       }
     },
-    "settings.logs.exportHeader" : {
+    "settings.logs.title" : {
+      "comment" : "MARK: - Settings - Logs",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chiaki Logs Export"
+            "value" : "Logs"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chiaki 日志导出"
+            "value" : "日志"
           }
         }
       }
     },
-    "settings.logs.exportGenerated" : {
+    "settings.keyboard.clearMapping" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Generated:"
+            "value" : "Clear mapping"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "生成时间:"
+            "value" : "清除映射"
           }
         }
       }
     },
-    "settings.logs.exportTotalEntries" : {
+    "settings.keyboard.enableDescription" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Total entries:"
+            "value" : "Use keyboard keys to control the PlayStation when no controller is connected."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "总条目数:"
+            "value" : "在没有手柄连接时，使用键盘按键控制 PlayStation。"
           }
         }
       }
     },
-    "logLevel.error" : {
-      "comment" : "MARK: - Log Levels",
+    "settings.keyboard.enableKeyboardInput" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Error"
+            "value" : "Enable Keyboard Input"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "错误"
+            "value" : "启用键盘输入"
           }
         }
       }
     },
-    "logLevel.warning" : {
+    "settings.keyboard.notAssigned" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warning"
+            "value" : "Not assigned"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "警告"
+            "value" : "未分配"
           }
         }
       }
     },
-    "logLevel.info" : {
+    "settings.keyboard.pressKey" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Info"
+            "value" : "Press a key"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "信息"
+            "value" : "按下一个键"
           }
         }
       }
     },
-    "logLevel.debug" : {
+    "settings.keyboard.pressKeyDescription" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Debug"
+            "value" : "Press any key to assign it, or click outside to cancel."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "调试"
+            "value" : "按任意键进行分配，或点击外部取消。"
           }
         }
       }
     },
-    "logLevel.verbose" : {
+    "settings.keyboard.resetToDefaults" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verbose"
+            "value" : "Reset to Defaults"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "详细"
+            "value" : "恢复默认设置"
+          }
+        }
+      }
+    },
+    "settings.keyboard.title" : {
+      "comment" : "MARK: - Settings - Keyboard",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard Mapping"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘映射"
           }
         }
       }

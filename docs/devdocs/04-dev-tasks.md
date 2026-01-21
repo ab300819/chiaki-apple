@@ -329,7 +329,7 @@
 **子任务**:
 - [x] T9.2.1: 实现 `GeneralSettingsView` - 断开动作 (Do Nothing / Sleep / Ask)、流化模式开关 ✅
 - [x] T9.2.2: 实现 `ConsolesSettingsView` - 已注册主机管理、隐藏主机列表 ✅
-- [ ] T9.2.3: macOS 开发 `KeyboardMappingEditor` - 键盘按键映射
+- [x] T9.2.3: macOS 开发 `KeyboardMappingEditor` - 键盘按键映射 ✅
 
 **验收标准**:
 - 断开连接时可选择进入休眠或仅断开

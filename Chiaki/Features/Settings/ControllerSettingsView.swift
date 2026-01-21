@@ -103,6 +103,26 @@ struct ControllerSettingsView: View {
                 Text(String(localized: "settings.controller.touchController"))
             }
             #endif
+
+            #if os(macOS)
+            // Keyboard Mapping Section (macOS only)
+            Section {
+                NavigationLink {
+                    KeyboardMappingView()
+                } label: {
+                    HStack {
+                        Label(L10n.Settings.Keyboard.title, systemImage: "keyboard")
+                        Spacer()
+                        if store.keyboardInputEnabled {
+                            Text(String(localized: "settings.controller.enabled"))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text(L10n.Nav.keyboard)
+            }
+            #endif
         }
         .navigationTitle(L10n.Nav.controller)
         #if os(macOS)

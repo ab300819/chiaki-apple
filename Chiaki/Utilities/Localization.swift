@@ -35,6 +35,7 @@ enum L10n {
         static let video = String(localized: "nav.video")
         static let audio = String(localized: "nav.audio")
         static let controller = String(localized: "nav.controller")
+        static let keyboard = String(localized: "nav.keyboard")
         static let account = String(localized: "nav.account")
         static let consoles = String(localized: "nav.consoles")
         static let logs = String(localized: "nav.logs")
@@ -161,6 +162,17 @@ enum L10n {
             static let exportHeader = String(localized: "settings.logs.exportHeader")
             static let exportGenerated = String(localized: "settings.logs.exportGenerated")
             static let exportTotalEntries = String(localized: "settings.logs.exportTotalEntries")
+        }
+
+        enum Keyboard {
+            static let title = String(localized: "settings.keyboard.title")
+            static let enableKeyboardInput = String(localized: "settings.keyboard.enableKeyboardInput")
+            static let enableDescription = String(localized: "settings.keyboard.enableDescription")
+            static let notAssigned = String(localized: "settings.keyboard.notAssigned")
+            static let clearMapping = String(localized: "settings.keyboard.clearMapping")
+            static let pressKey = String(localized: "settings.keyboard.pressKey")
+            static let pressKeyDescription = String(localized: "settings.keyboard.pressKeyDescription")
+            static let resetToDefaults = String(localized: "settings.keyboard.resetToDefaults")
         }
     }
 
