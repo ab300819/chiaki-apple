@@ -43,7 +43,7 @@ final class HostManager: ObservableObject {
     init(discoveryService: DiscoveryService? = nil,
          hostStore: HostStore? = nil) {
         self.discoveryService = discoveryService ?? DiscoveryService()
-        self.hostStore = hostStore ?? HostStore()
+        self.hostStore = hostStore ?? HostStore.shared
 
         setupBindings()
         loadStoredHosts()

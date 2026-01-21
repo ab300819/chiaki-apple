@@ -17,19 +17,42 @@ final class HostListViewModel {
 
     var hosts: [ConsoleHost] = []
     var isDiscovering: Bool = false
-    var isLoading: Bool = false
+    var isLoading: Bool = true  // Start with loading state
     var errorMessage: String?
 
     // MARK: - Private Properties
 
-    private let hostManager: HostManager
+    private var _hostManager: HostManager?
     private var cancellables = Set<AnyCancellable>()
+    private var isInitialized = false
+
+    /// Safe accessor for host manager (force unwraps after initialization)
+    private var hostManager: HostManager {
+        guard let manager = _hostManager else {
+            fatalError("HostListViewModel used before initialization. Call initializeIfNeeded() first.")
+        }
+        return manager
+    }
 
     // MARK: - Initialization
-    
+
     init(hostManager: HostManager? = nil) {
-        self.hostManager = hostManager ?? .shared
+        // Defer heavy initialization - don't access .shared here
+        if let manager = hostManager {
+            self._hostManager = manager
+            setupBindings()
+            isLoading = false
+            isInitialized = true
+        }
+    }
+
+    /// Call this from .task to initialize lazily
+    func initializeIfNeeded() {
+        guard !isInitialized else { return }
+        isInitialized = true
+        _hostManager = HostManager.shared
         setupBindings()
+        isLoading = false
     }
 
 

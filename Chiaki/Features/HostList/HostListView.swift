@@ -81,6 +81,9 @@ struct HostListView: View {
                 navigationManager.wakeUpSelectedHostTrigger = false
             }
         }
+        .task {
+            viewModel.initializeIfNeeded()
+        }
     }
     
     #if os(tvOS)
@@ -158,7 +161,15 @@ struct HostListView: View {
 
     private var iOSBody: some View {
         List(selection: $selectedHostId) {
-            if viewModel.hosts.isEmpty {
+            if viewModel.isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .padding()
+                    Spacer()
+                }
+                .listRowBackground(Color.clear)
+            } else if viewModel.hosts.isEmpty {
                 emptyStateView
             } else {
                 ForEach(viewModel.hosts) { host in
