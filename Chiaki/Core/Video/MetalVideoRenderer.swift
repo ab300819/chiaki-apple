@@ -38,6 +38,8 @@ struct VideoUniforms {
     var brightness: Float
     var contrast: Float
     var saturation: Float
+    var colorSpace: UInt32   // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
+    var colorRange: UInt32   // 0 = VideoRange(Limited), 1 = FullRange
 
     static var `default`: VideoUniforms {
         VideoUniforms(
@@ -46,7 +48,9 @@ struct VideoUniforms {
             textureSizeUV: simd_float2(960, 540),
             brightness: 1.0,
             contrast: 1.0,
-            saturation: 1.0
+            saturation: 1.0,
+            colorSpace: 0,
+            colorRange: 0
         )
     }
 }
@@ -317,15 +321,22 @@ final class MetalVideoRenderer: NSObject {
         videoSize = CGSize(width: width, height: height)
 
         switch pixelFormat {
-        case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-             kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+        case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
             // Biplanar NV12 format (common from VideoToolbox)
             isBiplanar = true
+            uniforms.colorRange = 0 // Limited range
+            createBiplanarTextures(from: pixelBuffer, cache: textureCache)
+
+        case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+            // Biplanar NV12 full range
+            isBiplanar = true
+            uniforms.colorRange = 1 // Full range
             createBiplanarTextures(from: pixelBuffer, cache: textureCache)
 
         case kCVPixelFormatType_32BGRA:
             // BGRA format
             isBiplanar = false
+            uniforms.colorRange = 1 // Full range for RGB textures
             createBGRATexture(from: pixelBuffer, cache: textureCache)
 
         default:
@@ -564,6 +575,11 @@ final class MetalVideoRenderer: NSObject {
         uniforms.saturation = max(0.0, min(2.0, value))
     }
 
+    /// Set color space (0 = BT.709, 1 = BT.601, 2 = BT.2020)
+    func setColorSpace(_ value: UInt32) {
+        uniforms.colorSpace = min(value, 2)
+    }
+
     // MARK: - Statistics
 
     /// Reset frame statistics
@@ -605,12 +621,47 @@ final class MetalVideoRenderer: NSObject {
         float brightness;
         float contrast;
         float saturation;
+        uint colorSpace;  // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
+        uint colorRange;  // 0 = VideoRange(Limited), 1 = FullRange
     };
 
-    constant float3x3 colorMatrixBT709 = float3x3(
-        float3(1.0,     1.0,      1.0),
-        float3(0.0,    -0.18732, 1.8556),
-        float3(1.5748, -0.46812,  0.0)
+    // Color conversion matrices (column-major)
+    constant float3x3 kBT709Limited = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.187327,    1.85560),
+        float3(1.57480,    -0.468124,    0.0)
+    );
+
+    constant float3x3 kBT709Full = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.21324861,  2.11240179),
+        float3(1.79274107, -0.53290933,  0.0)
+    );
+
+    constant float3x3 kBT601Limited = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.391762,    2.017232),
+        float3(1.596027,   -0.812968,    0.0)
+    );
+
+    constant float3x3 kBT601Full = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.344136,    1.77200),
+        float3(1.40200,    -0.714136,    0.0)
+    );
+
+    // BT.2020 - Limited range (HDR/Wide Color Gamut)
+    constant float3x3 kBT2020Limited = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.164553,    1.88140),
+        float3(1.47460,    -0.571353,    0.0)
+    );
+
+    // BT.2020 - Full range
+    constant float3x3 kBT2020Full = float3x3(
+        float3(1.0,         1.0,         1.0),
+        float3(0.0,        -0.187326,    2.14177),
+        float3(1.67867,    -0.650424,    0.0)
     );
 
     vertex VertexOut videoVertexShader(
@@ -629,16 +680,32 @@ final class MetalVideoRenderer: NSObject {
         texture2d<float> textureUV [[texture(1)]],
         constant VideoUniforms &uniforms [[buffer(1)]]
     ) {
-        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
         float y = textureY.sample(textureSampler, in.texCoord).r;
         float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
 
-        y = (y - 0.0625) * 1.1643835616;
+        if (uniforms.colorRange == 0u) {
+            y = (y - 0.0625) * 1.1643835616;
+        }
         uv = (uv - 0.5);
 
+        float3x3 m;
+        bool isLimited = (uniforms.colorRange == 0u);
+        switch (uniforms.colorSpace) {
+            case 1u:  // BT.601 (SD)
+                m = isLimited ? kBT601Limited : kBT601Full;
+                break;
+            case 2u:  // BT.2020 (HDR)
+                m = isLimited ? kBT2020Limited : kBT2020Full;
+                break;
+            default:  // 0 = BT.709 (HD, default)
+                m = isLimited ? kBT709Limited : kBT709Full;
+                break;
+        }
+
         float3 yuv = float3(y, uv.x, uv.y);
-        float3 rgb = colorMatrixBT709 * yuv;
+        float3 rgb = m * yuv;
 
         rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
         rgb = rgb * uniforms.brightness;
@@ -656,7 +723,7 @@ final class MetalVideoRenderer: NSObject {
         texture2d<float> texture [[texture(0)]],
         constant VideoUniforms &uniforms [[buffer(1)]]
     ) {
-        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+        constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
         float4 color = texture.sample(textureSampler, in.texCoord);
         float3 rgb = color.rgb;

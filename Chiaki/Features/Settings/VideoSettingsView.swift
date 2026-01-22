@@ -179,7 +179,7 @@ struct VideoSettingsView: View {
 
                 Picker(String(localized: "settings.video.colorSpace"), selection: $store.streamSettings.colorSpace) {
                     ForEach(StreamSettings.ColorSpace.allCases) { colorSpace in
-                        Text(colorSpace.rawValue).tag(colorSpace)
+                        Text(colorSpace.displayName).tag(colorSpace)
                     }
                 }
             } header: {

@@ -316,6 +316,7 @@ final class StreamingViewModel {
         audioPlayerBridge.setVolume(Float(volume))
         videoRenderer?.displayMode = displayMode.toVideoDisplayMode
         videoRenderer?.zoomFactor = Float(zoomFactor)
+        videoRenderer?.setColorSpace(settings.colorSpace.rawValue)
     }
 
     /// Submit login PIN

@@ -29,22 +29,58 @@ struct VideoUniforms {
     float brightness;        // Brightness adjustment (0.0 - 2.0, default 1.0)
     float contrast;          // Contrast adjustment (0.0 - 2.0, default 1.0)
     float saturation;        // Saturation adjustment (0.0 - 2.0, default 1.0)
+    uint colorSpace;         // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
+    uint colorRange;         // 0 = VideoRange(Limited), 1 = FullRange
 };
 
 // MARK: - Color Space Conversion Constants
 
-// BT.709 color matrix for HD content (used by PS4/PS5)
-constant float3x3 colorMatrixBT709 = float3x3(
-    float3(1.0,     1.0,      1.0),
-    float3(0.0,    -0.18732, 1.8556),
-    float3(1.5748, -0.46812,  0.0)
+// Color conversion matrices
+// Notes:
+// - Matrices are constructed column-major. Multiply as: rgb = M * float3(Y, Cb, Cr)
+// - Provide both Limited(Video Range, with Y scaled by 1.164 and unscaled UV) and Full Range variants
+
+// BT.709 - Limited range (Y scaled by 1.164; UV in [-0.5, 0.5] of video range amplitude)
+constant float3x3 kBT709Limited = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.187327,    1.85560),
+    float3(1.57480,   -0.468124,    0.0)
 );
 
-// BT.601 color matrix for SD content (fallback)
-constant float3x3 colorMatrixBT601 = float3x3(
-    float3(1.0,     1.0,     1.0),
-    float3(0.0,    -0.34414, 1.772),
-    float3(1.402,  -0.71414, 0.0)
+// BT.709 - Full range (no Y scale; UV amplitude is full [-0.5, 0.5])
+constant float3x3 kBT709Full = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.21324861,  2.11240179),
+    float3(1.79274107,-0.53290933,  0.0)
+);
+
+// BT.601 - Limited range
+constant float3x3 kBT601Limited = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.391762,    2.017232),
+    float3(1.596027,  -0.812968,    0.0)
+);
+
+// BT.601 - Full range
+constant float3x3 kBT601Full = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.344136,    1.77200),
+    float3(1.40200,   -0.714136,    0.0)
+);
+
+// BT.2020 - Limited range (HDR/Wide Color Gamut)
+// Coefficients: Kr=0.2627, Kb=0.0593, Kg=0.6780
+constant float3x3 kBT2020Limited = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.164553,    1.88140),
+    float3(1.47460,   -0.571353,    0.0)
+);
+
+// BT.2020 - Full range
+constant float3x3 kBT2020Full = float3x3(
+    float3(1.0,        1.0,         1.0),
+    float3(0.0,       -0.187326,    2.14177),
+    float3(1.67867,   -0.650424,    0.0)
 );
 
 // MARK: - Vertex Shader
@@ -68,22 +104,38 @@ fragment float4 videoBiplanarFragmentShader(
     texture2d<float> textureUV [[texture(1)]],     // UV plane (chroma, interleaved)
     constant VideoUniforms &uniforms [[buffer(1)]]
 ) {
-    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
     // Sample Y and UV planes
     float y = textureY.sample(textureSampler, in.texCoord).r;
     float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
 
-    // Convert from video range to full range if needed
-    // Video range: Y [16-235], UV [16-240]
-    // Full range: Y [0-255], UV [0-255]
-    // PS4/PS5 typically use video range
-    y = (y - 0.0625) * 1.1643835616;  // (y - 16/255) * (255/(235-16))
-    uv = (uv - 0.5);                   // Center UV around 0
+    // Range handling
+    // Limited(VideoRange): Y [16-235], UV [16-240] -> scale Y to full and center UV
+    // FullRange: Y [0-255], UV [0-255] -> center UV only
+    if (uniforms.colorRange == 0u) {
+        y = (y - 0.0625) * 1.1643835616;  // (y - 16/255) * (255/(235-16))
+    }
+    uv = (uv - 0.5);                       // Center UV around 0 for both ranges
 
-    // YUV to RGB using BT.709
+    // Select color matrix based on color space and range
+    float3x3 m;
+    bool isLimited = (uniforms.colorRange == 0u);
+    switch (uniforms.colorSpace) {
+        case 1u:  // BT.601 (SD)
+            m = isLimited ? kBT601Limited : kBT601Full;
+            break;
+        case 2u:  // BT.2020 (HDR)
+            m = isLimited ? kBT2020Limited : kBT2020Full;
+            break;
+        default:  // 0 = BT.709 (HD, default)
+            m = isLimited ? kBT709Limited : kBT709Full;
+            break;
+    }
+
+    // YUV to RGB
     float3 yuv = float3(y, uv.x, uv.y);
-    float3 rgb = colorMatrixBT709 * yuv;
+    float3 rgb = m * yuv;
 
     // Apply color adjustments
     rgb = (rgb - 0.5) * uniforms.contrast + 0.5;  // Contrast
@@ -107,7 +159,7 @@ fragment float4 videoBGRAFragmentShader(
     texture2d<float> texture [[texture(0)]],
     constant VideoUniforms &uniforms [[buffer(1)]]
 ) {
-    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
     float4 color = texture.sample(textureSampler, in.texCoord);
     float3 rgb = color.rgb;
@@ -130,6 +182,6 @@ fragment float4 videoPassthroughFragmentShader(
     VertexOut in [[stage_in]],
     texture2d<float> texture [[texture(0)]]
 ) {
-    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
+    constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
     return texture.sample(textureSampler, in.texCoord);
 }

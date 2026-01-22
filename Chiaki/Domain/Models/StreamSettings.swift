@@ -200,10 +200,21 @@ struct StreamSettings: Codable, Equatable {
         var id: String { rawValue }
     }
 
-    enum ColorSpace: String, Codable, CaseIterable, Identifiable {
-        case bt709 = "BT.709 (SDR)"
-        case bt2020 = "BT.2020 (HDR)"
-        
-        var id: String { rawValue }
+    /// Color space for YUV to RGB conversion
+    /// Maps to Metal shader's colorSpace uniform (0, 1, 2)
+    enum ColorSpace: UInt32, Codable, CaseIterable, Identifiable {
+        case bt709 = 0   // HD content (PS4/PS5 default)
+        case bt601 = 1   // SD content (legacy)
+        case bt2020 = 2  // HDR/Wide Color Gamut
+
+        var id: UInt32 { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .bt709: return "BT.709 (SDR)"
+            case .bt601: return "BT.601 (SD)"
+            case .bt2020: return "BT.2020 (HDR)"
+            }
+        }
     }
 }
