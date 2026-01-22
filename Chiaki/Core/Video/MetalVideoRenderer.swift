@@ -626,42 +626,43 @@ final class MetalVideoRenderer: NSObject {
     };
 
     // Color conversion matrices (column-major)
+    // Limited range: UV swing ~0.878, coefficients scaled by 1.139
+    // Full range: standard coefficients, UV in [-0.5, 0.5]
+
     constant float3x3 kBT709Limited = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.187327,    1.85560),
-        float3(1.57480,    -0.468124,    0.0)
+        float3(0.0,        -0.21325,     2.11240),
+        float3(1.79274,    -0.53291,     0.0)
     );
 
     constant float3x3 kBT709Full = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.21324861,  2.11240179),
-        float3(1.79274107, -0.53290933,  0.0)
+        float3(0.0,        -0.18732,     1.85560),
+        float3(1.57480,    -0.46812,     0.0)
     );
 
     constant float3x3 kBT601Limited = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.391762,    2.017232),
-        float3(1.596027,   -0.812968,    0.0)
+        float3(0.0,        -0.39176,     2.01723),
+        float3(1.59603,    -0.81297,     0.0)
     );
 
     constant float3x3 kBT601Full = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.344136,    1.77200),
-        float3(1.40200,    -0.714136,    0.0)
+        float3(0.0,        -0.34414,     1.77200),
+        float3(1.40200,    -0.71414,     0.0)
     );
 
-    // BT.2020 - Limited range (HDR/Wide Color Gamut)
     constant float3x3 kBT2020Limited = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.164553,    1.88140),
-        float3(1.47460,    -0.571353,    0.0)
+        float3(0.0,        -0.18740,     2.14290),
+        float3(1.67958,    -0.65046,     0.0)
     );
 
-    // BT.2020 - Full range
     constant float3x3 kBT2020Full = float3x3(
         float3(1.0,         1.0,         1.0),
-        float3(0.0,        -0.187326,    2.14177),
-        float3(1.67867,    -0.650424,    0.0)
+        float3(0.0,        -0.16455,     1.88140),
+        float3(1.47460,    -0.57135,     0.0)
     );
 
     vertex VertexOut videoVertexShader(
