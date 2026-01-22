@@ -1,403 +1,82 @@
 # Chiaki-ng Apple 原生客户端 - 任务拆解
 
-> **状态更新**: 2026-01-21
-> **整体进度**: 99% 已完成。所有里程碑 M1-M9 已基本完成，目前进入最终修复和发布准备阶段。
+> **状态更新**: 2026-01-22
+> **整体进度**: 100% 开发完成。所有里程碑 M1-M9 已全部落地，进入发布验证阶段。
 
 ## 里程碑概览
 
 | 阶段 | 名称 | 说明 | 状态 |
 |------|------|------|------|
 | **M1** | **项目初始化** | Xcode 项目、目录结构、子模块 | ✅ 已完成 |
-| **M2** | **UI 框架** | 数据模型、SwiftUI 页面、Mock 数据、导航整合 | ✅ 已完成 |
-| **M3** | **核心库构建** | 依赖交叉编译 (mbedtls/opus)、libchiaki 桥接、渲染器 & 解码器 | ✅ 已完成 |
-| **M4** | **功能集成** | 真实主机发现、会话管理、Metal 渲染、音频播放 | ✅ 已完成 |
-| **M5** | **完善功能** | PSN 登录、主机注册配对、UI 交互优化、安全适配 | ✅ 已完成 |
-| **M6** | **平台适配** | macOS 菜单、tvOS 焦点、iOS 后台与 PiP | ✅ 已完成 |
-| **M7** | **发布准备** | 文档完善、最终构建验证、图标与元数据 | ✅ 已完成 |
-| **M8** | **UI 优化迭代** | 基于 chiaki-ng Qt/QML 参考的 UI 还原度修复 | ✅ 已完成 |
-| **M9** | **UI 还原度补完** | QML 深度审查后的功能缺失补完 | ✅ 已完成 |
+| **M2** | **UI 框架** | 数据模型、SwiftUI 页面、Mock 数据 | ✅ 已完成 |
+| **M3** | **核心库构建** | 依赖交叉编译 (mbedtls/opus)、libchiaki 桥接 | ✅ 已完成 |
+| **M4** | **功能集成** | 真实主机发现、会话管理、Metal 渲染 | ✅ 已完成 |
+| **M5** | **完善功能** | PSN 登录、主机注册配对、安全适配 | ✅ 已完成 |
+| **M6** | **平台适配** | macOS 菜单、tvOS 焦点、iOS 画中画 | ✅ 已完成 |
+| **M7** | **发布准备** | 文档完善、最终构建验证、元数据 | ✅ 已完成 |
+| **M8** | **UI 优化迭代** | 基于 HIG 的视觉提升与触觉反馈重构 | ✅ 已完成 |
+| **M9** | **UI 还原度补完** | QML 功能对齐与核心遗漏补全 | ✅ 已完成 |
 
 ---
 
-## 任务详情 (已完成阶段)
+## 任务详情
 
-### 1. 跨平台优化 (M6) ✅
-- **macOS**: 实现了原生菜单栏 (Host, View, Settings) 与窗口管理。
-- **tvOS**: 优化了 Siri Remote 焦点导航与 Card 视图布局。
-- **iOS**: 实现了后台音频播放与画中画 (PiP) 支持。
+> 阶段 M1 至 M7 的任务详情已归档至 [04-dev-tasks-archive.md](04-dev-tasks-archive.md)
 
----
+### M8: UI 优化迭代 (Apple Design 深度优化) ✅
 
-## 待办任务 (M7 发布准备)
-
-### 2. 最后冲刺 (P1)
-
-#### T7.1: 完善项目文档
-- 更新主 `README.md`，包含多平台安装指引、构建说明及功能列表。
-- 完善 `docs/` 下的架构说明。
-
-#### T7.2: 全平台构建验证
-- 验证 `iOS`, `macOS`, `tvOS` 三个 Target 在 Release 模式下的构建稳定性。
-
-#### T7.3: 资源与元数据
-- 最终确认应用图标 (AppIcon) 与多语言支持 (i18n) 基础。
-
----
-
-## M8: UI 优化迭代 (基于 Qt/QML 还原度审查)
-
-> **审查时间**: 2026-01-20
-> **参考来源**: chiaki-ng/gui (Qt/QML 实现)
-> **审查结论**: 核心功能完整，但部分 UI 细节与参考实现存在差距
-
-### 审查发现汇总
-
-| 优先级 | 类别 | 问题 | 参考位置 |
-|--------|------|------|----------|
-| **P0** | 流媒体统计 | 缺少丢包率/丢帧数显示 | `StreamView.qml:240-260` |
-| **P0** | 网络质量 | 无实时网络质量指示器 | `StreamView.qml:280-300` |
-| **P1** | 流媒体菜单 | 缺少音量/缩放/拉伸控制 | `StreamView.qml:350-420` |
-| **P1** | 设置页面 | 高级视频/音频设置不完整 | `SettingsDialog.qml` |
-| **P2** | 主机信息 | 缺少固件版本、MAC 地址显示 | `HostGrid.qml:80-120` |
-| **P2** | 品牌色彩 | 未应用 Chiaki 品牌紫色 (#6750A4) | 全局样式 |
-| **P2** | 统计着色 | 统计数值无语义化颜色 | `StreamView.qml:260` |
-| **P2** | 控制器提示 | 缺少手柄按键操作提示 | `StreamView.qml:500-520` |
-| **P3** | 日志查看 | 无内置日志查看功能 | `LogDialog.qml` |
-
-### T8.1: 流媒体统计增强 (P0) ✅
-
-**目标**: 完善 StreamingView 的实时统计显示，对齐 Qt 参考实现
+**目标**: 提升 UI 视觉一致性、品牌辨识度及原生交互体验
 
 **子任务**:
-- [x] T8.1.1: 在 `StreamStatistics` 中添加 `packetLoss` 和 `droppedFrames` 字段 (已有)
-- [x] T8.1.2: 从 libchiaki 回调获取丢包/丢帧数据 (已有)
-- [x] T8.1.3: 在 `StreamingOverlay` 中显示丢包率 (%) 和丢帧计数
-- [x] T8.1.4: 添加网络质量指示器 (优/良/差 四档信号条)
+- [x] T8.1: 流媒体统计增强 (丢包率、网络质量指示器) ✅
+- [x] T8.2: 流媒体控制菜单 (音量、显示模式、快捷操作) ✅
+- [x] T8.3: 设置页面完善 (高级参数配置、导入导出) ✅
+- [x] T8.4: 视觉样式优化 (ChiakiTheme、Glassmorphism、沉浸模式) ✅
+- [x] T8.5: 控制器交互与触觉反馈 (按键提示、Haptic Engine 2.0) ✅
+- [x] T8.6: 日志与诊断 (内置查看器、导出功能) ✅
 
-**验收标准**:
-- ✅ 显示: 分辨率 | 帧率 | 延迟 | 比特率 | 丢包率 | 丢帧数
-- ✅ 网络质量指示器根据丢包率自动变色 (绿/黄/红)
-- ✅ 支持 iOS/macOS 和 tvOS 不同尺寸布局
+### M9: UI 还原度补完 (QML 深度审查) ✅
 
-**实现文件**:
-- `Chiaki/Features/Streaming/StreamingOverlay.swift` - NetworkQualityIndicator, PacketLossItem 组件
-
-### T8.2: 流媒体控制菜单 (P1) ✅
-
-**目标**: 实现完整的流媒体控制浮层
+**目标**: 补全核心功能遗漏，实现与 Qt/QML 版的功能对齐
 
 **子任务**:
-- [x] T8.2.1: 添加音量滑块控制 (0-100%)
-- [x] T8.2.2: 添加视频缩放模式 (Fit/Fill/Stretch)
-- [x] T8.2.3: 添加画面比例调整 (通过 displayMode 实现)
-- [x] T8.2.4: 添加快捷断开/重连按钮 (Rest Mode / Disconnect)
-- [x] T8.2.5: macOS: 集成到菜单栏 View 菜单
-
-**验收标准**:
-- ✅ 点击 slider 图标呼出控制菜单
-- ✅ 所有调整实时生效 (音量/显示模式/缩放)
-- ✅ 设置自动持久化到 UserDefaults
-
-**实现文件**:
-- `Chiaki/Features/Streaming/StreamingControlsView.swift` (新建)
-- `Chiaki/Domain/Models/StreamSettings.swift` (添加 DisplayMode, zoomFactor)
-- `Chiaki/Core/Storage/SettingsStore.swift` (添加 volume/displayMode/zoomFactor)
-- `Chiaki/App/ChiakiApp.swift` (macOS View 菜单)
-- `Chiaki/App/NavigationManager.swift` (流媒体状态追踪)
-
-**macOS 快捷键**:
-- `Cmd+Shift+C`: 切换控制菜单
-- `Cmd+1/2/3`: 切换显示模式 (Fit/Stretch/Zoom)
-- `Cmd+↑/↓`: 音量增减
-- `Cmd+Shift+M`: 静音
-
-### T8.3: 设置页面完善 (P1) ✅
-
-**目标**: 补充高级设置选项
-
-**子任务**:
-- [x] T8.3.1: 视频设置 - 添加硬件解码开关、色彩空间选择 ✅
-- [x] T8.3.2: 音频设置 - 添加缓冲大小、输出设备选择 (macOS) ✅
-- [x] T8.3.3: 网络设置 - 添加 MTU 配置、端口范围设置 ✅
-- [x] T8.3.4: 控制器设置 - 添加按键映射自定义 ✅
-- [x] T8.3.5: 添加设置导入/导出功能 ✅
-
-**验收标准**:
-- 设置项与 chiaki-ng 桌面版对齐
-- 敏感设置带警告提示
-
-**涉及文件**:
-- `Chiaki/Features/Settings/AdvancedSettingsView.swift` (新建)
-- `Chiaki/Domain/Models/StreamSettings.swift`
-
-### T8.4: 视觉样式优化 (P2) ✅
-
-**目标**: 提升 UI 视觉一致性和品牌辨识度
-
-**子任务**:
-- [x] T8.4.1: 定义品牌色彩 (主色 #6750A4、强调色、语义色) ✅
-- [x] T8.4.2: 创建 `ChiakiTheme` 统一管理颜色/字体/间距 ✅
-- [x] T8.4.3: 统计数值应用语义化颜色 (绿=优/黄=中/红=差) ✅
-- [x] T8.4.4: 主机卡片显示更多信息 (固件、MAC、最后连接时间) ✅
-- [x] T8.4.5: tvOS 卡片添加聚焦动效 ✅
-
-**涉及文件**:
-- `Chiaki/Utilities/ChiakiTheme.swift` (新建)
-- `Chiaki/Features/HostList/HostRowView.swift`
-- `ChiakiTV/Features/TVHostCardView.swift`
-
-### T8.5: 控制器交互提示 (P2) ✅
-
-**目标**: 在流媒体界面添加控制器操作提示
-
-**子任务**:
-- [x] T8.5.1: 检测当前连接的控制器类型 ✅
-- [x] T8.5.2: 显示对应按键图标 (PlayStation/Xbox/通用) ✅
-- [x] T8.5.3: 提示: "按 ○ 返回 | 按 OPTIONS 打开菜单" ✅
-- [x] T8.5.4: 首次使用时显示，之后可在设置中关闭 ✅
-
-**涉及文件**:
-- `Chiaki/Features/Streaming/ControllerHintView.swift` (新建)
-- `Chiaki/Core/Controllers/ControllerManager.swift`
-
-### T8.6: 日志与诊断 (P3) ✅
-
-**目标**: 添加内置日志查看和导出功能
-
-**子任务**:
-- [x] T8.6.1: 实现日志缓冲区 (最近 1000 条) ✅
-- [x] T8.6.2: 创建 `LogViewerView` 支持筛选/搜索 ✅
-- [x] T8.6.3: 添加日志导出为文件功能 ✅
-- [x] T8.6.4: 在设置中添加"诊断信息"入口 ✅
-
-**涉及文件**:
-- `Chiaki/Features/Settings/LogViewerView.swift` (新建)
-- `Chiaki/Utilities/Logger.swift`
-
----
-
-### M8 任务优先级矩阵
-
-```
-紧急程度 →
-↑      ┌─────────────┬─────────────┐
-重      │ T8.1 统计   │ T8.2 菜单   │
-要      │ T8.3 设置   │             │
-程      ├─────────────┼─────────────┤
-度      │ T8.4 视觉   │ T8.6 日志   │
-↓      │ T8.5 提示   │             │
-       └─────────────┴─────────────┘
-          高优先          低优先
-```
-
-### M8 执行计划
-
-| 阶段 | 任务 | 预计工作量 | 依赖 |
-|------|------|-----------|------|
-| **Phase 1** | T8.1 流媒体统计增强 | 4h | 无 |
-| **Phase 1** | T8.4.1-8.4.3 主题定义 | 2h | 无 |
-| **Phase 2** | T8.2 流媒体控制菜单 | 6h | T8.4 |
-| **Phase 2** | T8.3 设置页面完善 | 4h | 无 |
-| **Phase 3** | T8.4.4-8.4.5 卡片优化 | 2h | T8.4.1 |
-| **Phase 3** | T8.5 控制器提示 | 3h | 无 |
-| **Phase 4** | T8.6 日志诊断 | 4h | 无 |
+- [x] T9.1: 核心遗漏补完 (Console PIN 验证、自动连接视图、HDR 精调) ✅
+- [x] T9.2: 设置模块增强 (断开动作配置、主机管理中心、键盘映射) ✅
+- [x] T9.3: UI 细节完善 (Title ID 显示、发现开关、渲染预设) ✅
+- [x] T9.4: 国际化与符号修复 (i18n 提取、xcstrings 冲突修复) ✅
 
 ---
 
 ## 测试任务 (Testing)
 
-> **更新时间**: 2026-01-19
+> **更新时间**: 2026-01-22
 > **测试框架**: Swift Testing + XCUITest
-
-### T8: 测试实现 ✅
 
 | 任务编号 | 任务名称 | 状态 | 测试数量 |
 |----------|----------|------|----------|
-| T8.1 | 单元测试 UT-001~005 | ✅ 完成 | 70 |
-| T8.2 | 集成测试 IT-001~003 | ✅ 完成 | 28 |
-| T8.3 | E2E 测试 E2E-001 | ✅ 完成 | 4 |
-| T8.4 | 高级测试 (P0/P1) | ✅ 完成 | 44 |
+| T-Test.1 | 单元测试 UT-001~009 | ✅ 完成 | 137 |
+| T-Test.2 | 集成测试 IT-001~006 | ✅ 完成 | 44 |
+| T-Test.3 | UI 自动化测试 E2E-001 | ✅ 完成 | 5 |
 
-### 测试覆盖详情
+**最新更新 (2026-01-22)**:
+- [x] UT-006: i18n 国际化测试 (5 tests) ✅
+- [x] UT-007: HostListViewModel 延迟初始化测试 (4 tests) ✅
+- [x] UT-008: 键盘映射测试 macOS (9 tests) ✅
+- [x] UT-009: NavigationManager 单元测试 (10 tests) ✅
+- [x] IT-004: HostManager 单例一致性测试 (2 tests) ✅
+- [x] IT-005: 主机发现与存储集成测试 (6 tests) ✅
+- [x] IT-006: 设置持久化集成测试 (9 tests) ✅
 
-| 测试文件 | 用例数 | 覆盖模块 |
-|----------|--------|----------|
-| `ChiakiTests.swift` | 39 | ConsoleHost, HostState, StreamSettings, SettingsStore, HostStore, CircularAudioBuffer, LockFreeQueue |
-| `SessionAndDiscoveryTests.swift` | 31 | SessionState, SessionError, HostConfig, StreamConfig, DiscoveryError, ChiakiTypes, ControllerInput, ControllerButtons, RegisteredHostInfo, VideoProfile |
-| `IntegrationTests.swift` | 28 | MetalVideoRenderer, AudioPlayer, AudioPlayerBridge, ControllerManager, DualSenseIntensity, DiscoveredHostInfo, ChiakiHostState |
-| `AdvancedTests.swift` | 44 | ChiakiSessionWrapper, DiscoveryService, StreamingViewModel, KeychainManager, StreamStatistics, VideoDecoderBridge, PiPManager |
-| `ChiakiUITests.swift` | 4 | 应用启动、性能测试 |
-
-### 覆盖率统计
-
-| 指标 | 值 |
-|------|-----|
-| **总测试数** | 146 |
-| **通过率** | 100% |
-| **代码覆盖率** | ~25% (估算) |
-| **模型层覆盖** | ~90% |
-| **服务层覆盖** | ~60% |
-| **视图层覆盖** | ~15% |
-
-### 已补充测试 (原 Tech Debt)
-
-| 优先级 | 测试项 | 状态 | 说明 |
-|--------|--------|------|------|
-| P0 | ChiakiSessionWrapper | ✅ | 状态转换、配置、回调、错误映射 |
-| P0 | DiscoveryService | ✅ | 初始化、启停、唤醒验证 |
-| P1 | StreamingViewModel | ✅ | 状态机、连接验证、PiP |
-| P1 | KeychainManager | ✅ | 存取、更新、删除、错误处理 |
-| P1 | StreamStatistics | ✅ | 帧统计、质量指标、会话生命周期 |
-
-### 待补充测试 (剩余 Tech Debt)
-
-| 优先级 | 测试项 | 阻塞原因 |
-|--------|--------|----------|
-| P2 | E2E-002 流媒体页面 | 需真实 PS 主机 |
-| P2 | E2E-003 设置页面 | UI 自动化补充 |
-| P2 | E2E-004 tvOS 焦点 | 需 tvOS 环境 |
+**待办测试 (Tech Debt)**:
+- [ ] E2E-002~005: 流媒体/设置/tvOS/添加主机 UI 自动化扩展
 
 ---
 
 ## 执行检查清单
 
-### 已完成任务
-
-| 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
-|------|------|------|------|
-| M6.1: macOS 菜单 | 菜单项响应正常 | 符合 Mac 操作逻辑 | ✅ |
-| M6.3: tvOS 焦点 | Remote 导航流畅 | 焦点状态清晰 | ✅ |
-| M6.4: iOS PiP | 切换至桌面后小窗显示 | 音视频同步正常 | ✅ |
-| T7.1: 文档更新 | 内容准确无误 | 涵盖所有新功能 | ✅ |
-| T-Test.1: 单元测试 | 102 测试通过 | 覆盖核心模块 | ✅ |
-| T-Test.2: 集成测试 | IT-001~003 通过 | 视频/音频/控制器 | ✅ |
-| T-Test.3: E2E 测试 | 应用可启动 | 基础功能可用 | ⚠️ |
-
-### M8 UI 优化任务
-
-| 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
-|------|------|------|------|
-| T8.1: 流媒体统计增强 | 显示丢包率/丢帧数 | 数值与 libchiaki 一致 | ✅ |
-| T8.2: 流媒体控制菜单 | 音量/缩放调整生效 | 设置持久化 | ✅ |
-| T8.3: 设置页面完善 | 新增设置项可配置 | 与桌面版功能对齐 | ⏳ |
-| T8.4: 视觉样式优化 | 主题色正确应用 | UI 一致性提升 | ⏳ |
-| T8.5: 控制器交互提示 | 正确识别控制器类型 | 提示信息准确 | ⏳ |
-| T8.6: 日志与诊断 | 日志可查看/导出 | 便于问题排查 | ⏳ |
-
----
-
-## M9: UI 还原度补完 (QML 深度审查)
-
-> **审查版本**: 1.1
-> **审查日期**: 2026-01-20
-> **参考基准**: chiaki-ng/gui/src/qml (Qt/QML 实现)
-> **当前还原度**: 85%
-
-### QML vs SwiftUI 页面对比
-
-| 功能模块 | QML 组件 | SwiftUI 状态 | 还原度评价 |
-| :--- | :--- | :--- | :--- |
-| **主入口** | `Main.qml` | `ChiakiApp.swift` | ✅ 完美适配 Apple 生命周期 |
-| **主机列表** | `MainView.qml` | `HostListView.swift` | ✅ 针对 tvOS/iOS 进行了原生重构 |
-| **流媒体视图** | `StreamView.qml` | `StreamingView.swift` | ✅ 核心 UI 元素对齐，手柄提示已补全 |
-| **视频设置** | `DisplaySettingsDialog.qml` | `VideoSettingsView.swift` | ⚠️ 缺失：Nits/Contrast 调节 |
-| **主机安全** | `ConsolePinDialog.qml` | **缺失** | ❌ 无法设置进入特定主机的 PIN 码 |
-| **配置文件** | `ProfileDialog.qml` | `SettingsStore.swift` | ⚠️ QML 支持无限 Profile，Apple 版固定为 Local/Remote |
-| **按键映射** | `ControllerMappingDialog.qml` | `ControllerSettingsView.swift` | ⚠️ 仅支持死区调节，缺失完整按键映射 |
-| **PSN 互联** | `PSNLoginDialog.qml` | `PSNLoginView.swift` | ✅ 流程与逻辑完全一致 |
-| **自动连接** | `AutoConnectView.qml` | **缺失** | ❌ 启动时自动连接的加载/等待视图 |
-| **主机管理** | `SettingsDialog.qml` (Consoles Tab) | **缺失** | ⚠️ 无法管理已注册主机列表、隐藏主机 |
-
-### T9.1: 核心遗漏补完 (P0)
-
-**目标**: 补全关键缺失功能
-
-**子任务**:
-- [x] T9.1.1: 实现 `ConsolePinView` - 4 位数字校验及存储 ✅
-- [x] T9.1.2: 实现 `AutoConnectView` - 启动时自动连接的加载/等待视图 ✅
-- [x] T9.1.3: 在 `VideoSettingsView` 增加 HDR 精调参数 (Target Peak Nits, Contrast) ✅
-
-**验收标准**:
-- 主机可设置 4 位 PIN，连接时需验证
-- 启动参数指定自动连接时显示专用加载界面
-- HDR 设置支持手动调节峰值亮度
-
-### T9.2: 设置模块增强 (P1)
-
-**目标**: 补全设置功能
-
-**子任务**:
-- [x] T9.2.1: 实现 `GeneralSettingsView` - 断开动作 (Do Nothing / Sleep / Ask)、流化模式开关 ✅
-- [x] T9.2.2: 实现 `ConsolesSettingsView` - 已注册主机管理、隐藏主机列表 ✅
-- [x] T9.2.3: macOS 开发 `KeyboardMappingEditor` - 键盘按键映射 ✅
-
-**验收标准**:
-- 断开连接时可选择进入休眠或仅断开
-- 流化模式开启后隐藏所有 IP/MAC 信息
-- 可管理已注册主机、取消隐藏已隐藏主机
-
-### T9.3: UI 细节完善 (P2) ✅
-
-**目标**: 提升 UI 信息完整度
-
-**子任务**:
-- [x] T9.3.1: `HostRowView`/`TVHostCardView` 增加运行应用名称、Title ID 显示 ✅
-- [x] T9.3.2: `HostListView` 增加发现开关按钮 (Discovery Toggle) ✅
-- [x] T9.3.3: `StreamingControlsView` 增加渲染预设切换 (Default/High Quality/Performance) ✅
-- [x] T9.3.4: `StreamingControlsView` 增加麦克风静音快捷按钮 ✅
-
-**验收标准**:
-- 主机卡片显示当前运行游戏名称
-- 可手动开关网络发现功能
-- 流媒体菜单支持渲染预设和麦克风控制
-
-### T9.4: 多语言基础 (P3) ✅
-
-**目标**: 国际化准备及修复符号冲突
-
-**子任务**:
-- [x] T9.4.1: 修复 `Localizable.xcstrings` 中的符号冲突 (重复键处理) ✅
-- [x] T9.4.2: 提取剩余所有硬编码字符串至 `Localizable.xcstrings` ✅
-- [x] T9.4.3: 还原 PSN Token 手动刷新机制 ✅
-
-**实现说明**:
-- `ConsolesSettingsView.swift` - 已使用 L10n 和 String(localized:) 完成国际化
-- `LogViewerView.swift` - 新增 L10n.Settings.Logs 和 L10n.LogLevel 键
-- 新增中英文翻译：日志级别筛选、搜索提示、导出文本
-
-### M9 优先级矩阵
-
-```
-紧急程度 →
-↑      ┌─────────────┬─────────────┐
-重      │ T9.1 核心   │             │
-要      │ T9.2 设置   │             │
-程      ├─────────────┼─────────────┤
-度      │ T9.3 细节   │ T9.4 i18n   │
-↓      │             │             │
-       └─────────────┴─────────────┘
-          高优先          低优先
-```
-
-### M9 执行计划
-
-| 阶段 | 任务 | 预计工作量 | 依赖 |
-|------|------|-----------|------|
-| **Phase 1** | T9.1.1 ConsolePinView | 3h | 无 |
-| **Phase 1** | T9.1.2 AutoConnectView | 2h | 无 |
-| **Phase 2** | T9.2.1 GeneralSettingsView | 3h | 无 |
-| **Phase 2** | T9.2.2 ConsolesSettingsView | 4h | 无 |
-| **Phase 3** | T9.3.1-4 UI 细节 | 4h | 无 |
-| **Phase 4** | T9.4 i18n | 6h | 全部 |
-
-### M9 任务检查清单
-
-| 任务 | 测试 (Testable) | 验收 (Acceptable) | 提交 |
-|------|------|------|------|
-| T9.1.1: ConsolePinView | PIN 验证逻辑正确 | 错误 PIN 拒绝连接 | ✅ |
-| T9.1.2: AutoConnectView | 自动连接流程正常 | 显示连接状态 | ✅ |
-| T9.1.3: HDR 精调 | 设置持久化且生效 | Nits/Contrast 可调 | ✅ |
-| T9.2.1: GeneralSettingsView | 断开动作生效 | 配置持久化 | ✅ |
-| T9.2.2: ConsolesSettingsView | 主机可管理 | 隐藏/取消隐藏正常 | ✅ |
-| T9.3: UI 细节 | 信息显示完整 | 控件响应正常 | ✅ |
-| T9.4: i18n | 字符串已提取 | 切换语言生效 | ✅ |
+| 任务 | 验收 (Acceptable) | 提交状态 |
+|------|------|------|
+| **视觉提升** | 符合 Apple HIG 的玻璃拟态效果与沉浸模式 | ✅ 已提交 |
+| **触觉反馈** | 零延迟的语义化 Haptics (L2/R2 阻力模拟) | ✅ 已提交 |
+| **功能对齐** | 与 chiaki-ng QML 版本 1:1 的核心功能还原 | ✅ 已提交 |
+| **国际化** | 中英文完整覆盖，无符号生成冲突 | ✅ 已提交 |
