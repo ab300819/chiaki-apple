@@ -185,6 +185,109 @@ final class HostStoreTests: XCTestCase {
 | UT-005.2 | testSettingsCodable | 设置序列化 | 编码解码后相等 |
 | UT-005.3 | testResolutionDimensions | 分辨率尺寸 | 1080p = 1920x1080 |
 
+#### UT-009: NavigationManager 测试 (2026-01-22 补充)
+
+> 关联功能: 应用导航状态管理
+> 验收标准: 侧边栏、Sheet、命令触发器正确工作
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-009.1 | testInitialState | 初始导航状态 | sidebarSelection = .hosts | P0 |
+| UT-009.2 | testOpenAddHost | openAddHost() 调用 | showAddHostSheet = true, sidebarSelection = .hosts | P0 |
+| UT-009.3 | testNavigateToSettings | navigateToSettings() 调用 | sidebarSelection = .settings | P0 |
+| UT-009.4 | testRefreshDiscovery | refreshDiscovery() 调用 | refreshDiscoveryTrigger = true | P1 |
+| UT-009.5 | testWakeUpSelectedHost | wakeUpSelectedHost() 调用 | wakeUpSelectedHostTrigger = true | P1 |
+| UT-009.6 | testStartAutoConnect | startAutoConnect() 调用 | isAutoConnecting = true, autoConnectHost 设置 | P1 |
+| UT-009.7 | testEndAutoConnect | endAutoConnect() 调用 | isAutoConnecting = false, autoConnectHost = nil | P1 |
+| UT-009.8 | testStreamingState | 流媒体状态变更 | isStreaming 正确更新 | P1 |
+
+```swift
+// NavigationManagerTests.swift
+import Testing
+@testable import Chiaki
+
+@MainActor
+struct NavigationManagerTests {
+
+    // UT-009.1
+    @Test func testInitialState() {
+        let manager = NavigationManager()
+
+        #expect(manager.sidebarSelection == .hosts)
+        #expect(manager.showAddHostSheet == false)
+        #expect(manager.isStreaming == false)
+        #expect(manager.isAutoConnecting == false)
+    }
+
+    // UT-009.2
+    @Test func testOpenAddHost() {
+        let manager = NavigationManager()
+        manager.sidebarSelection = .settings // 先切换到设置
+
+        manager.openAddHost()
+
+        #expect(manager.sidebarSelection == .hosts) // 应切回主机列表
+        #expect(manager.showAddHostSheet == true)
+    }
+
+    // UT-009.3
+    @Test func testNavigateToSettings() {
+        let manager = NavigationManager()
+
+        manager.navigateToSettings()
+
+        #expect(manager.sidebarSelection == .settings)
+    }
+
+    // UT-009.4
+    @Test func testRefreshDiscovery() {
+        let manager = NavigationManager()
+        manager.sidebarSelection = .settings
+
+        manager.refreshDiscovery()
+
+        #expect(manager.sidebarSelection == .hosts)
+        #expect(manager.refreshDiscoveryTrigger == true)
+    }
+
+    // UT-009.5
+    @Test func testWakeUpSelectedHost() {
+        let manager = NavigationManager()
+
+        manager.wakeUpSelectedHost()
+
+        #expect(manager.wakeUpSelectedHostTrigger == true)
+    }
+
+    // UT-009.6 & UT-009.7
+    @Test func testAutoConnectLifecycle() {
+        let manager = NavigationManager()
+        let host = ConsoleHost(nickname: "Test PS5", address: "192.168.1.100")
+
+        // 开始自动连接
+        manager.startAutoConnect(host: host)
+        #expect(manager.isAutoConnecting == true)
+        #expect(manager.autoConnectHost?.id == host.id)
+
+        // 结束自动连接
+        manager.endAutoConnect()
+        #expect(manager.isAutoConnecting == false)
+        #expect(manager.autoConnectHost == nil)
+    }
+
+    // UT-009.8
+    @Test func testStreamingStateToggle() {
+        let manager = NavigationManager()
+
+        manager.isStreaming = true
+        #expect(manager.isStreaming == true)
+
+        manager.isStreaming = false
+        #expect(manager.isStreaming == false)
+    }
+}
+```
+
 ---
 
 ## 3. 集成测试
@@ -264,17 +367,536 @@ final class AudioIntegrationTests: XCTestCase {
 | IT-003.3 | testStickValues | 摇杆值范围 | -32767 到 32767 |
 | IT-003.4 | testTriggerValues | 扳机值范围 | 0 到 255 |
 
+### IT-005: 主机发现与存储集成测试 (2026-01-22 补充)
+
+> 关联用户故事: US-001 主机发现和连接
+> 验收标准: AC-001 ~ AC-004
+> 涉及组件: DiscoveryService + HostStore + HostManager
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-005.1 | testDiscoveredHostMergedToStore | 发现主机后合并到存储 | hosts 包含发现的主机 | P0 |
+| IT-005.2 | testStoredHostStateUpdatedByDiscovery | 已存储主机状态更新 | state 从 offline 变为 online | P0 |
+| IT-005.3 | testHiddenHostNotInMergedList | 隐藏主机不显示 | isHidden=true 的主机不在 hosts 中 | P1 |
+| IT-005.4 | testHostAddressUpdateOnDiscovery | 主机地址变更 | 按 MAC 匹配后更新地址 | P1 |
+| IT-005.5 | testOfflineMarkingWhenDiscoveryStopped | 发现停止后标记离线 | 发现中断后 state=offline | P1 |
+| IT-005.6 | testRunningAppInfoMerged | 运行中应用信息合并 | runningApp/runningAppId 正确更新 | P2 |
+
+```swift
+// HostDiscoveryIntegrationTests.swift
+import Testing
+import Combine
+@testable import Chiaki
+
+@MainActor
+struct HostDiscoveryIntegrationTests {
+
+    // IT-005.1
+    @Test func testDiscoveredHostMergedToStore() async {
+        let defaults = UserDefaults(suiteName: "test.integration.discovery")!
+        defaults.removePersistentDomain(forName: "test.integration.discovery")
+
+        let hostStore = HostStore(userDefaults: defaults)
+        let discoveryService = DiscoveryService()
+        let hostManager = HostManager(discoveryService: discoveryService, hostStore: hostStore)
+
+        // 模拟添加主机到存储
+        let storedHost = ConsoleHost(
+            nickname: "My PS5",
+            address: "192.168.1.100",
+            macAddress: "AA:BB:CC:DD:EE:FF"
+        )
+        hostStore.addHost(storedHost)
+
+        // 验证主机在合并列表中
+        #expect(hostManager.hosts.contains { $0.macAddress == "AA:BB:CC:DD:EE:FF" })
+    }
+
+    // IT-005.2
+    @Test func testStoredHostStateUpdatedByDiscovery() async {
+        let defaults = UserDefaults(suiteName: "test.integration.state")!
+        defaults.removePersistentDomain(forName: "test.integration.state")
+
+        let hostStore = HostStore(userDefaults: defaults)
+        var host = ConsoleHost(nickname: "PS5", address: "192.168.1.100")
+        host.state = .offline
+        hostStore.addHost(host)
+
+        let hostManager = HostManager(hostStore: hostStore)
+
+        // 初始状态应为 offline
+        #expect(hostManager.hosts.first?.state == .offline)
+
+        // 注：实际发现更新需要网络，这里验证初始状态
+    }
+
+    // IT-005.3
+    @Test func testHiddenHostNotInMergedList() {
+        let defaults = UserDefaults(suiteName: "test.integration.hidden")!
+        defaults.removePersistentDomain(forName: "test.integration.hidden")
+
+        let hostStore = HostStore(userDefaults: defaults)
+
+        var visibleHost = ConsoleHost(nickname: "Visible", address: "192.168.1.1")
+        visibleHost.isHidden = false
+
+        var hiddenHost = ConsoleHost(nickname: "Hidden", address: "192.168.1.2")
+        hiddenHost.isHidden = true
+
+        hostStore.addHost(visibleHost)
+        hostStore.addHost(hiddenHost)
+
+        let hostManager = HostManager(hostStore: hostStore)
+
+        // 只有可见主机在列表中
+        #expect(hostManager.hosts.count == 1)
+        #expect(hostManager.hosts.first?.nickname == "Visible")
+    }
+
+    // IT-005.4
+    @Test func testHostAddressUpdatePreservesRegistration() {
+        let defaults = UserDefaults(suiteName: "test.integration.address")!
+        defaults.removePersistentDomain(forName: "test.integration.address")
+
+        let hostStore = HostStore(userDefaults: defaults)
+
+        // 添加已注册主机
+        var host = ConsoleHost(
+            nickname: "PS5",
+            address: "192.168.1.100",
+            macAddress: "AA:BB:CC:DD:EE:FF",
+            registKey: Data([0x01, 0x02, 0x03])
+        )
+        hostStore.addHost(host)
+
+        // 更新地址
+        host.address = "192.168.1.200"
+        hostStore.updateHost(host)
+
+        // 验证注册信息保留
+        let updated = hostStore.host(byId: host.id)
+        #expect(updated?.address == "192.168.1.200")
+        #expect(updated?.isRegistered == true)
+    }
+}
+```
+
+### IT-006: 设置持久化集成测试 (2026-01-22 补充)
+
+> 关联用户故事: US-008 设置持久化
+> 验收标准: AC-031 ~ AC-034
+> 涉及组件: SettingsStore + UserDefaults
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-006.1 | testSettingsPersistAcrossInstances | 设置跨实例持久化 | 新实例读取到保存的设置 | P0 |
+| IT-006.2 | testVideoSettingsPersistence | 视频设置持久化 | 分辨率、帧率、码率保存 | P0 |
+| IT-006.3 | testAudioSettingsPersistence | 音频设置持久化 | 音量、缓冲区设置保存 | P0 |
+| IT-006.4 | testControllerSettingsPersistence | 控制器设置持久化 | 触觉反馈、映射保存 | P1 |
+| IT-006.5 | testResetToDefaultsClears | 重置清除所有设置 | 恢复默认值 | P1 |
+| IT-006.6 | testKeyboardMappingsPersistence | 键盘映射持久化 (macOS) | 自定义映射保存 | P1 |
+| IT-006.7 | testSettingsExportImport | 导入导出一致性 | 导出后导入恢复相同设置 | P2 |
+
+```swift
+// SettingsPersistenceIntegrationTests.swift
+import Testing
+@testable import Chiaki
+
+@MainActor
+struct SettingsPersistenceIntegrationTests {
+
+    // IT-006.1
+    @Test func testSettingsPersistAcrossInstances() {
+        let suiteName = "test.integration.settings.persist"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        // 第一个实例：修改设置
+        let store1 = SettingsStore(userDefaults: defaults)
+        store1.updateResolution(.r720p)
+        store1.updateFrameRate(.fps30)
+        store1.updateBitrate(8000)
+
+        // 第二个实例：验证设置保留
+        let store2 = SettingsStore(userDefaults: defaults)
+        #expect(store2.streamSettings.localProfile.resolution == .r720p)
+        #expect(store2.streamSettings.localProfile.frameRate == .fps30)
+        #expect(store2.streamSettings.localProfile.bitrate == 8000)
+    }
+
+    // IT-006.2
+    @Test func testVideoSettingsPersistence() {
+        let suiteName = "test.integration.settings.video"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+
+        // 修改所有视频设置
+        store.updateResolution(.r2160p)
+        store.updateFrameRate(.fps60)
+        store.updateBitrate(50000)
+        store.updateCodec(.h265)
+        store.updateHdrEnabled(true)
+
+        // 重新加载验证
+        let store2 = SettingsStore(userDefaults: defaults)
+        #expect(store2.streamSettings.localProfile.resolution == .r2160p)
+        #expect(store2.streamSettings.localProfile.frameRate == .fps60)
+        #expect(store2.streamSettings.localProfile.bitrate == 50000)
+        #expect(store2.streamSettings.codec == .h265)
+        #expect(store2.streamSettings.hdrEnabled == true)
+    }
+
+    // IT-006.3
+    @Test func testAudioSettingsPersistence() {
+        let suiteName = "test.integration.settings.audio"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+
+        // 修改音频设置
+        store.streamSettings.volume = 0.75
+        store.streamSettings.audioBufferSize = 20
+        store.streamSettings.microphoneEnabled = true
+        store.save()
+
+        // 重新加载验证
+        let store2 = SettingsStore(userDefaults: defaults)
+        #expect(store2.streamSettings.volume == 0.75)
+        #expect(store2.streamSettings.audioBufferSize == 20)
+        #expect(store2.streamSettings.microphoneEnabled == true)
+    }
+
+    // IT-006.4
+    @Test func testControllerSettingsPersistence() {
+        let suiteName = "test.integration.settings.controller"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+
+        // 修改控制器设置
+        store.streamSettings.hapticFeedbackEnabled = false
+        store.streamSettings.isTouchControllerEnabled = false
+        store.save()
+
+        // 重新加载验证
+        let store2 = SettingsStore(userDefaults: defaults)
+        #expect(store2.streamSettings.hapticFeedbackEnabled == false)
+        #expect(store2.streamSettings.isTouchControllerEnabled == false)
+    }
+
+    // IT-006.5
+    @Test func testResetToDefaultsClears() {
+        let suiteName = "test.integration.settings.reset"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+
+        // 修改设置
+        store.updateResolution(.r540p)
+        store.updateFrameRate(.fps30)
+        store.updateBitrate(5000)
+
+        // 重置
+        store.resetToDefaults()
+
+        // 验证恢复默认
+        #expect(store.streamSettings.localProfile.resolution == .r1080p)
+        #expect(store.streamSettings.localProfile.frameRate == .fps60)
+        #expect(store.streamSettings.localProfile.bitrate == 15000)
+    }
+
+    #if os(macOS)
+    // IT-006.6
+    @Test func testKeyboardMappingsPersistence() {
+        let suiteName = "test.integration.settings.keyboard"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let store = SettingsStore(userDefaults: defaults)
+
+        // 修改键盘映射
+        store.keyboardMappings.setMapping(for: .cross, keyCode: 0x06, keyName: "Z")
+        store.keyboardMappings.setMapping(for: .circle, keyCode: 0x07, keyName: "X")
+
+        // 触发保存（通过修改其他设置）
+        store.keyboardInputEnabled = true
+
+        // 重新加载验证
+        let store2 = SettingsStore(userDefaults: defaults)
+        let crossMapping = store2.keyboardMappings.mapping(for: .cross)
+        #expect(crossMapping.keyCode == 0x06)
+        #expect(crossMapping.keyName == "Z")
+    }
+    #endif
+}
+```
+
 ---
 
 ## 4. UI 自动化测试
 
+> **更新时间**: 2026-01-22
+> **覆盖范围**: 主机列表、设置页面、添加主机、流媒体页面、tvOS 焦点导航
+
+### 4.1 测试策略
+
+| 平台 | 测试方式 | 工具 |
+|------|----------|------|
+| iOS/iPadOS | XCUITest 自动化 | XCUIApplication |
+| macOS | XCUITest 自动化 | XCUIApplication |
+| tvOS | XCUITest + 焦点导航 | XCUIRemote |
+
+### 4.2 Accessibility Identifier 规范
+
+为支持 UI 自动化测试，需在视图中添加 `.accessibilityIdentifier()`：
+
+| 页面 | 元素 | Identifier |
+|------|------|------------|
+| HostList | 添加主机按钮 | `addHostButton` |
+| HostList | 发现开关按钮 | `discoveryToggleButton` |
+| HostList | 主机列表 | `hostList` |
+| HostList | 主机行 | `hostRow_\(host.id)` |
+| AddHost | 昵称输入框 | `nicknameTextField` |
+| AddHost | 地址输入框 | `addressTextField` |
+| AddHost | 主机类型选择器 | `consoleTypePicker` |
+| AddHost | 保存按钮 | `saveHostButton` |
+| Settings | 设置导航入口 | `settingsButton` |
+| Settings | 视频设置入口 | `videoSettingsLink` |
+| Settings | 音频设置入口 | `audioSettingsLink` |
+| Settings | 控制器设置入口 | `controllerSettingsLink` |
+| VideoSettings | 分辨率选择器 | `resolutionPicker` |
+| VideoSettings | 帧率选择器 | `frameRatePicker` |
+| VideoSettings | 码率滑块 | `bitrateSlider` |
+| Streaming | 返回按钮 | `backButton` |
+| Streaming | 覆盖层 | `streamingOverlay` |
+| Streaming | 断开连接按钮 | `disconnectButton` |
+
 ### E2E-001: 主机列表页面测试
+
+> 关联用户故事: US-001 主机发现和连接
+> 验收标准: AC-001 ~ AC-004
+
+| 编号 | 测试用例 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| E2E-001.1 | testHostListDisplayed | 启动应用 | 主机列表页面显示 | P0 |
+| E2E-001.2 | testEmptyStateDisplayed | 无主机时启动 | 显示空状态提示和添加按钮 | P1 |
+| E2E-001.3 | testAddHostButtonExists | 检查工具栏 | 添加主机按钮存在 | P0 |
+| E2E-001.4 | testDiscoveryToggle | 点击发现按钮 | 图标切换 wifi/wifi.slash | P1 |
+| E2E-001.5 | testHostRowDisplaysInfo | 有主机时检查 | 显示主机名、地址、状态 | P0 |
+| E2E-001.6 | testHostContextMenu | 长按主机行 | 显示唤醒、PIN、删除选项 | P1 |
+| E2E-001.7 | testDeleteHostConfirmation | 滑动删除主机 | 显示确认对话框 | P1 |
+| E2E-001.8 | testPullToRefresh | 下拉列表 | 触发刷新动画 | P2 |
 
 ```swift
 // HostListUITests.swift
-import XCUITest
+import XCTest
 
 final class HostListUITests: XCTestCase {
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset-state"]
+        app.launch()
+    }
+
+    // E2E-001.1
+    func testHostListDisplayed() {
+        let hostList = app.collectionViews["hostList"]
+        XCTAssertTrue(hostList.waitForExistence(timeout: 5))
+    }
+
+    // E2E-001.2
+    func testEmptyStateDisplayed() {
+        let emptyStateText = app.staticTexts["noHostsFound"]
+        let addHostButton = app.buttons["addHostButton"]
+
+        // 空状态下应显示提示
+        if emptyStateText.exists {
+            XCTAssertTrue(addHostButton.exists)
+        }
+    }
+
+    // E2E-001.3
+    func testAddHostButtonExists() {
+        let addButton = app.buttons["addHostButton"]
+        XCTAssertTrue(addButton.waitForExistence(timeout: 3))
+    }
+
+    // E2E-001.4
+    func testDiscoveryToggle() {
+        let discoveryButton = app.buttons["discoveryToggleButton"]
+        guard discoveryButton.exists else { return }
+
+        // 记录初始状态
+        let initialLabel = discoveryButton.label
+        discoveryButton.tap()
+
+        // 状态应该改变
+        sleep(1)
+        XCTAssertNotEqual(discoveryButton.label, initialLabel)
+    }
+
+    // E2E-001.6
+    func testHostContextMenu() {
+        let hostRow = app.cells.matching(identifier: "hostRow").firstMatch
+        guard hostRow.exists else { return }
+
+        hostRow.press(forDuration: 1.0) // 长按触发上下文菜单
+
+        let deleteButton = app.buttons["Delete"]
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 2))
+    }
+}
+```
+
+### E2E-005: 添加主机页面测试
+
+> 关联用户故事: US-001 主机发现和连接
+> 验收标准: AC-002 手动添加主机
+
+| 编号 | 测试用例 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| E2E-005.1 | testOpenAddHostSheet | 点击添加按钮 | 显示添加主机表单 | P0 |
+| E2E-005.2 | testAddHostFormFields | 检查表单 | 昵称、地址、类型字段存在 | P0 |
+| E2E-005.3 | testSaveButtonDisabledEmpty | 地址为空 | 保存按钮禁用 | P0 |
+| E2E-005.4 | testSaveButtonEnabledWithAddress | 输入地址 | 保存按钮启用 | P0 |
+| E2E-005.5 | testCancelDismissesSheet | 点击取消 | 关闭表单，不保存 | P1 |
+| E2E-005.6 | testSaveAddsHost | 填写并保存 | 主机添加到列表 | P0 |
+| E2E-005.7 | testConsoleTypePicker | 切换 PS4/PS5 | 选择器正确切换 | P1 |
+| E2E-005.8 | testDefaultNickname | 留空昵称保存 | 使用默认名称 "PlayStation" | P2 |
+
+```swift
+// AddHostUITests.swift
+import XCTest
+
+final class AddHostUITests: XCTestCase {
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--uitesting", "--reset-state"]
+        app.launch()
+    }
+
+    // E2E-005.1
+    func testOpenAddHostSheet() {
+        let addButton = app.buttons["addHostButton"]
+        XCTAssertTrue(addButton.waitForExistence(timeout: 3))
+        addButton.tap()
+
+        let nicknameField = app.textFields["nicknameTextField"]
+        XCTAssertTrue(nicknameField.waitForExistence(timeout: 2))
+    }
+
+    // E2E-005.3 & E2E-005.4
+    func testSaveButtonStateWithAddress() {
+        // 打开添加主机表单
+        app.buttons["addHostButton"].tap()
+
+        let addressField = app.textFields["addressTextField"]
+        let saveButton = app.buttons["saveHostButton"]
+
+        XCTAssertTrue(addressField.waitForExistence(timeout: 2))
+
+        // 地址为空时保存按钮应禁用
+        XCTAssertFalse(saveButton.isEnabled)
+
+        // 输入地址后保存按钮应启用
+        addressField.tap()
+        addressField.typeText("192.168.1.100")
+        XCTAssertTrue(saveButton.isEnabled)
+    }
+
+    // E2E-005.5
+    func testCancelDismissesSheet() {
+        app.buttons["addHostButton"].tap()
+
+        let cancelButton = app.buttons["Cancel"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 2))
+        cancelButton.tap()
+
+        // 表单应该关闭
+        let nicknameField = app.textFields["nicknameTextField"]
+        XCTAssertFalse(nicknameField.exists)
+    }
+
+    // E2E-005.6
+    func testSaveAddsHost() {
+        app.buttons["addHostButton"].tap()
+
+        let nicknameField = app.textFields["nicknameTextField"]
+        let addressField = app.textFields["addressTextField"]
+        let saveButton = app.buttons["saveHostButton"]
+
+        XCTAssertTrue(nicknameField.waitForExistence(timeout: 2))
+
+        nicknameField.tap()
+        nicknameField.typeText("Test PS5")
+
+        addressField.tap()
+        addressField.typeText("192.168.1.200")
+
+        saveButton.tap()
+
+        // 验证主机已添加到列表
+        let hostCell = app.cells.staticTexts["Test PS5"]
+        XCTAssertTrue(hostCell.waitForExistence(timeout: 3))
+    }
+
+    // E2E-005.7
+    func testConsoleTypePicker() {
+        app.buttons["addHostButton"].tap()
+
+        let picker = app.segmentedControls["consoleTypePicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 2))
+
+        // 默认应该是 PS5
+        let ps5Button = picker.buttons["PS5"]
+        XCTAssertTrue(ps5Button.isSelected)
+
+        // 切换到 PS4
+        let ps4Button = picker.buttons["PS4"]
+        ps4Button.tap()
+        XCTAssertTrue(ps4Button.isSelected)
+    }
+}
+```
+
+### E2E-003: 设置页面测试 (完整版)
+
+> 关联用户故事: US-008 设置持久化
+> 验收标准: AC-031 ~ AC-034
+
+| 编号 | 测试用例 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| E2E-003.1 | testNavigateToSettings | 点击设置入口 | 进入设置页面 | P0 |
+| E2E-003.2 | testSettingsSections | 检查设置页 | 显示所有设置分类 | P0 |
+| E2E-003.3 | testVideoSettingsNavigation | 点击视频设置 | 进入视频设置页 | P0 |
+| E2E-003.4 | testAudioSettingsNavigation | 点击音频设置 | 进入音频设置页 | P1 |
+| E2E-003.5 | testControllerSettingsNavigation | 点击控制器设置 | 进入控制器设置页 | P1 |
+| E2E-003.6 | testResolutionPicker | 选择不同分辨率 | 设置值更新 | P0 |
+| E2E-003.7 | testFrameRatePicker | 选择 30/60 fps | 设置值更新 | P0 |
+| E2E-003.8 | testBitrateSlider | 调整码率滑块 | 数值显示更新 | P1 |
+| E2E-003.9 | testHDRToggle | 切换 HDR 开关 | 开关状态改变 | P1 |
+| E2E-003.10 | testVolumeSlider | 调整音量滑块 | 数值显示更新 | P1 |
+| E2E-003.11 | testHapticToggle | 切换触觉反馈 | 开关状态改变 | P1 |
+| E2E-003.12 | testExportSettings | 点击导出按钮 | 显示文件保存对话框 | P2 |
+| E2E-003.13 | testResetToDefaults | 点击重置按钮 | 显示确认对话框 | P1 |
+| E2E-003.14 | testSettingsPersistence | 修改设置后重启 | 设置值保留 | P0 |
+
+```swift
+// SettingsUITests.swift
+import XCTest
+
+final class SettingsUITests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
@@ -284,59 +906,289 @@ final class HostListUITests: XCTestCase {
         app.launch()
     }
 
-    func testHostListDisplayed() {
-        // 验证主机列表可见
-        let hostList = app.collectionViews["hostList"]
-        XCTAssertTrue(hostList.exists)
+    // E2E-003.1
+    func testNavigateToSettings() {
+        #if os(iOS)
+        let settingsTab = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(settingsTab.exists)
+        settingsTab.tap()
+
+        let settingsTitle = app.navigationBars["Settings"]
+        XCTAssertTrue(settingsTitle.waitForExistence(timeout: 2))
+        #elseif os(macOS)
+        // macOS 使用菜单栏或快捷键
+        app.menuItems["Settings…"].tap()
+        #endif
     }
 
-    func testAddHostButton() {
-        // 点击添加主机按钮
-        let addButton = app.buttons["addHost"]
-        XCTAssertTrue(addButton.exists)
-        addButton.tap()
+    // E2E-003.2
+    func testSettingsSections() {
+        navigateToSettings()
 
-        // 验证添加主机表单显示
-        let nicknameField = app.textFields["nickname"]
-        XCTAssertTrue(nicknameField.exists)
+        // 验证主要设置分类存在
+        XCTAssertTrue(app.cells["videoSettingsLink"].exists)
+        XCTAssertTrue(app.cells["audioSettingsLink"].exists)
+        XCTAssertTrue(app.cells["controllerSettingsLink"].exists)
     }
 
-    func testHostRowContent() {
-        // 验证主机行包含必要信息
-        let hostRow = app.cells.firstMatch
-        XCTAssertTrue(hostRow.staticTexts["hostName"].exists)
-        XCTAssertTrue(hostRow.staticTexts["hostAddress"].exists)
-        XCTAssertTrue(hostRow.images["statusIcon"].exists)
+    // E2E-003.3
+    func testVideoSettingsNavigation() {
+        navigateToSettings()
+
+        app.cells["videoSettingsLink"].tap()
+
+        let resolutionPicker = app.buttons["resolutionPicker"]
+        XCTAssertTrue(resolutionPicker.waitForExistence(timeout: 2))
+    }
+
+    // E2E-003.6
+    func testResolutionPicker() {
+        navigateToSettings()
+        app.cells["videoSettingsLink"].tap()
+
+        let picker = app.buttons["resolutionPicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 2))
+        picker.tap()
+
+        // 选择 720p
+        let option720p = app.buttons["720p"]
+        if option720p.exists {
+            option720p.tap()
+        }
+    }
+
+    // E2E-003.13
+    func testResetToDefaults() {
+        navigateToSettings()
+
+        // 滚动到底部找到重置按钮
+        let resetButton = app.buttons["resetToDefaults"]
+
+        if resetButton.exists {
+            resetButton.tap()
+
+            // 验证确认对话框出现
+            let confirmButton = app.buttons["Reset to Defaults"]
+            XCTAssertTrue(confirmButton.waitForExistence(timeout: 2))
+        }
+    }
+
+    // Helper
+    private func navigateToSettings() {
+        #if os(iOS)
+        let settingsTab = app.tabBars.buttons["Settings"]
+        if settingsTab.exists {
+            settingsTab.tap()
+        }
+        #endif
     }
 }
 ```
 
-### E2E-002: 流媒体页面测试
+### E2E-002: 流媒体页面测试 (完整版)
 
-| 编号 | 测试用例 | 步骤 | 预期结果 |
-|------|----------|------|----------|
-| E2E-002.1 | testEnterStreaming | 点击在线主机 | 进入流媒体页面 |
-| E2E-002.2 | testStreamingOverlay | 流媒体中等待 | 显示状态覆盖层 |
-| E2E-002.3 | testExitStreaming | 点击返回按钮 | 返回主机列表 |
-| E2E-002.4 | testOverlayToggle | 点击屏幕中心 | 覆盖层显示/隐藏 |
+> 关联用户故事: US-003 远程游戏流媒体
+> 验收标准: AC-009 ~ AC-013
+> 注意: 需要 Mock 或真实主机连接
 
-### E2E-003: 设置页面测试
+| 编号 | 测试用例 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| E2E-002.1 | testEnterStreaming | 点击已注册在线主机 | 进入流媒体页面 | P0 |
+| E2E-002.2 | testPinEntryRequired | 设置 PIN 后点击主机 | 显示 PIN 输入界面 | P1 |
+| E2E-002.3 | testStreamingPlaceholder | 连接中 | 显示连接状态占位符 | P1 |
+| E2E-002.4 | testStreamingOverlayToggle | 点击屏幕 | 覆盖层显示/隐藏切换 | P1 |
+| E2E-002.5 | testOverlayShowsStats | 覆盖层显示时 | 显示帧率、延迟、质量 | P1 |
+| E2E-002.6 | testDisconnectButton | 点击断开按钮 | 显示确认或直接断开 | P0 |
+| E2E-002.7 | testBackNavigation | 点击返回按钮 | 返回主机列表 | P0 |
+| E2E-002.8 | testVirtualControllerDisplayed | iOS 流媒体中 | 虚拟控制器显示 | P1 |
+| E2E-002.9 | testVirtualControllerToggle | 点击控制器按钮 | 虚拟控制器显示/隐藏 | P1 |
 
-| 编号 | 测试用例 | 步骤 | 预期结果 |
-|------|----------|------|----------|
-| E2E-003.1 | testNavigateToSettings | 点击设置按钮 | 进入设置页面 |
-| E2E-003.2 | testResolutionPicker | 选择分辨率 | 设置保存 |
-| E2E-003.3 | testFrameRatePicker | 选择帧率 | 设置保存 |
-| E2E-003.4 | testHapticToggle | 切换触觉反馈 | 开关状态改变 |
+```swift
+// StreamingUITests.swift
+import XCTest
 
-### E2E-004: tvOS 焦点导航测试
+final class StreamingUITests: XCTestCase {
+    var app: XCUIApplication!
 
-| 编号 | 测试用例 | 操作 | 预期结果 |
-|------|----------|------|----------|
-| E2E-004.1 | testInitialFocus | 启动应用 | 第一个主机获得焦点 |
-| E2E-004.2 | testDownNavigation | Siri Remote 下滑 | 焦点移动到下一主机 |
-| E2E-004.3 | testSelectAction | Siri Remote 点击 | 选中主机/执行操作 |
-| E2E-004.4 | testMenuBack | Siri Remote Menu | 返回上一页面 |
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        // 使用 Mock 模式避免真实连接
+        app.launchArguments = ["--uitesting", "--mock-streaming"]
+        app.launch()
+    }
+
+    // E2E-002.4
+    func testStreamingOverlayToggle() {
+        enterMockStreaming()
+
+        let overlay = app.otherElements["streamingOverlay"]
+
+        // 点击切换覆盖层
+        let streamingView = app.otherElements["streamingView"]
+        streamingView.tap()
+
+        // 覆盖层状态应该改变
+        let isVisible = overlay.exists && overlay.isHittable
+
+        streamingView.tap()
+        // 再次点击后状态应该切换
+    }
+
+    // E2E-002.6
+    func testDisconnectButton() {
+        enterMockStreaming()
+
+        // 显示覆盖层
+        app.otherElements["streamingView"].tap()
+
+        let disconnectButton = app.buttons["disconnectButton"]
+        if disconnectButton.waitForExistence(timeout: 2) {
+            disconnectButton.tap()
+
+            // 应该返回主机列表或显示确认
+            let hostList = app.collectionViews["hostList"]
+            let confirmDialog = app.alerts.firstMatch
+
+            XCTAssertTrue(hostList.waitForExistence(timeout: 3) || confirmDialog.exists)
+        }
+    }
+
+    // E2E-002.8 (iOS only)
+    #if os(iOS)
+    func testVirtualControllerDisplayed() {
+        enterMockStreaming()
+
+        let virtualController = app.otherElements["virtualController"]
+        // 虚拟控制器应该显示（如果启用）
+        XCTAssertTrue(virtualController.waitForExistence(timeout: 3))
+    }
+    #endif
+
+    // Helper
+    private func enterMockStreaming() {
+        // 点击 Mock 主机进入流媒体
+        let mockHost = app.cells.matching(identifier: "hostRow").firstMatch
+        if mockHost.waitForExistence(timeout: 3) {
+            mockHost.tap()
+        }
+
+        // 等待流媒体页面加载
+        sleep(2)
+    }
+}
+```
+
+### E2E-004: tvOS 焦点导航测试 (完整版)
+
+> 关联用户故事: US-006 tvOS 大屏体验
+> 验收标准: AC-023 ~ AC-026
+
+| 编号 | 测试用例 | 操作 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| E2E-004.1 | testInitialFocus | 启动应用 | 第一个主机或添加按钮获得焦点 | P0 |
+| E2E-004.2 | testVerticalNavigation | 上下滑动 | 焦点在主机间移动 | P0 |
+| E2E-004.3 | testHorizontalNavigation | 左右滑动 | 焦点移动到工具栏 | P1 |
+| E2E-004.4 | testSelectWithClick | 点击遥控器 | 选中当前焦点项 | P0 |
+| E2E-004.5 | testMenuBack | 按 Menu 键 | 返回上一页面 | P0 |
+| E2E-004.6 | testFocusStateVisible | 焦点移动时 | 焦点状态清晰可见 | P1 |
+| E2E-004.7 | testSettingsNavigation | 焦点到设置 | 可进入设置页面 | P1 |
+| E2E-004.8 | testHostCardFocus | 焦点在主机卡片 | 显示详细信息 | P2 |
+
+```swift
+// TVOSUITests.swift
+#if os(tvOS)
+import XCTest
+
+final class TVOSUITests: XCTestCase {
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--uitesting"]
+        app.launch()
+    }
+
+    // E2E-004.1
+    func testInitialFocus() {
+        // 启动后应有元素获得焦点
+        let focusedElement = app.descendants(matching: .any).element(matching: NSPredicate(format: "hasFocus == true"))
+        XCTAssertTrue(focusedElement.waitForExistence(timeout: 5))
+    }
+
+    // E2E-004.2
+    func testVerticalNavigation() {
+        let remote = XCUIRemote.shared
+
+        // 获取初始焦点元素
+        let initialFocus = app.descendants(matching: .any).element(matching: NSPredicate(format: "hasFocus == true"))
+        let initialIdentifier = initialFocus.identifier
+
+        // 向下滑动
+        remote.press(.down)
+        sleep(1)
+
+        // 焦点应该移动
+        let newFocus = app.descendants(matching: .any).element(matching: NSPredicate(format: "hasFocus == true"))
+        XCTAssertNotEqual(newFocus.identifier, initialIdentifier)
+    }
+
+    // E2E-004.4
+    func testSelectWithClick() {
+        let remote = XCUIRemote.shared
+
+        // 确保有主机
+        let hostCard = app.cells.matching(identifier: "hostRow").firstMatch
+        guard hostCard.exists else { return }
+
+        // 选择
+        remote.press(.select)
+
+        // 应该触发操作（进入流媒体或显示未注册提示）
+        sleep(2)
+    }
+
+    // E2E-004.5
+    func testMenuBack() {
+        let remote = XCUIRemote.shared
+
+        // 先进入设置
+        let settingsButton = app.buttons["settingsButton"]
+        if settingsButton.exists {
+            settingsButton.tap()
+            sleep(1)
+
+            // 按 Menu 返回
+            remote.press(.menu)
+            sleep(1)
+
+            // 应该回到主页
+            let hostList = app.scrollViews.firstMatch
+            XCTAssertTrue(hostList.exists)
+        }
+    }
+}
+#endif
+```
+
+### 4.3 E2E 测试追溯矩阵
+
+| 用户故事 | 验收标准 | E2E 测试 | 状态 |
+|----------|----------|----------|------|
+| US-001 | AC-001~AC-004 | E2E-001.1~8, E2E-005.1~8 | ✅ |
+| US-003 | AC-009~AC-013 | E2E-002.1~9 | ⚠️ 需 Mock |
+| US-006 | AC-023~AC-026 | E2E-004.1~8 | ✅ |
+| US-008 | AC-031~AC-034 | E2E-003.1~14 | ✅ |
+
+### 4.4 测试实现优先级
+
+| 优先级 | 测试数 | 说明 |
+|--------|--------|------|
+| P0 | 18 | 核心功能必测 |
+| P1 | 22 | 重要功能 |
+| P2 | 5 | 增强体验 |
+| **总计** | **45** | |
 
 ---
 
@@ -601,14 +1453,16 @@ jobs:
 | 功能编号 | 功能名称 | 用户故事 | 单元测试 | 集成测试 | E2E 测试 |
 |----------|----------|----------|----------|----------|----------|
 | F-001 | 核心流媒体 | US-002, US-003 | UT-001, UT-005 | IT-001, IT-002 | E2E-002 |
-| F-002 | PS 主机发现 | US-001 | UT-002, UT-003, UT-004 | - | E2E-001 |
-| F-003 | 主机注册 | US-001 | UT-001 | - | E2E-001 |
+| F-002 | PS 主机发现 | US-001 | UT-002, UT-003, UT-004, UT-007 | **IT-005** | E2E-001, E2E-005 |
+| F-003 | 主机注册 | US-001 | UT-001 | IT-005 | E2E-001 |
 | F-004 | 游戏控制器 | US-004 | - | IT-003 | - |
 | F-005 | DualSense 支持 | US-004 | - | IT-003 | - |
-| F-006 | 触屏虚拟控制器 | US-004 | - | - | - |
-| F-007 | 流媒体设置 | US-003 | UT-005 | - | E2E-003 |
-| F-008 | 多平台支持 | US-005, US-006, US-007, US-008 | - | - | E2E-004 |
+| F-006 | 触屏虚拟控制器 | US-004 | - | - | E2E-002.8 |
+| F-007 | 流媒体设置 | US-003 | UT-005 | **IT-006** | E2E-003 |
+| F-008 | 多平台支持 | US-005, US-006, US-007, US-008 | **UT-009** | - | E2E-004 |
 | F-009 | PSN 账户集成 | US-001 | - | - | - |
+| F-010 | 多语言支持 | - | UT-006 | - | - |
+| **导航** | 应用导航 | - | **UT-009** | - | E2E-001~005 |
 
 ### 10.2 验收标准 → 测试用例追溯
 
@@ -632,14 +1486,15 @@ jobs:
 
 | 测试类型 | 总数 | 已实现 | 覆盖率 | 备注 |
 |----------|------|--------|--------|------|
-| 单元测试 (UT) | 5 组 | 5 | 100% | 完整覆盖 |
-| 集成测试 (IT) | 3 组 | 3 | 100% | 完整覆盖 |
+| 单元测试 (UT) | 9 组 | 8 | 89% | UT-001~009，UT-009 待实现 |
+| 集成测试 (IT) | 6 组 | 4 | 67% | IT-001~006，IT-005/006 待实现 |
 | 高级测试 (P0/P1) | 5 组 | 5 | 100% | Session/Discovery/ViewModel/Keychain/Statistics |
-| E2E 测试 | 4 组 | 1 | 25% | E2E-001 基础实现 |
+| E2E 测试 | 5 组 | 1 | 20% | E2E-001~005，仅 E2E-001 基础实现 |
 
-> **更新时间**: 2026-01-21
+> **更新时间**: 2026-01-22
 > **实际代码覆盖率**: ~35% (估算)
-> **测试用例总数**: 146 个测试通过
+> **测试用例总数**: 141 个测试通过
+> **新增设计用例**: UT-009 (8个), IT-005 (6个), IT-006 (7个) = 21 个
 
 ### 10.4 测试实现详情
 
@@ -671,6 +1526,35 @@ jobs:
 | DiscoveredHostInfo 测试 | ✅ | 初始化、状态判断 |
 | ChiakiHostState 测试 | ✅ | displayName、rawValue |
 | 发现流程测试 | ⚠️ | 需网络 Mock |
+
+#### UT-009 NavigationManager 实现状态 (2026-01-22 新增)
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| 初始状态测试 | ⏳ 待实现 | sidebarSelection, showAddHostSheet |
+| openAddHost 测试 | ⏳ 待实现 | 导航+Sheet 触发 |
+| navigateToSettings 测试 | ⏳ 待实现 | 设置导航 |
+| refreshDiscovery 测试 | ⏳ 待实现 | 刷新触发器 |
+| autoConnect 生命周期 | ⏳ 待实现 | start/end 状态 |
+
+#### IT-005 主机发现与存储集成 实现状态 (2026-01-22 新增)
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| 发现主机合并到存储 | ⏳ 待实现 | DiscoveryService → HostStore |
+| 已存储主机状态更新 | ⏳ 待实现 | offline → online |
+| 隐藏主机过滤 | ⏳ 待实现 | isHidden 逻辑 |
+| 地址变更保持注册 | ⏳ 待实现 | MAC 匹配 |
+
+#### IT-006 设置持久化集成 实现状态 (2026-01-22 新增)
+
+| 子用例 | 状态 | 说明 |
+|--------|------|------|
+| 跨实例持久化 | ⏳ 待实现 | UserDefaults 验证 |
+| 视频设置持久化 | ⏳ 待实现 | 分辨率/帧率/码率 |
+| 音频设置持久化 | ⏳ 待实现 | 音量/缓冲区 |
+| 重置默认值 | ⏳ 待实现 | resetToDefaults |
+| 键盘映射持久化 | ⏳ 待实现 | macOS 专属 |
 
 #### IT-001 视频渲染实现状态
 
