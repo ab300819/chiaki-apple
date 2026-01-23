@@ -498,6 +498,80 @@ struct CircularAudioBufferTests {
 
 // MARK: - LockFreeQueue Tests
 
+// MARK: - PSN Account ID Parsing Tests (Bug fix: Invalid PSN ID)
+
+struct PSNAccountIdParsingTests {
+
+    @Test func testBase64AccountIdParsing() {
+        // Bug: Base64 encoded account ID "GIsaQUzezzA=" fails to parse
+        // Expected: Should decode to 8 bytes of binary data
+        let base64Input = "GIsaQUzezzA="
+
+        // Use the same parsing logic as RegistrationViewModel
+        let psnIdData = parsePSNAccountId(base64Input)
+
+        #expect(psnIdData != nil, "Base64 account ID should be parsed successfully")
+        #expect(psnIdData?.count == 8, "Account ID must be exactly 8 bytes")
+
+        // Verify decoded bytes match expected values
+        let expectedBytes: [UInt8] = [0x18, 0x8b, 0x1a, 0x41, 0x4c, 0xde, 0xcf, 0x30]
+        if let data = psnIdData {
+            #expect(Array(data) == expectedBytes, "Decoded bytes should match expected values")
+        }
+    }
+
+    @Test func testHexAccountIdParsing() {
+        // Hex format should still work
+        let hexInput = "188b1a414cdecf30"
+        let psnIdData = parsePSNAccountId(hexInput)
+
+        #expect(psnIdData != nil)
+        #expect(psnIdData?.count == 8)
+    }
+
+    @Test func testDecimalAccountIdParsing() {
+        // Decimal format should still work
+        let decimalInput = "1774920234836856624" // Same value as the hex above
+        let psnIdData = parsePSNAccountId(decimalInput)
+
+        #expect(psnIdData != nil)
+        #expect(psnIdData?.count == 8)
+    }
+
+    @Test func testEmptyAccountId() {
+        let psnIdData = parsePSNAccountId("")
+        #expect(psnIdData == nil, "Empty string should return nil")
+    }
+
+    @Test func testInvalidAccountId() {
+        let psnIdData = parsePSNAccountId("not_valid_at_all!")
+        #expect(psnIdData == nil, "Invalid input should return nil")
+    }
+
+    /// Helper function that mirrors RegistrationViewModel's parsing logic
+    private func parsePSNAccountId(_ input: String) -> Data? {
+        guard !input.isEmpty else { return nil }
+
+        // Try Base64 first (most common format from PSN tools)
+        if let data = Data(base64Encoded: input), data.count == 8 {
+            return data
+        }
+
+        // Try hex string
+        if let data = Data(hexString: input), data.count == 8 {
+            return data
+        }
+
+        // Try decimal
+        if let val = UInt64(input) {
+            var bigEndian = val.bigEndian
+            return withUnsafeBytes(of: &bigEndian) { Data($0) }
+        }
+
+        return nil
+    }
+}
+
 struct LockFreeQueueTests {
 
     @Test func testPushAndPop() {

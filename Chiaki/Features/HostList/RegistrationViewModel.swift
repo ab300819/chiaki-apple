@@ -50,16 +50,24 @@ final class RegistrationViewModel {
         
         var psnIdData: Data? = nil
         if !psnAccountId.isEmpty {
-            // PSN Account ID is typically a hex string or decimal
-            // libchiaki expects 8 bytes. For now, assume it's hex.
-            // If it's empty, libchiaki will handle it as non-PSN registration.
-            psnIdData = Data(hexString: psnAccountId)
-            if psnIdData?.count != 8 {
-                // If it's not valid hex, try decimal
-                if let val = UInt64(psnAccountId) {
-                    var bigEndian = val.bigEndian
-                    psnIdData = withUnsafeBytes(of: &bigEndian) { Data($0) }
-                }
+            // PSN Account ID can be in multiple formats:
+            // 1. Base64 encoded (most common from PSN tools, e.g., "GIsaQUzezzA=")
+            // 2. Hex string (16 characters, e.g., "188b1a414cdecf30")
+            // 3. Decimal integer (e.g., "1774920234836856624")
+            // libchiaki expects exactly 8 bytes.
+
+            // Try Base64 first (most common format)
+            if let data = Data(base64Encoded: psnAccountId), data.count == 8 {
+                psnIdData = data
+            }
+            // Try hex string
+            else if let data = Data(hexString: psnAccountId), data.count == 8 {
+                psnIdData = data
+            }
+            // Try decimal
+            else if let val = UInt64(psnAccountId) {
+                var bigEndian = val.bigEndian
+                psnIdData = withUnsafeBytes(of: &bigEndian) { Data($0) }
             }
         }
         
