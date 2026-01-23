@@ -317,9 +317,36 @@ final class ChiakiSessionWrapper {
         }
 
         // Setup callbacks
+        // NOTE: We use DIRECT struct field assignment instead of static inline functions
+        // because Swift cannot reliably call C static inline functions - they appear to
+        // succeed from Swift's perspective but C code sees NULL values.
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
-        chiaki_session_set_event_cb(session, sessionEventCallback, selfPointer)
-        chiaki_session_set_video_sample_cb(session, videoSampleCallback, selfPointer)
+
+        // Debug: Print struct layout info and callback addresses
+        print("[DEBUG] === CALLBACK SETUP START ===")
+        print("[DEBUG] Swift sizeof(ChiakiSession): \(MemoryLayout<chiaki_session_t>.size)")
+        print("[DEBUG] Swift stride(ChiakiSession): \(MemoryLayout<chiaki_session_t>.stride)")
+        // Calculate offset of event_cb using pointer arithmetic
+        let baseAddr = UInt(bitPattern: session)
+        let eventCbAddr = UInt(bitPattern: withUnsafePointer(to: &session.pointee.event_cb) { $0 })
+        let eventCbUserAddr = UInt(bitPattern: withUnsafePointer(to: &session.pointee.event_cb_user) { $0 })
+        print("[DEBUG] Swift offset(event_cb): \(eventCbAddr - baseAddr)")
+        print("[DEBUG] Swift offset(event_cb_user): \(eventCbUserAddr - baseAddr)")
+        print("[DEBUG] session pointer: \(session)")
+        print("[DEBUG] selfPointer: \(selfPointer)")
+        print("[DEBUG] event_cb BEFORE: \(String(describing: session.pointee.event_cb))")
+
+        // Direct struct field assignment (do NOT use chiaki_session_set_event_cb inline function)
+        session.pointee.event_cb = sessionEventCallback
+        session.pointee.event_cb_user = selfPointer
+        session.pointee.video_sample_cb = videoSampleCallback
+        session.pointee.video_sample_cb_user = selfPointer
+
+        // Debug: Print callback addresses after setting
+        print("[DEBUG] event_cb AFTER: \(String(describing: session.pointee.event_cb))")
+        print("[DEBUG] event_cb_user AFTER: \(String(describing: session.pointee.event_cb_user))")
+        print("[DEBUG] video_sample_cb AFTER: \(String(describing: session.pointee.video_sample_cb))")
+        print("[DEBUG] === CALLBACK SETUP END ===")
 
         // Setup audio sink
         var audioSink = ChiakiAudioSink()
@@ -695,66 +722,53 @@ final class ChiakiSessionWrapper {
     }
 }
 
-// MARK: - C Callbacks
+// MARK: - C Callbacks (must use @convention(c) for C interop)
 
-private func sessionEventCallback(
-    event: UnsafeMutablePointer<ChiakiEvent>?,
-    userData: UnsafeMutableRawPointer?
-) {
-    guard let event = event, let userData = userData else { return }
+private let sessionEventCallback: ChiakiEventCallback = { event, userData in
+    // Debug: Log that callback was invoked
+    print("[ChiakiSession] sessionEventCallback invoked!")
+
+    guard let event = event, let userData = userData else {
+        print("[ChiakiSession] sessionEventCallback: nil parameters")
+        return
+    }
 
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
 
     // Process event - copy data since event pointer is only valid during callback
     let eventCopy = event.pointee
+    print("[ChiakiSession] sessionEventCallback: event type = \(eventCopy.type.rawValue)")
     DispatchQueue.main.async {
         session.handleEvent(eventCopy)
     }
 }
 
-private func videoSampleCallback(
-    buf: UnsafeMutablePointer<UInt8>?,
-    bufSize: Int,
-    framesLost: Int32,
-    frameRecovered: Bool,
-    userData: UnsafeMutableRawPointer?
-) -> Bool {
+private let videoSampleCallback: ChiakiVideoSampleCallback = { buf, bufSize, framesLost, frameRecovered, userData in
     guard let buf = buf, let userData = userData else { return false }
 
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
-    return session.handleVideoSample(buf: buf, bufSize: bufSize, framesLost: framesLost, frameRecovered: frameRecovered)
+    return session.handleVideoSample(buf: buf, bufSize: Int(bufSize), framesLost: framesLost, frameRecovered: frameRecovered)
 }
 
-private func audioHeaderCallback(
-    header: UnsafeMutablePointer<ChiakiAudioHeader>?,
-    userData: UnsafeMutableRawPointer?
-) {
+private let audioHeaderCallback: ChiakiAudioSinkHeader = { header, userData in
     guard let header = header, let userData = userData else { return }
 
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
     session.handleAudioHeader(header.pointee)
 }
 
-private func audioFrameCallback(
-    buf: UnsafeMutablePointer<UInt8>?,
-    bufSize: Int,
-    userData: UnsafeMutableRawPointer?
-) {
+private let audioFrameCallback: ChiakiAudioSinkFrame = { buf, bufSize, userData in
     guard let buf = buf, let userData = userData else { return }
 
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
-    session.handleAudioFrame(buf: buf, bufSize: bufSize)
+    session.handleAudioFrame(buf: buf, bufSize: Int(bufSize))
 }
 
-private func chiakiLogCallback(
-    level: ChiakiLogLevel,
-    msg: UnsafePointer<CChar>?,
-    userData: UnsafeMutableRawPointer?
-) {
+private let chiakiLogCallback: ChiakiLogCb = { level, msg, userData in
     guard let msg = msg else { return }
 
     let message = String(cString: msg)
-    let severity = ChiakiLogSeverity.from( level)
+    let severity = ChiakiLogSeverity.from(level)
 
     switch severity {
     case .error:

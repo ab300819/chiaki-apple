@@ -8,6 +8,10 @@
 #ifndef ChiakiBridge_h
 #define ChiakiBridge_h
 
+// Config must be included first to define CHIAKI_LIB_ENABLE_MBEDTLS
+// This ensures struct layouts match between Swift and C
+#include <chiaki/config.h>
+
 // Core libchiaki headers
 #include <chiaki/common.h>
 #include <chiaki/log.h>

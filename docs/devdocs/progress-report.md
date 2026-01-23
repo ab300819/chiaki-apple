@@ -71,6 +71,51 @@
 
 ### 已知问题
 - `StreamStatisticsTests/testFrameDropRate()` 失败 - 测试期望值计算错误 (预存 bug)
+- 串流视频黑屏 - 回调正常但视频渲染失败 (待调查)
+
+### 已修复问题
+
+#### BUG-001: Swift/C 结构体布局不匹配导致会话回调失效 ✅
+
+**症状**:
+- 串流连接成功但界面一直显示"正在连接"
+- `CHIAKI_EVENT_CONNECTED` 事件回调从未被调用
+- C 端 `chiaki_session_send_event` 显示 `event_cb=0x0`
+
+**根本原因**:
+Swift 和 C 编译器看到的 `ChiakiSession` 结构体大小不一致：
+- Swift 认为: `sizeof(ChiakiSession)=3568`, `offset(event_cb)=592`
+- C 实际: `sizeof(ChiakiSession)=4512`, `offset(event_cb)=1536`
+
+差异来源于 `ChiakiECDH` 结构体的条件编译：
+```c
+// chiaki/ecdh.h
+#ifdef CHIAKI_LIB_ENABLE_MBEDTLS
+    mbedtls_ecdh_context ctx;      // ~900字节
+    mbedtls_ctr_drbg_context drbg; // ~大结构体
+#else
+    struct ec_group_st *group;     // 8字节指针
+    struct ec_key_st *key_local;   // 8字节指针
+#endif
+```
+
+C 库编译时定义了 `CHIAKI_LIB_ENABLE_MBEDTLS`，但 Swift 桥接头文件未定义此宏，导致 Swift 看到的是小版本结构体。
+
+**修复方案**:
+1. 在 `libchiaki.xcframework` 的 `config.h` 中添加 `#define CHIAKI_LIB_ENABLE_MBEDTLS 1`
+2. 将 `mbedtls` 头文件复制到 xcframework 的 `Headers/chiaki/mbedtls/` 目录
+3. 在桥接头文件中确保先 include `config.h`
+
+**影响文件**:
+- `Frameworks/libchiaki.xcframework/*/Headers/chiaki/config.h`
+- `Frameworks/libchiaki.xcframework/*/Headers/chiaki/mbedtls/` (新增)
+- `Chiaki/Core/Bridge/ChiakiBridge.h`
+- `Chiaki/Core/Bridge/ChiakiSession.swift`
+
+**经验教训**:
+- Swift/C 互操作时，条件编译宏必须在两端保持一致
+- 使用 `MemoryLayout` 和 `offsetof` 诊断结构体布局问题
+- `static inline` 函数在 Swift 中可能表现异常，建议直接赋值结构体字段
 
 ## 下一步建议
 

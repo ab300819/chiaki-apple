@@ -193,6 +193,27 @@ mkdir -p "$headers_source"
 cp -R "$PROJECT_ROOT/chiaki-ng/lib/include/chiaki" "$headers_source/"
 cp -R "$BUILD_DIR/chiaki_build_ios_arm64/lib/include/chiaki" "$headers_source/"
 
+# Copy mbedtls headers for Swift/C struct layout compatibility
+# Without this, ChiakiECDH has different size in Swift vs C due to conditional compilation
+log "Copying mbedtls headers for Swift compatibility..."
+cp -R "$BUILD_DIR/mbedtls-2.28.0/include/mbedtls" "$headers_source/chiaki/"
+
+# Update config.h to define CHIAKI_LIB_ENABLE_MBEDTLS for Swift
+# This ensures struct layouts match between Swift and C
+log "Updating config.h with CHIAKI_LIB_ENABLE_MBEDTLS..."
+cat > "$headers_source/chiaki/config.h" << 'EOF'
+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+
+#ifndef CHIAKI_CONFIG_H
+#define CHIAKI_CONFIG_H
+
+#define CHIAKI_LIB_ENABLE_OPUS 1
+#define CHIAKI_LIB_ENABLE_PI_DECODER 0
+#define CHIAKI_LIB_ENABLE_MBEDTLS 1
+
+#endif // CHIAKI_CONFIG_H
+EOF
+
 ios_lib="$BUILD_DIR/libchiaki_merged_ios_arm64.a"
 
 mkdir -p "$BUILD_DIR/chiaki_combined_ios-simulator"
