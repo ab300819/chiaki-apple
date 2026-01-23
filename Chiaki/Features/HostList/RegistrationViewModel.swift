@@ -11,20 +11,20 @@ import Observation
 @Observable
 final class RegistrationViewModel {
     // MARK: - Properties
-    
+
     var hostAddress: String = ""
     var pin: String = ""
     var psnAccountId: String = ""
     var isPS5: Bool = true
-    
+
     private(set) var state: RegistrationState = .idle
     private let registWrapper = ChiakiRegistWrapper()
-    private let hostStore: HostStore
-    
+    private let hostManager: HostManager
+
     // MARK: - Initialization
-    
-    init(hostStore: HostStore) {
-        self.hostStore = hostStore
+
+    init(hostManager: HostManager) {
+        self.hostManager = hostManager
         
         registWrapper.onStateChanged = { [weak self] state in
             self?.state = state
@@ -94,7 +94,8 @@ final class RegistrationViewModel {
                 rpKey: rpKey,
                 rpKeyType: isPS5 ? 2 : 1 // Typical values
             )
-            hostStore.addHost(host)
+            // Use HostManager to ensure proper synchronization with UI
+            hostManager.addHost(host)
         }
     }
 }

@@ -10,9 +10,9 @@ import SwiftUI
 struct RegistrationView: View {
     @Environment(\.dismiss) private var dismiss
     @State var viewModel: RegistrationViewModel
-    
-    init(hostStore: HostStore, initialAddress: String = "") {
-        let vm = RegistrationViewModel(hostStore: hostStore)
+
+    init(hostManager: HostManager, initialAddress: String = "") {
+        let vm = RegistrationViewModel(hostManager: hostManager)
         vm.hostAddress = initialAddress
         _viewModel = State(initialValue: vm)
     }
@@ -107,7 +107,7 @@ struct RegistrationView: View {
 }
 
 #Preview {
-    RegistrationView(hostStore: HostStore())
+    RegistrationView(hostManager: HostManager())
         .environment(SettingsStore())
         .environment(NavigationManager())
 }

@@ -546,6 +546,48 @@ struct HostDiscoveryIntegrationTests {
         #expect(manager.hosts.count == 0)
         #expect(hostStore.hosts.count == 0)
     }
+
+    // Bug fix: Registration adds host to store but HostManager.hosts not updated
+    // When RegistrationViewModel calls hostStore.addHost() directly (bypassing HostManager),
+    // the manager's hosts array is not synchronized.
+    //
+    // The actual bug: RegistrationViewModel should use HostManager to add hosts,
+    // not directly access HostStore. This ensures proper synchronization.
+    @Test func testDirectHostStoreAddSyncsToManager() async {
+        let defaults = UserDefaults(suiteName: "test.it005.directadd.\(UUID().uuidString)")!
+
+        let hostStore = HostStore(userDefaults: defaults)
+        let manager = HostManager(hostStore: hostStore)
+
+        // Initial state - manager synced with store at init time
+        #expect(manager.hosts.count == 0)
+        #expect(hostStore.hosts.count == 0)
+
+        // Simulate what RegistrationViewModel does: directly add to hostStore
+        // This bypasses HostManager.addHost() which calls syncHostsFromStore()
+        let registeredHost = ConsoleHost(
+            nickname: "PS5",
+            address: "192.168.1.100",
+            isPS5: true,
+            registKey: Data(repeating: 0xAA, count: 16),
+            rpKey: Data(repeating: 0xBB, count: 16),
+            rpKeyType: 2
+        )
+        hostStore.addHost(registeredHost)
+
+        // Give some time for potential observation to propagate
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+        // HostStore has the host
+        #expect(hostStore.hosts.count == 1, "HostStore should have the host")
+        #expect(hostStore.hosts.first?.isRegistered == true)
+
+        // Bug: HostManager.hosts is NOT automatically updated when hostStore changes
+        // because HostManager uses @Published which only triggers on direct assignment
+        // This test verifies that after direct hostStore.addHost(), manager needs manual sync
+        // The fix should ensure RegistrationViewModel uses HostManager.addHost() instead
+        #expect(manager.hosts.count == 1, "HostManager should sync after hostStore.addHost()")
+    }
 }
 
 // MARK: - IT-006: Settings Persistence Integration Tests
