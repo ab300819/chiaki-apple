@@ -1,6 +1,6 @@
 # 进度报告
 
-**生成时间**：2026-01-22
+**生成时间**：2026-01-25
 **检查范围**：全量同步检查
 **检查方法**：文件系统扫描 + Git 状态 + 测试运行
 
@@ -141,6 +141,72 @@ libchiaki 发送的视频数据是 Annex-B 格式（以 `00 00 00 01` 或 `00 00
 
 **影响文件**:
 - `Chiaki/Core/Video/VideoToolboxDecoder.swift`
+
+#### BUG-003: 虚拟控制器在串流时不显示 ✅
+
+**症状**:
+- 在串流页面，点击下方 PS 按键无对应功能
+- 虚拟控制器按钮在视频播放后消失
+
+**根本原因**:
+`StreamingView.swift:81` 中虚拟控制器的显示条件是 `viewModel.state == .connected`，但当视频开始播放后，状态从 `.connected` 变为 `.streaming`。
+
+```swift
+// 错误的条件
+if viewModel.state == .connected && settingsStore.streamSettings.isTouchControllerEnabled {
+    VirtualControllerView { ... }
+}
+```
+
+状态流转：`connecting` → `connected` → `streaming`
+
+当进入 `.streaming` 状态时，条件不满足，虚拟控制器被隐藏。
+
+**修复方案**:
+将显示条件从 `.connected` 改为 `.streaming`：
+```swift
+if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControllerEnabled {
+    VirtualControllerView { ... }
+}
+```
+
+**影响文件**:
+- `Chiaki/Features/Streaming/StreamingView.swift`
+
+**提交**: `fc63a12` fix(streaming): show virtual controller during streaming state
+
+#### BUG-004: 关闭串流后重新进入显示 "Remote Play in use" ⚠️ 已知限制
+
+**症状**:
+- 关闭串流页面后立即重新进入
+- 显示 "Remote Play is already in use" 错误，无法再次进入串流
+
+**分析结论**:
+这不是应用代码的 bug，而是 libchiaki 的设计特性：
+
+1. **客户端断开时不主动通知 PS**：
+   - `chiaki_session_stop()` 只设置 `should_stop` 标志
+   - `chiaki_ctrl_stop()` 和 `chiaki_stream_connection_stop()` 同样只设置停止标志
+   - 没有主动发送断开消息给 PS
+
+2. **PS 依赖超时检测**：
+   - PS 需要通过 TCP 连接超时（通常 3-5 秒）才能检测到客户端断开
+   - 在此期间，PS 认为会话仍然存在
+
+3. **快速重连触发错误**：
+   - 如果用户在 PS 检测到断开之前尝试重新连接
+   - PS 返回 `CHIAKI_RP_APPLICATION_REASON_IN_USE (0x80108b10)` 错误
+
+**当前行为**:
+- 错误消息 "Remote Play is already in use" 正确显示给用户
+- 用户等待 3-5 秒后重试即可正常连接
+
+**未来改进建议**:
+1. 添加自动重试机制（收到此错误时延迟 2 秒后自动重试）
+2. 在断开后显示冷却提示，告知用户稍后重试
+3. 或在 UI 层面添加防抖，阻止快速重复进入串流
+
+**状态**: 非代码缺陷，暂不修复
 
 ## 下一步建议
 
