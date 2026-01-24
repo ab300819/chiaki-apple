@@ -78,7 +78,7 @@ struct StreamingView: View {
             }
             
             #if os(iOS)
-            if viewModel.state == .connected && settingsStore.streamSettings.isTouchControllerEnabled {
+            if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControllerEnabled {
                 VirtualControllerView { input in
                     viewModel.handleInput(input)
                 }
