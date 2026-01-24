@@ -474,8 +474,142 @@ final class VideoDecoderBridge {
     }
 
     /// Receive video frame data for decoding
+    /// Parses NAL units from Annex-B stream and extracts parameter sets
     func receiveFrame(_ data: UnsafePointer<UInt8>, size: Int, timestamp: UInt64) {
-        decoder?.decodeFrame(data, size: size, timestamp: timestamp)
+        initLock.lock()
+        defer { initLock.unlock() }
+
+        // Parse NAL units from Annex-B stream
+        parseNALUnits(data, size: size, timestamp: timestamp)
+    }
+
+    // MARK: - NAL Unit Parsing
+
+    /// Parse NAL units from Annex-B format stream
+    /// Extracts VPS/SPS/PPS and forwards frame data to decoder
+    private func parseNALUnits(_ data: UnsafePointer<UInt8>, size: Int, timestamp: UInt64) {
+        var offset = 0
+        var nalStart = -1
+        var nalType: UInt8 = 0
+
+        // Find NAL units by scanning for start codes (00 00 00 01 or 00 00 01)
+        while offset < size {
+            // Check for 3-byte or 4-byte start code
+            let hasStartCode3 = offset + 2 < size &&
+                data[offset] == 0x00 && data[offset + 1] == 0x00 && data[offset + 2] == 0x01
+            let hasStartCode4 = offset + 3 < size &&
+                data[offset] == 0x00 && data[offset + 1] == 0x00 &&
+                data[offset + 2] == 0x00 && data[offset + 3] == 0x01
+
+            if hasStartCode4 || hasStartCode3 {
+                // Process previous NAL unit if exists
+                if nalStart >= 0 {
+                    let nalSize = offset - nalStart
+                    processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp)
+                }
+
+                // Start of new NAL unit
+                let startCodeLen = hasStartCode4 ? 4 : 3
+                nalStart = offset + startCodeLen
+
+                // Get NAL type from first byte after start code
+                if nalStart < size {
+                    if codec.isH265 {
+                        // H.265: NAL type is in bits 1-6 of first byte (shifted right by 1)
+                        nalType = (data[nalStart] >> 1) & 0x3F
+                    } else {
+                        // H.264: NAL type is in bits 0-4 of first byte
+                        nalType = data[nalStart] & 0x1F
+                    }
+                }
+
+                offset = nalStart
+            } else {
+                offset += 1
+            }
+        }
+
+        // Process last NAL unit
+        if nalStart >= 0 && nalStart < size {
+            let nalSize = size - nalStart
+            processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp)
+        }
+    }
+
+    /// Process a single NAL unit based on its type
+    private func processNALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+        guard size > 0 else { return }
+
+        if codec.isH265 {
+            processH265NALUnit(data, size: size, type: type, timestamp: timestamp)
+        } else {
+            processH264NALUnit(data, size: size, type: type, timestamp: timestamp)
+        }
+    }
+
+    /// Process H.265 NAL unit
+    private func processH265NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+        switch type {
+        case 32: // VPS
+            logInfo("VideoDecoderBridge: Received VPS (\(size) bytes)")
+            pendingVPS = Data(bytes: data, count: size)
+            tryInitializeDecoder()
+
+        case 33: // SPS
+            logInfo("VideoDecoderBridge: Received SPS (\(size) bytes)")
+            pendingSPS = Data(bytes: data, count: size)
+            tryInitializeDecoder()
+
+        case 34: // PPS
+            logInfo("VideoDecoderBridge: Received PPS (\(size) bytes)")
+            pendingPPS = Data(bytes: data, count: size)
+            tryInitializeDecoder()
+
+        default:
+            // Video frame data - forward to decoder
+            if decoder != nil {
+                // Convert to AVCC format (4-byte length prefix instead of start code)
+                var avccData = Data(capacity: size + 4)
+                var lengthBE = UInt32(size).bigEndian
+                avccData.append(Data(bytes: &lengthBE, count: 4))
+                avccData.append(Data(bytes: data, count: size))
+
+                avccData.withUnsafeBytes { ptr in
+                    if let baseAddress = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) {
+                        decoder?.decodeFrame(baseAddress, size: avccData.count, timestamp: timestamp)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Process H.264 NAL unit
+    private func processH264NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+        switch type {
+        case 7: // SPS
+            pendingSPS = Data(bytes: data, count: size)
+            tryInitializeDecoder()
+
+        case 8: // PPS
+            pendingPPS = Data(bytes: data, count: size)
+            tryInitializeDecoder()
+
+        default:
+            // Video frame data - forward to decoder
+            if decoder != nil {
+                // Convert to AVCC format (4-byte length prefix instead of start code)
+                var avccData = Data(capacity: size + 4)
+                var lengthBE = UInt32(size).bigEndian
+                avccData.append(Data(bytes: &lengthBE, count: 4))
+                avccData.append(Data(bytes: data, count: size))
+
+                avccData.withUnsafeBytes { ptr in
+                    if let baseAddress = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) {
+                        decoder?.decodeFrame(baseAddress, size: avccData.count, timestamp: timestamp)
+                    }
+                }
+            }
+        }
     }
 
     /// Shutdown decoder

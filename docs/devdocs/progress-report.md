@@ -71,7 +71,6 @@
 
 ### 已知问题
 - `StreamStatisticsTests/testFrameDropRate()` 失败 - 测试期望值计算错误 (预存 bug)
-- 串流视频黑屏 - 回调正常但视频渲染失败 (待调查)
 
 ### 已修复问题
 
@@ -116,6 +115,32 @@ C 库编译时定义了 `CHIAKI_LIB_ENABLE_MBEDTLS`，但 Swift 桥接头文件�
 - Swift/C 互操作时，条件编译宏必须在两端保持一致
 - 使用 `MemoryLayout` 和 `offsetof` 诊断结构体布局问题
 - `static inline` 函数在 Swift 中可能表现异常，建议直接赋值结构体字段
+
+#### BUG-002: 视频黑屏 - NAL 单元解析缺失 ✅
+
+**症状**:
+- 串流连接成功，界面进入串流状态
+- 视频画面全黑，无任何内容显示
+- 日志显示 "Missing reference frame" 错误
+
+**根本原因**:
+`VideoDecoderBridge.receiveFrame()` 直接将原始数据转发给 `decoder?.decodeFrame()`，但：
+1. `decoder` 为 nil（需要 SPS/PPS/VPS 参数集才能初始化）
+2. 没有解析 libchiaki 发送的 Annex-B 格式 NAL 流
+3. 参数集从未被提取，解码器永远不会初始化
+
+libchiaki 发送的视频数据是 Annex-B 格式（以 `00 00 00 01` 或 `00 00 01` 作为 NAL 分隔符），包含：
+- H.265: VPS (type 32), SPS (type 33), PPS (type 34), 视频帧
+- H.264: SPS (type 7), PPS (type 8), 视频帧
+
+**修复方案**:
+在 `VideoDecoderBridge.receiveFrame()` 中实现 NAL 单元解析器：
+1. 扫描 start code 分隔 NAL 单元
+2. 根据 NAL type 提取 VPS/SPS/PPS 并初始化解码器
+3. 将视频帧数据转换为 AVCC 格式（4字节长度前缀）发送给 VideoToolbox
+
+**影响文件**:
+- `Chiaki/Core/Video/VideoToolboxDecoder.swift`
 
 ## 下一步建议
 
