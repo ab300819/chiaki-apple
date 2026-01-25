@@ -73,8 +73,14 @@ struct StreamingView: View {
                     viewModel.pipManager.setup(with: mtkView)
                     #endif
                 }
+                .onTapGesture {
+                    viewModel.toggleOverlay()
+                }
             } else {
                 VideoPlaceholderView(state: viewModel.state)
+                    .onTapGesture {
+                        viewModel.toggleOverlay()
+                    }
             }
             
             #if os(iOS)
@@ -163,9 +169,6 @@ struct StreamingView: View {
         .persistentSystemOverlays(.hidden)
         .defersSystemGestures(on: .all)
         #endif
-        .onTapGesture {
-            viewModel.toggleOverlay()
-        }
         .confirmationDialog(
             L10n.Streaming.disconnectConfirmTitle,
             isPresented: $showingDisconnectConfirmation,
