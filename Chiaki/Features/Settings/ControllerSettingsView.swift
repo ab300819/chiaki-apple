@@ -49,7 +49,6 @@ struct ControllerSettingsView: View {
             Section {
                 Toggle(String(localized: "settings.controller.hapticFeedback"), isOn: $store.streamSettings.hapticFeedbackEnabled)
                 Toggle(String(localized: "settings.controller.motionControls"), isOn: $store.streamSettings.motionControlsEnabled)
-                Toggle(String(localized: "settings.controller.showControllerHints"), isOn: $store.streamSettings.showControllerHints)
             } header: {
                 Text(L10n.Settings.Controller.feedback)
             } footer: {

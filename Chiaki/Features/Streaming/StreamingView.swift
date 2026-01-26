@@ -124,12 +124,6 @@ struct StreamingView: View {
                     .padding(.top, 10)
 
                     Spacer()
-                    
-                    if viewModel.isOverlayVisible && settingsStore.streamSettings.showControllerHints {
-                        ControllerHintView(controllerType: ControllerManager.shared.detectedControllerType)
-                            .padding(.bottom, 20)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
                 }
                 .transition(.opacity)
                 .zIndex(2)
