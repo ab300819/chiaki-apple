@@ -1486,27 +1486,31 @@ jobs:
 
 | 测试类型 | 总数 | 已实现 | 覆盖率 | 备注 |
 |----------|------|--------|--------|------|
-| 单元测试 (UT) | 9 组 | 8 | 89% | UT-001~009，UT-009 待实现 |
-| 集成测试 (IT) | 6 组 | 4 | 67% | IT-001~006，IT-005/006 待实现 |
+| 单元测试 (UT) | 9 组 | 9 | **100%** | UT-001~009 全部实现 |
+| 集成测试 (IT) | 6 组 | 6 | **100%** | IT-001~006 全部实现 |
 | 高级测试 (P0/P1) | 5 组 | 5 | 100% | Session/Discovery/ViewModel/Keychain/Statistics |
-| E2E 测试 | 5 组 | 1 | 20% | E2E-001~005，仅 E2E-001 基础实现 |
+| E2E 测试 | 5 组 | 5 | **100%** | E2E-001~005 全部实现 |
 
-> **更新时间**: 2026-01-22
-> **实际代码覆盖率**: ~35% (估算)
-> **测试用例总数**: 141 个测试通过
-> **新增设计用例**: UT-009 (8个), IT-005 (6个), IT-006 (7个) = 21 个
+> **更新时间**: 2026-01-26 (--trace 扫描)
+> **测试用例总数**: 181 (单元/集成) + 45 (E2E) = 226
+> **通过率**: 173/181 单元测试通过 (8 个音频测试因模拟器限制失败)
 
 ### 10.4 测试实现详情
 
 #### 已实现测试文件
 
-| 文件 | 测试数量 | 覆盖用例 |
-|------|----------|----------|
-| `ChiakiTests.swift` | 39 | UT-003, UT-004, UT-005 + 额外模块 |
-| `SessionAndDiscoveryTests.swift` | 31 | UT-001, UT-002 |
-| `IntegrationTests.swift` | 28 | IT-001, IT-002, IT-003 |
-| `AdvancedTests.swift` | 44 | P0/P1 高级测试 (Session/Discovery/ViewModel/Keychain/Statistics) |
-| `ChiakiUITests.swift` | 4 | E2E-001 基础 |
+| 文件 | 测试数量 | 覆盖用例 | 代码位置 |
+|------|----------|----------|----------|
+| `ChiakiTests.swift` | 39 | UT-003, UT-004, UT-005 | `ChiakiTests/ChiakiTests.swift` |
+| `SessionAndDiscoveryTests.swift` | 31 | UT-001, UT-002 | `ChiakiTests/SessionAndDiscoveryTests.swift` |
+| `IntegrationTests.swift` | 28 | IT-001, IT-002, IT-003 | `ChiakiTests/IntegrationTests.swift` |
+| `AdvancedTests.swift` | 44 | P0/P1 高级测试 | `ChiakiTests/AdvancedTests.swift` |
+| `NewFeatureTests.swift` | 39 | UT-006~009, IT-004~006 | `ChiakiTests/NewFeatureTests.swift` |
+| `HostListUITests.swift` | 8 | E2E-001.1~8 | `ChiakiUITests/HostListUITests.swift` |
+| `StreamingUITests.swift` | 9 | E2E-002.1~9 | `ChiakiUITests/StreamingUITests.swift` |
+| `SettingsUITests.swift` | 12 | E2E-003.1~13 | `ChiakiUITests/SettingsUITests.swift` |
+| `TVOSUITests.swift` | 9 | E2E-004.1~9 | `ChiakiUITests/TVOSUITests.swift` |
+| `AddHostUITests.swift` | 7 | E2E-005.1~7 | `ChiakiUITests/AddHostUITests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 
@@ -1527,34 +1531,59 @@ jobs:
 | ChiakiHostState 测试 | ✅ | displayName、rawValue |
 | 发现流程测试 | ⚠️ | 需网络 Mock |
 
-#### UT-009 NavigationManager 实现状态 (2026-01-22 新增)
+#### UT-009 NavigationManager 实现状态 ✅ 已完成
 
-| 子用例 | 状态 | 说明 |
-|--------|------|------|
-| 初始状态测试 | ⏳ 待实现 | sidebarSelection, showAddHostSheet |
-| openAddHost 测试 | ⏳ 待实现 | 导航+Sheet 触发 |
-| navigateToSettings 测试 | ⏳ 待实现 | 设置导航 |
-| refreshDiscovery 测试 | ⏳ 待实现 | 刷新触发器 |
-| autoConnect 生命周期 | ⏳ 待实现 | start/end 状态 |
+> 代码位置: `ChiakiTests/NewFeatureTests.swift:277-384`
 
-#### IT-005 主机发现与存储集成 实现状态 (2026-01-22 新增)
+| 子用例 | 状态 | 代码行 |
+|--------|------|--------|
+| UT-009.1 初始状态测试 | ✅ | :277 |
+| UT-009.2 openAddHost 测试 | ✅ | :290 |
+| UT-009.3 navigateToSettings 测试 | ✅ | :301 |
+| UT-009.4 refreshDiscovery 测试 | ✅ | :311 |
+| UT-009.5 wakeUpSelectedHost 测试 | ✅ | :322 |
+| UT-009.6/7 autoConnect 生命周期 | ✅ | :331 |
+| UT-009.8 streaming 状态切换 | ✅ | :347 |
+| UT-009.9 displayMode 触发器 | ✅ | :358 |
+| UT-009.10 volume 触发器 | ✅ | :371 |
 
-| 子用例 | 状态 | 说明 |
-|--------|------|------|
-| 发现主机合并到存储 | ⏳ 待实现 | DiscoveryService → HostStore |
-| 已存储主机状态更新 | ⏳ 待实现 | offline → online |
-| 隐藏主机过滤 | ⏳ 待实现 | isHidden 逻辑 |
-| 地址变更保持注册 | ⏳ 待实现 | MAC 匹配 |
+#### IT-004 HostManager 单例一致性 ✅ 已完成
 
-#### IT-006 设置持久化集成 实现状态 (2026-01-22 新增)
+> 代码位置: `ChiakiTests/NewFeatureTests.swift:387-416`
 
-| 子用例 | 状态 | 说明 |
-|--------|------|------|
-| 跨实例持久化 | ⏳ 待实现 | UserDefaults 验证 |
-| 视频设置持久化 | ⏳ 待实现 | 分辨率/帧率/码率 |
-| 音频设置持久化 | ⏳ 待实现 | 音量/缓冲区 |
-| 重置默认值 | ⏳ 待实现 | resetToDefaults |
-| 键盘映射持久化 | ⏳ 待实现 | macOS 专属 |
+| 子用例 | 状态 | 代码行 |
+|--------|------|--------|
+| IT-004.1 shared 单例测试 | ✅ | :387 |
+| IT-004.2 HostStore 一致性 | ✅ | :396 |
+
+#### IT-005 主机发现与存储集成 ✅ 已完成
+
+> 代码位置: `ChiakiTests/NewFeatureTests.swift:419-593`
+
+| 子用例 | 状态 | 代码行 |
+|--------|------|--------|
+| IT-005.1 主机添加可用 | ✅ | :419 |
+| IT-005.2 主机状态初始化 | ✅ | :440 |
+| IT-005.3 隐藏主机过滤 | ✅ | :458 |
+| IT-005.4 地址变更保持注册 | ✅ | :484 |
+| IT-005.5 多主机管理 | ✅ | :510 |
+| IT-005.6 主机删除 | ✅ | :533 |
+
+#### IT-006 设置持久化集成 ✅ 已完成
+
+> 代码位置: `ChiakiTests/NewFeatureTests.swift:598-792`
+
+| 子用例 | 状态 | 代码行 |
+|--------|------|--------|
+| IT-006.1 跨实例持久化 | ✅ | :598 |
+| IT-006.2 视频设置持久化 | ✅ | :617 |
+| IT-006.3 音频设置持久化 | ✅ | :641 |
+| IT-006.4 控制器设置持久化 | ✅ | :661 |
+| IT-006.5 重置默认值 | ✅ | :679 |
+| IT-006.6 自动连接设置 | ✅ | :701 |
+| IT-006.7 断开动作设置 | ✅ | :721 |
+| IT-006.8 键盘映射 (macOS) | ✅ | :739 |
+| IT-006.9 导入导出一致性 | ✅ | :762 |
 
 #### IT-001 视频渲染实现状态
 
@@ -1599,7 +1628,19 @@ jobs:
 | - | ConnectionQuality | ✅ 完成 | 1 |
 | - | KeychainError | ✅ 完成 | 1 |
 
-### 10.6 待补充测试 (剩余 Tech Debt)
+### 10.6 E2E 测试代码位置追溯
+
+> 代码扫描时间: 2026-01-26
+
+| 测试组 | 文件 | 测试数 | 代码位置 |
+|--------|------|--------|----------|
+| E2E-001 主机列表 | HostListUITests.swift | 8 | :25-227 |
+| E2E-002 流媒体 | StreamingUITests.swift | 9 | :45-289 |
+| E2E-003 设置 | SettingsUITests.swift | 12 | :61-404 |
+| E2E-004 tvOS 焦点 | TVOSUITests.swift | 9 | :28-228 |
+| E2E-005 添加主机 | AddHostUITests.swift | 7 | :46-248 |
+
+### 10.7 待补充测试 (剩余 Tech Debt)
 
 | 优先级 | 测试项 | 阻塞原因 |
 |--------|--------|----------|
