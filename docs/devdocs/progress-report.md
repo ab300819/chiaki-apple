@@ -1,6 +1,6 @@
 # 进度报告
 
-**生成时间**：2026-01-25
+**生成时间**：2026-01-26
 **检查范围**：全量同步检查
 **检查方法**：文件系统扫描 + Git 状态 + 测试运行
 
@@ -19,10 +19,10 @@
 
 | 指标 | 数值 |
 |------|------|
-| 测试总数 | 231 |
-| 单元/集成测试 | 186 (185 通过) |
-| E2E UI 测试 | 45 |
-| 失败测试 | 1 (预存 bug) |
+| 测试总数 | 226 |
+| 单元/集成测试 | 181 (173 通过) |
+| E2E UI 测试 | 45 (~39 通过) |
+| 失败测试 | 8 (音频测试，模拟器环境限制) + 6 (UI 测试，accessibilityIdentifier 待补充) |
 
 ## 构建状态
 
@@ -70,7 +70,20 @@
 - [x] E2E-005: 添加主机页面测试 (7 tests)
 
 ### 已知问题
-- `StreamStatisticsTests/testFrameDropRate()` 失败 - 测试期望值计算错误 (预存 bug)
+
+**模拟器环境限制**（非代码缺陷）:
+- `AudioPlayerTests/*` (7 tests) - 模拟器不支持低延迟音频 API
+- `AudioPlayerBridgeTests/testBridgeStartShutdown` - 同上
+
+**UI 测试 accessibilityIdentifier 缺失**:
+- `HostListUITests.testHostListDisplayed` - hostList identifier 不匹配
+- `HostListUITests.testAddHostButtonExists` - addHostButton identifier 不匹配
+- `HostListUITests.testEmptyStateDisplayed` - noHostsFound identifier 不匹配
+- `SettingsUITests.testNavigateToSettings` - TabBar 选择器不匹配
+- `AddHostUITests.testOpenAddHostSheet` - nicknameTextField identifier 不匹配
+
+**预存 bug**:
+- `StreamStatisticsTests/testFrameDropRate()` 失败 - 测试期望值计算错误
 
 ### 已修复问题
 
@@ -175,6 +188,41 @@ if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControll
 
 **提交**: `fc63a12` fix(streaming): show virtual controller during streaming state
 
+#### BUG-005: 虚拟控制器无法点击 - 手势冲突 ✅
+
+**症状**:
+- 虚拟控制器已显示，但按钮无法点击
+- 点击按钮无任何日志输出
+- 触摸事件似乎被拦截
+
+**根本原因**:
+1. `VideoStreamView` 和 `VideoPlaceholderView` 上的 `.onTapGesture` 拦截了所有触摸事件
+2. SwiftUI 手势优先级：父视图的 tap gesture 优先于子视图的 DragGesture
+
+**修复方案**:
+1. 为 `VideoStreamView` 和 `VideoPlaceholderView` 添加 `.allowsHitTesting(false)`
+2. 将 overlay toggle 的 tap gesture 移到背景 `Color.black` 上
+3. 确保 `VirtualControllerView` 的 `zIndex(1)` 使其在视频层之上
+
+**影响文件**:
+- `Chiaki/Features/Streaming/StreamingView.swift`
+
+**提交**: `f539514` fix(streaming): fix virtual controller tap gesture conflict
+
+#### BUG-006: ControllerHintView 移除 ✅
+
+**背景**:
+用户反馈 "ControllerHintView 点击没有效果"，但经确认 ControllerHintView 只是静态提示视图，不是交互按钮。
+
+**决策**:
+移除 ControllerHintView，简化界面。虚拟控制器已提供完整的交互功能。
+
+**影响文件**:
+- `Chiaki/Features/Streaming/StreamingView.swift` - 移除 ControllerHintView
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` - 移除 showControllerHints toggle
+
+**状态**: 已完成，待提交
+
 #### BUG-004: 关闭串流后重新进入显示 "Remote Play in use" ⚠️ 已知限制
 
 **症状**:
@@ -210,9 +258,10 @@ if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControll
 
 ## 下一步建议
 
-1. **修复预存测试 bug**: 修正 `testFrameDropRate` 的期望值计算
-2. **添加 Accessibility Identifiers**: 为 UI 组件添加辅助功能标识符，增强 UI 测试可靠性
-3. **运行完整 UI 测试**: 在真机或模拟器上执行 E2E 测试套件验证
+1. **提交待提交代码**: BUG-005/BUG-006 修复代码待提交
+2. **真机测试虚拟控制器**: 验证手势修复后虚拟控制器是否正常工作
+3. **添加 Accessibility Identifiers**: 为 UI 组件添加辅助功能标识符，修复 E2E 测试失败
+4. **音频测试标记 Skip**: 为模拟器不支持的音频测试添加 `@available` 或条件跳过
 
 ---
 
