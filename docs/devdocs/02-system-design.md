@@ -2325,3 +2325,51 @@ enum Logger {
 // Logger.session.info("Session started")
 // Logger.video.error("Failed to decode frame: \(error)")
 ```
+
+---
+
+## 8. 架构优化设计 [增量]
+
+### 8.1 StreamingViewModel 拆分
+
+为了解决 `StreamingViewModel` 职责过重的问题，采用以下拆分策略：
+
+#### 8.1.1 StreamStatsManager (核心逻辑)
+- **职责**: 负责每秒从 `libchiaki` 获取统计数据并更新状态。
+- **接口**: 
+  - `update()`: 触发统计更新。
+  - 属性: `bitrate`, `latency`, `packetLoss`, `droppedFrames`, `recoveredFrames` 等。
+
+#### 8.1.2 ControllerInputMapper (核心逻辑)
+- **职责**: 将 SwiftUI 的 `VirtualControllerInput` 或系统 `GCController` 输入转换为 `libchiaki` 的协议格式。
+- **接口**:
+  - `map(_ input: VirtualControllerInput) -> ChiakiControllerInput`
+
+### 8.2 现代化 UI 规范
+
+- **状态管理**: 所有的服务类（如 `DiscoveryService`, `PSNService`）必须从 `ObservableObject` 迁移至 `@Observable`，移除对 `Combine` 的显式依赖（除非是系统框架必须）。
+- **视图性能**: 子视图（如 `StreamingOverlay`）应尽可能引用原子类型（如 `Double`, `String`），避免直接持有大型 ViewModel 对象导致的不必要重绘。
+- **API 规范**: 统一使用 iOS 17+ 推荐的 API（`.foregroundStyle`, `.clipShape`, `.tint` 等）。
+
+---
+
+## 9. 生产就绪设计 [增量]
+
+### 9.1 网络弹性架构
+
+引入 `NetworkMonitor` 单例：
+- **技术栈**: `Network` 框架 (NWPathMonitor)。
+- **逻辑**: 
+  - 当 `path.status == .satisfied` 变为不满足时，通知 `StreamingViewModel` 进入 `reconnecting` 状态。
+  - 恢复后，自动调用 `session.reconnect()`。
+
+### 9.2 本地化方案
+
+- **工具**: 使用 Xcode 15+ `String Catalogs` (.xcstrings)。
+- **规范**: 
+  - 所有的 UI 字符串必须使用 `String(localized: "key")` 或 `Text("key")`。
+  - 所有的 Accessibility Label 必须通过本地化文件配置。
+
+### 9.3 性能管理
+
+- **渲染控制**: 在 `MetalVideoRenderer` 中增加 `isStatic` 检测，若连续 5 帧无变化且非游戏状态，降低 Metal 刷新频率。

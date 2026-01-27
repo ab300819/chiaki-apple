@@ -1926,3 +1926,48 @@ struct HostManagerIntegrationTests {
 ### 11.2 测试数据
 
 测试所需的模拟数据和 Mock 对象应放置在 `Tests/TestData/` 目录。
+
+---
+
+## 12. 优化与重构测试用例 [增量]
+
+### 12.1 API 现代化测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-10.1 | testNoDeprecatedColors | 扫描视图文件 | 无 `.foregroundColor` 显式调用 | P0 |
+| UT-10.2 | testNoDeprecatedRadius | 扫描视图文件 | 无 `.cornerRadius` 显式调用 | P0 |
+| UT-10.3 | testUseTintAPI | 检查 AccentColor 替代 | 优先使用 `.tint` | P1 |
+
+### 12.2 架构重构测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 | 模式 |
+|------|----------|------|----------|--------|------|
+| UT-11.1 | testStatsManagerUpdate | StreamStatsManager 统计更新逻辑 | 数据正确从 libchiaki 映射到属性 | P0 | 🔴 TDD |
+| UT-11.2 | testInputMapperMapping | ControllerInputMapper 输入映射 | 虚拟按键正确映射为协议格式 | P0 | 🔴 TDD |
+| UT-11.3 | testObservableMigration | 验证类定义 | 服务类标注为 `@Observable` 且无 `@Published` | P1 | 🔴 TDD |
+
+### 12.3 性能与交互测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-13.1 | testSpringAnimation | 覆盖层切换动画 | 使用 `.spring` 曲线，无明显掉帧 | P2 |
+| IT-14.1 | testGlassEffectAvailability | (iOS 26) 环境检测 | 仅在支持的系统上应用 glassEffect | P3 |
+
+---
+
+## 13. 生产就绪测试用例 [增量]
+
+### 13.1 稳定性与网络测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-16.1 | testNetworkSwitchReconnect | 模拟 WiFi 到 5G 切换 | 自动触发重连流程 | P0 |
+| IT-16.2 | testWakeUpRetry | 唤醒失败重试逻辑 | 失败后提示用户并支持一键重试 | P1 |
+
+### 13.2 本地化与元数据测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-15.1 | testAllStringsLocalized | 静态扫描工程 | 无未标记的硬编码中文字符串 | P0 |
+| UT-18.1 | testPrivacyDescriptionPresence | 检查 Info.plist | 包含麦克风/局域网隐私说明 | P0 |

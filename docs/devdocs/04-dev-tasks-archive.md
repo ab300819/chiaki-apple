@@ -37,5 +37,13 @@
 - **涉及文件**: `README.md`, `progress-report.md`
 - **成果**: 完成了 Release 模式构建验证，建立了 DevDocs 自动化同步流程。
 
+## M8: UI 优化迭代 (Apple Design 深度优化) ✅
+- **目标**: 提升 UI 视觉一致性、品牌辨识度及原生交互体验。
+- **成果**: 实现了丢包率指示器、玻璃拟态控制菜单、Haptic Engine 2.0 及内置日志查看器。
+
+## M9: UI 还原度补完 (QML 深度审查) ✅
+- **目标**: 补全核心功能遗漏，实现与 Qt/QML 版的功能对齐。
+- **成果**: 完成了 Console PIN 验证、断开动作配置、键盘映射以及 HDR 参数精调。
+
 ---
 > 更多任务记录详见 [04-dev-tasks.md](04-dev-tasks.md)
