@@ -20,11 +20,12 @@ final class StreamingViewModel {
         case connecting
         case connected
         case streaming
+        case reconnecting
         case error(String)
 
         var isActive: Bool {
             switch self {
-            case .connecting, .connected, .streaming:
+            case .connecting, .connected, .streaming, .reconnecting:
                 return true
             default:
                 return false
@@ -36,17 +37,6 @@ final class StreamingViewModel {
 
     private(set) var state: ConnectionState = .disconnected
     var isOverlayVisible: Bool = true
-
-    // Stream statistics (from StreamStatistics)
-    var currentResolution: String = "1080p"
-    var currentFrameRate: Double = 0
-    var latency: Double = 0
-    var bitrate: Double = 0
-    var packetLoss: Double = 0
-    var droppedFrames: Int = 0
-    var recoveredFrames: Int = 0
-    var isPoorConnection: Bool = false
-    var connectionQuality: ConnectionQuality = .unknown
 
     // Playback controls
     var volume: Double = 1.0
@@ -63,6 +53,8 @@ final class StreamingViewModel {
     var onConnected: (() -> Void)?
 
     let pipManager = PiPManager()
+    let statsManager: StreamStatsManager
+    private let inputMapper = ControllerInputMapper()
 
     // MARK: - Internal state
     
@@ -77,6 +69,8 @@ final class StreamingViewModel {
 
     /// Current controller state (accumulated from multiple input events)
     private var currentControllerState = ChiakiControllerInput()
+    private var lastSettings: StreamSettings?
+    private var lastIsRemote: Bool = false
 
     // MARK: - Initialization
 
@@ -86,9 +80,39 @@ final class StreamingViewModel {
         self.statistics = StreamStatistics()
         self.videoDecoderBridge = VideoDecoderBridge()
         self.audioPlayerBridge = AudioPlayerBridge()
+        self.statsManager = StreamStatsManager(statistics: statistics, session: session)
 
         setupSession()
+        setupNetworkMonitoring()
         Logger.session.info("StreamingViewModel initialized for \(host.nickname)")
+    }
+    
+    private func setupNetworkMonitoring() {
+        // Observe network changes for auto-reconnect
+        _ = withObservationTracking {
+            NetworkMonitor.shared.isConnected
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.handleNetworkStatusChange()
+            }
+        }
+    }
+
+    private func handleNetworkStatusChange() {
+        let isConnected = NetworkMonitor.shared.isConnected
+        
+        if !isConnected && state == .streaming {
+            Logger.session.warning("Network connection lost during streaming")
+            state = .reconnecting
+        } else if isConnected && state == .reconnecting {
+            Logger.session.info("Network restored, attempting auto-reconnect")
+            if let settings = lastSettings {
+                connect(settings: settings, isRemote: lastIsRemote)
+            }
+        }
+        
+        // Setup next observation
+        setupNetworkMonitoring()
     }
 
     // Note: Timer invalidation handled in disconnect() which should be called before deinit
@@ -137,7 +161,10 @@ final class StreamingViewModel {
 
     /// Connect to the PlayStation host
     func connect(settings: StreamSettings, isRemote: Bool = false) {
-        guard !state.isActive else {
+        lastSettings = settings
+        lastIsRemote = isRemote
+        
+        guard !state.isActive || state == .reconnecting else {
             Logger.session.warning("Cannot connect: already active")
             return
         }
@@ -213,7 +240,7 @@ final class StreamingViewModel {
             currentControllerState.rightStickY = Int16(clamping: Int((y * 2 - 1) * 32767))
 
         case .button(let button, let pressed):
-            let chiakiButton = mapButton(button)
+            let chiakiButton = inputMapper.map(button)
             if pressed {
                 currentControllerState.buttons.insert(chiakiButton)
                 // Handle L2/R2 as analog triggers
@@ -235,39 +262,18 @@ final class StreamingViewModel {
         sendControllerInput(currentControllerState)
     }
 
-    /// Map VirtualControllerButton to ChiakiControllerButtons
-    private func mapButton(_ button: VirtualControllerButton) -> ChiakiControllerButtons {
-        switch button {
-        case .cross: return .cross
-        case .circle: return .moon
-        case .square: return .box
-        case .triangle: return .pyramid
-        case .up: return .dpadUp
-        case .down: return .dpadDown
-        case .left: return .dpadLeft
-        case .right: return .dpadRight
-        case .l1: return .l1
-        case .l2: return .l2
-        case .r1: return .r1
-        case .r2: return .r2
-        case .share: return .share
-        case .options: return .options
-        case .ps: return .ps
-        }
-    }
-
     // MARK: - UI Actions
 
     /// Toggle overlay visibility
     func toggleOverlay() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.snappy) {
             isOverlayVisible.toggle()
         }
     }
 
     /// Toggle control menu visibility
     func toggleControlMenu() {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.snappy) {
             isControlMenuVisible.toggle()
         }
     }
@@ -370,32 +376,9 @@ final class StreamingViewModel {
         statsUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
-                self.updateStats()
+                self.statsManager.update()
             }
         }
-    }
-
-    private func updateStats() {
-        session.updateStatistics()
-
-        currentFrameRate = statistics.currentFrameRate
-        latency = statistics.networkLatency
-        
-        // Use libchiaki bitrate if available, fallback to measured bitrate
-        if statistics.libchiakiBitrate > 0 {
-            bitrate = statistics.libchiakiBitrate
-        } else {
-            bitrate = statistics.measuredBitrate
-        }
-        
-        packetLoss = statistics.packetLossPercentage
-        droppedFrames = statistics.totalDroppedFrames
-        recoveredFrames = Int(statistics.recoveredFrames)
-        connectionQuality = statistics.connectionQuality
-
-        isPoorConnection = packetLoss > 5.0
-
-        currentResolution = "1080p"
     }
 }
 
