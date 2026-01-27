@@ -1,16 +1,17 @@
 import SwiftUI
 
 struct StreamingOverlay: View {
-    var viewModel: StreamingViewModel
+    let stats: StreamStatsManager
+    let pipManager: PiPManager
 
     var body: some View {
         HStack(spacing: 0) {
             // Left side: Video stats
             HStack(spacing: 16) {
-                StatItem(icon: "display", value: viewModel.currentResolution)
+                StatItem(icon: "display", value: stats.currentResolution)
                 StatItem(
                     icon: "speedometer",
-                    value: String(format: "%.0f FPS", viewModel.currentFrameRate)
+                    value: String(format: "%.0f FPS", stats.currentFrameRate)
                 )
             }
 
@@ -19,32 +20,32 @@ struct StreamingOverlay: View {
             // Right side: Network stats + controls
             HStack(spacing: 16) {
                 // Network quality indicator
-                NetworkQualityIndicator(quality: viewModel.connectionQuality)
+                NetworkQualityIndicator(quality: stats.connectionQuality)
 
                 StatItem(
                     icon: "waveform.path.ecg",
-                    value: String(format: "%.0f ms", viewModel.latency)
+                    value: String(format: "%.0f ms", stats.latency)
                 )
                 StatItem(
                     icon: "antenna.radiowaves.left.and.right",
-                    value: String(format: "%.1f Mbps", viewModel.bitrate)
+                    value: String(format: "%.1f Mbps", stats.bitrate)
                 )
 
                 // Packet loss with semantic color
                 PacketLossItem(
-                    packetLoss: viewModel.packetLoss,
-                    droppedFrames: viewModel.droppedFrames,
-                    recoveredFrames: viewModel.recoveredFrames
+                    packetLoss: stats.packetLoss,
+                    droppedFrames: stats.droppedFrames,
+                    recoveredFrames: stats.recoveredFrames
                 )
 
                 #if os(iOS)
-                if viewModel.pipManager.isPiPSupported {
+                if pipManager.isPiPSupported {
                     Button(action: {
-                        viewModel.pipManager.togglePiP()
+                        pipManager.togglePiP()
                     }) {
-                        Image(systemName: viewModel.pipManager.isPiPActive ? "pip.exit" : "pip.enter")
+                        Image(systemName: pipManager.isPiPActive ? "pip.exit" : "pip.enter")
                             .font(.system(size: 18))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     }
                 }
                 #endif
@@ -53,7 +54,7 @@ struct StreamingOverlay: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.ultraThinMaterial)
-        .cornerRadius(ChiakiTheme.Radius.medium)
+        .clipShape(.rect(cornerRadius: ChiakiTheme.Radius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: ChiakiTheme.Radius.medium)
                 .stroke(.white.opacity(0.1), lineWidth: 1)
@@ -77,7 +78,7 @@ private struct NetworkQualityIndicator: View {
             }
         }
         .frame(height: maxBarHeight)
-        .accessibilityLabel(String(localized: "accessibility.networkQuality \(quality.rawValue)"))
+        .accessibilityLabel(L10n.Accessibility.networkQuality(quality.rawValue))
     }
 
     private var barColor: Color {
@@ -116,25 +117,25 @@ private struct PacketLossItem: View {
             #if os(tvOS)
             Image(systemName: "xmark.circle")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(lossColor.opacity(0.8))
+                .foregroundStyle(lossColor.opacity(0.8))
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(String(format: "%.1f%%", packetLoss))
                     .font(.system(size: 20, design: .monospaced))
                     .fontWeight(.medium)
-                    .foregroundColor(lossColor)
+                    .foregroundStyle(lossColor)
 
                 if droppedFrames > 0 || recoveredFrames > 0 {
                     HStack(spacing: 8) {
                         if droppedFrames > 0 {
                             Text(String(localized: "overlay.dropped \(droppedFrames)"))
                                 .font(.system(size: 14))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         if recoveredFrames > 0 {
                             Text(String(localized: "overlay.recovered \(recoveredFrames)"))
                                 .font(.system(size: 14))
-                                .foregroundColor(.green.opacity(0.8))
+                                .foregroundStyle(.green.opacity(0.8))
                         }
                     }
                 }
@@ -142,32 +143,32 @@ private struct PacketLossItem: View {
             #else
             Image(systemName: "xmark.circle")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(lossColor.opacity(0.8))
+                .foregroundStyle(lossColor.opacity(0.8))
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(String(format: "%.1f%%", packetLoss))
                     .font(.system(size: 12, design: .monospaced))
                     .fontWeight(.medium)
-                    .foregroundColor(lossColor)
+                    .foregroundStyle(lossColor)
 
                 if droppedFrames > 0 || recoveredFrames > 0 {
                     HStack(spacing: 4) {
                         if droppedFrames > 0 {
                             Text(String(localized: "overlay.drop \(droppedFrames)"))
                                 .font(.system(size: 9))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         if recoveredFrames > 0 {
                             Text(String(localized: "overlay.rec \(recoveredFrames)"))
                                 .font(.system(size: 9))
-                                .foregroundColor(.green.opacity(0.8))
+                                .foregroundStyle(.green.opacity(0.8))
                         }
                     }
                 }
             }
             #endif
         }
-        .accessibilityLabel(String(localized: "accessibility.packetLossStats \(packetLoss) \(droppedFrames) \(recoveredFrames)"))
+        .accessibilityLabel(L10n.Accessibility.packetLossStats(loss: packetLoss, dropped: droppedFrames, recovered: recoveredFrames))
     }
 
     private var lossColor: Color {
@@ -192,21 +193,21 @@ private struct StatItem: View {
             #if os(tvOS)
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             
             Text(value)
                 .font(.system(size: 24, design: .monospaced))
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
             #else
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             
             Text(value)
                 .font(.system(size: 12, design: .monospaced))
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
             #endif
         }
     }
@@ -215,7 +216,10 @@ private struct StatItem: View {
 #Preview {
     ZStack {
         Color.black
-        StreamingOverlay(viewModel: StreamingViewModel(host: MockData.hostPS5))
+        StreamingOverlay(
+            stats: StreamStatsManager(statistics: StreamStatistics()),
+            pipManager: PiPManager()
+        )
     }
     .environment(SettingsStore())
     .environment(NavigationManager())

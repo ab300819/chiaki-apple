@@ -100,10 +100,10 @@ struct StreamingView: View {
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 28))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .shadow(radius: 4)
                         }
-                        .accessibilityLabel(String(localized: "accessibility.disconnectStream"))
+                        .accessibilityLabel(L10n.Accessibility.disconnectStream)
 
                         Spacer()
 
@@ -111,21 +111,21 @@ struct StreamingView: View {
                         Button(action: { viewModel.toggleControlMenu() }) {
                             Image(systemName: "slider.horizontal.3")
                                 .font(.system(size: 22))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .padding(8)
                                 .background(.ultraThinMaterial)
                                 .clipShape(Circle())
                         }
-                        .accessibilityLabel(String(localized: "accessibility.openControlsMenu"))
+                        .accessibilityLabel(L10n.Accessibility.openControlsMenu)
 
-                        StreamingOverlay(viewModel: viewModel)
+                        StreamingOverlay(stats: viewModel.statsManager, pipManager: viewModel.pipManager)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
 
                     Spacer()
                 }
-                .transition(.opacity)
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .zIndex(2)
             }
 
@@ -153,7 +153,7 @@ struct StreamingView: View {
                     },
                     onToggleMic: viewModel.isMicEnabled ? { viewModel.toggleMic() } : nil
                 )
-                .transition(.scale.combined(with: .opacity))
+                .transition(.scale(scale: 0.9).combined(with: .opacity))
                 .zIndex(4)
             }
         }
@@ -248,31 +248,31 @@ private struct VideoPlaceholderView: View {
                 .background(Color.black)
             
             VStack(spacing: 20) {
-                if state == .connecting {
+                if state == .connecting || state == .reconnecting {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(1.5)
 
-                    Text(L10n.Streaming.connecting)
+                    Text(state == .reconnecting ? L10n.Streaming.reconnecting : L10n.Streaming.connecting)
                         .font(.headline)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.8))
                 } else if case .error(let message) = state {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.largeTitle)
-                        .foregroundColor(.yellow)
+                        .foregroundStyle(.yellow)
                     
                     Text(message)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
                         .padding()
                 } else if state == .connected {
                     Image(systemName: "gamecontroller.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(.white.opacity(0.1))
+                        .foregroundStyle(.white.opacity(0.1))
 
-                    Text(String(localized: "streaming.videoPlaceholder"))
+                    Text(L10n.Streaming.videoPlaceholder)
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundStyle(.white.opacity(0.3))
                 }
             }
         }

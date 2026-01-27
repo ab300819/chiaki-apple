@@ -50,7 +50,7 @@ struct KeyboardMappingView: View {
                     Button(L10n.Settings.Keyboard.resetToDefaults) {
                         store.keyboardMappings = KeyboardMappings.defaultMappings
                     }
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                 }
             }
         }
@@ -99,10 +99,10 @@ private struct KeyboardMappingRow: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(4)
+                            .clipShape(.rect(cornerRadius: 4))
                     } else {
                         Text(L10n.Settings.Keyboard.notAssigned)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .italic()
                     }
                 }
@@ -113,7 +113,7 @@ private struct KeyboardMappingRow: View {
             if mapping.hasMapping {
                 Button(action: onClear) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help(L10n.Settings.Keyboard.clearMapping)
@@ -148,7 +148,7 @@ private struct KeyCaptureOverlay: View {
 
                 Text(L10n.Settings.Keyboard.pressKeyDescription)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Button(L10n.Common.cancel) {
                     onCancel()

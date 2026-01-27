@@ -55,7 +55,7 @@ private struct HintItem: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
                     .background(Color.secondary.opacity(0.3))
-                    .cornerRadius(4)
+                    .clipShape(.rect(cornerRadius: 4))
             } else {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .medium))
@@ -64,7 +64,7 @@ private struct HintItem: View {
             Text(text)
                 .font(.system(size: 12, weight: .medium))
         }
-        .foregroundColor(.white.opacity(0.8))
+        .foregroundStyle(.white.opacity(0.8))
     }
 }
 

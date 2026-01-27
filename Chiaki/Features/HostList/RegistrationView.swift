@@ -67,7 +67,7 @@ struct RegistrationView: View {
                 if case .error(let message) = viewModel.state {
                     Section {
                         Text(message)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .font(.caption)
                     }
                 }
@@ -76,7 +76,7 @@ struct RegistrationView: View {
                     Section {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                             Text(String(localized: "registration.success"))
                         }
                     }

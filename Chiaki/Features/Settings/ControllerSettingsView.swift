@@ -12,31 +12,31 @@ struct ControllerSettingsView: View {
                 if controllers.isEmpty {
                     HStack {
                         Image(systemName: "gamecontroller")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(L10n.Settings.Controller.noControllers)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 } else {
                     ForEach(controllers) { controller in
                         HStack {
                             Image(systemName: controllerIcon(for: controller))
-                                .foregroundColor(controller.isActive ? Color.chiakiPurple : .secondary)
+                                .foregroundStyle(controller.isActive ? Color.chiakiPurple : .secondary)
                             VStack(alignment: .leading) {
                                 Text(controller.name)
                                     .fontWeight(controller.isActive ? .semibold : .regular)
                                 Text(controller.productCategory)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
                             if controller.isActive {
                                 Text(String(localized: "settings.controller.active"))
                                     .font(.caption)
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 2)
                                     .background(Color.chiakiPurple)
-                                    .cornerRadius(4)
+                                    .clipShape(.rect(cornerRadius: 4))
                             }
                         }
                     }
@@ -62,7 +62,7 @@ struct ControllerSettingsView: View {
                         Text(String(localized: "settings.controller.stickDeadzone"))
                         Spacer()
                         Text(String(format: "%.0f%%", store.streamSettings.stickDeadzone * 100))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     Slider(
                         value: $store.streamSettings.stickDeadzone,
@@ -88,7 +88,7 @@ struct ControllerSettingsView: View {
                             Text(String(localized: "settings.controller.touchControllerOpacity"))
                             Spacer()
                             Text(String(format: "%.0f%%", store.streamSettings.touchControllerOpacity * 100))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Slider(
                             value: $store.streamSettings.touchControllerOpacity,
@@ -114,7 +114,7 @@ struct ControllerSettingsView: View {
                         Spacer()
                         if store.keyboardInputEnabled {
                             Text(String(localized: "settings.controller.enabled"))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

@@ -21,14 +21,14 @@ struct StreamingControlsView: View {
             HStack {
                 Text(L10n.Streaming.controls)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 Button(action: { viewModel.toggleControlMenu() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -87,7 +87,7 @@ struct StreamingControlsView: View {
         }
         .frame(width: controlsWidth, height: controlsHeight)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(.rect(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
@@ -120,23 +120,23 @@ private struct AudioControlSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(L10n.StreamingControls.audio, systemImage: volumeIcon)
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
                 Image(systemName: "speaker.fill")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.caption)
 
                 Slider(value: $volume, in: 0...1)
                     .tint(Color.chiakiPurple)
 
                 Image(systemName: "speaker.wave.3.fill")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.caption)
 
                 Text("\(Int(volume * 100))%")
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 40, alignment: .trailing)
             }
 
@@ -146,14 +146,14 @@ private struct AudioControlSection: View {
                     Button(action: toggleMic) {
                         HStack(spacing: 8) {
                             Image(systemName: isMicMuted ? "mic.slash.fill" : "mic.fill")
-                                .foregroundColor(isMicMuted ? .red : .green)
+                                .foregroundStyle(isMicMuted ? .red : .green)
                             Text(isMicMuted ? L10n.StreamingControls.micMuted : L10n.StreamingControls.micActive)
                                 .font(.caption)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(isMicMuted ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
-                        .cornerRadius(8)
+                        .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
 
@@ -186,7 +186,7 @@ private struct DisplayModeSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(L10n.StreamingControls.displayMode, systemImage: "rectangle.on.rectangle")
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             #if os(tvOS)
             // tvOS: Horizontal buttons for focus navigation
@@ -202,14 +202,14 @@ private struct DisplayModeSection: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(displayMode == mode ? Color.chiakiPurple.opacity(0.3) : Color.clear)
-                        .cornerRadius(8)
+                        .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
                 }
             }
             #else
             // iOS/macOS: Segmented picker
-            Picker("Display Mode", selection: $displayMode) {
+            Picker( selection: $displayMode,label:EmptyView()) {
                 ForEach(StreamSettings.DisplayMode.allCases) { mode in
                     Label(mode.rawValue, systemImage: mode.iconName)
                         .tag(mode)
@@ -223,29 +223,30 @@ private struct DisplayModeSection: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(L10n.StreamingControls.zoomLevel)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     HStack(spacing: 12) {
                         Image(systemName: "minus.magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(.caption)
 
                         Slider(value: $zoomFactor, in: 1.0...2.0)
                             .tint(Color.chiakiPurple)
 
                         Image(systemName: "plus.magnifyingglass")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(.caption)
 
                         Text(String(format: "%.1fx", zoomFactor))
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(width: 40, alignment: .trailing)
                     }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .frame(maxWidth: .infinity,alignment: .leading)
         .animation(.easeInOut(duration: 0.2), value: displayMode)
     }
 }
@@ -259,7 +260,7 @@ private struct VideoPresetSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(L10n.StreamingControls.videoPreset, systemImage: "sparkles.rectangle.stack")
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             #if os(tvOS)
             // tvOS: Horizontal buttons for focus navigation
@@ -275,14 +276,14 @@ private struct VideoPresetSection: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(preset == presetOption ? Color.chiakiPurple.opacity(0.3) : Color.clear)
-                        .cornerRadius(8)
+                        .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
                 }
             }
             #else
             // iOS/macOS: Segmented picker
-            Picker("Video Preset", selection: $preset) {
+            Picker(selection: $preset,label:EmptyView()) {
                 ForEach(StreamSettings.VideoPreset.allCases) { presetOption in
                     Label(presetOption.rawValue, systemImage: presetOption.iconName)
                         .tag(presetOption)
@@ -293,7 +294,7 @@ private struct VideoPresetSection: View {
             // Description
             Text(preset.description)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             #endif
         }
     }
@@ -309,7 +310,7 @@ private struct QuickActionsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(L10n.StreamingControls.quickActions, systemImage: "bolt.fill")
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
                 // Go to Bed (Rest Mode)
@@ -343,16 +344,16 @@ private struct ActionButton: View {
             VStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.title2)
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(color.opacity(0.15))
-            .cornerRadius(10)
+            .clipShape(.rect(cornerRadius: 10))
         }
         .buttonStyle(.plain)
     }

@@ -35,7 +35,7 @@ struct ConsolePinView: View {
 
                         Button(action: { showPin.toggle() }) {
                             Image(systemName: showPin ? "eye.slash" : "eye")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -132,7 +132,7 @@ struct ConsolePinEntryView: View {
 
                 Image(systemName: "lock.shield")
                     .font(.system(size: 60))
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(.accentColor)
 
                 Text(String(localized: "consolePin.enterPin \(host.nickname)"))
                     .font(.headline)
@@ -149,7 +149,7 @@ struct ConsolePinEntryView: View {
 
                         Button(action: { showPin.toggle() }) {
                             Image(systemName: showPin ? "eye.slash" : "eye")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -161,7 +161,7 @@ struct ConsolePinEntryView: View {
                     #else
                     .background(Color.gray.opacity(0.1))
                     #endif
-                    .cornerRadius(12)
+                    .clipShape(.rect(cornerRadius: 12))
                     .frame(maxWidth: 200)
                     #if os(iOS)
                     .keyboardType(.numberPad)
@@ -179,7 +179,7 @@ struct ConsolePinEntryView: View {
                     if showError {
                         Text(String(localized: "consolePin.incorrectPin \(maxAttempts - attempts)"))
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                 }
 
@@ -189,8 +189,8 @@ struct ConsolePinEntryView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(isValidFormat ? Color.accentColor : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: 12))
                 }
                 .disabled(!isValidFormat)
                 .frame(maxWidth: 200)

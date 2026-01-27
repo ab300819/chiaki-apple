@@ -24,13 +24,13 @@ struct AccountSettingsView: View {
                                 .font(.headline)
                             Text(String(localized: "psnLogin.accountId \(account.accountId)"))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
 
                         Spacer()
 
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                     }
 
                     // Token status
@@ -40,10 +40,10 @@ struct AccountSettingsView: View {
                             Spacer()
                             if psnService.isTokenExpired {
                                 Text(String(localized: "psnLogin.tokenExpired"))
-                                    .foregroundColor(.red)
+                                    .foregroundStyle(.red)
                             } else {
                                 Text(expirationDate.formatted(date: .abbreviated, time: .shortened))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                         .font(.caption)
@@ -76,7 +76,7 @@ struct AccountSettingsView: View {
                             .font(.headline)
                         Text(String(localized: "psnLogin.signInDescription"))
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
 

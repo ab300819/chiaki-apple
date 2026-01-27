@@ -130,23 +130,23 @@ private struct LogEntryRow: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
                     .background(levelColor.opacity(0.2))
-                    .foregroundColor(levelColor)
-                    .cornerRadius(4)
+                    .foregroundStyle(levelColor)
+                    .clipShape(.rect(cornerRadius: 4))
                 
                 Text(entry.timestamp.formatted(date: .omitted, time: .standard))
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 
                 Spacer()
                 
                 Text(entry.category)
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Text(entry.message)
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
         .padding(.vertical, 4)

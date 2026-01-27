@@ -209,7 +209,7 @@ private struct DataSettingsView: View {
                 Button(L10n.Settings.Data.resetToDefaults, role: .destructive) {
                     showResetConfirmation = true
                 }
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
             }
         }
         .formStyle(.grouped)

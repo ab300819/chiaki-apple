@@ -27,7 +27,7 @@ struct AutoConnectView: View {
                 // Status message
                 Text(statusMessage)
                     .font(.title3)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .opacity(allowCancel ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.25), value: allowCancel)
 
@@ -40,7 +40,7 @@ struct AutoConnectView: View {
                 if showCancelHint && !isCancelling {
                     Text(cancelHintText)
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundStyle(.white.opacity(0.6))
                         .transition(.opacity)
                 }
 
@@ -50,15 +50,15 @@ struct AutoConnectView: View {
                 VStack(spacing: 8) {
                     Image(systemName: host.isPS5 ? "playstation.logo" : "gamecontroller.fill")
                         .font(.system(size: 40))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundStyle(.white.opacity(0.3))
 
                     Text(host.nickname)
                         .font(.headline)
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundStyle(.white.opacity(0.5))
 
                     Text(host.address)
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundStyle(.white.opacity(0.3))
                 }
                 .padding(.bottom, 50)
             }

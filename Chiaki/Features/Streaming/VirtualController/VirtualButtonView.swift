@@ -48,7 +48,7 @@ struct VirtualButtonView: View {
             // Icon
             Image(systemName: iconName)
                 .font(.system(size: size * 0.45, weight: .semibold))
-                .foregroundColor(isPressed ? .white : color)
+                .foregroundStyle(isPressed ? .white : color)
                 .shadow(color: isPressed ? color.opacity(0.5) : .clear, radius: 5)
         }
         .scaleEffect(isPressed ? 0.92 : 1.0)

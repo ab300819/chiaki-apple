@@ -98,7 +98,7 @@ struct VideoSettingsView: View {
                         Text(L10n.Settings.Video.bitrate)
                         Spacer()
                         Text(String(localized: "settings.video.mbps \(Int(currentProfile.wrappedValue.bitrate / 1000))"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                     Slider(
@@ -133,7 +133,7 @@ struct VideoSettingsView: View {
                                 Text(String(localized: "settings.video.peakBrightness"))
                                 Spacer()
                                 Text(String(localized: "settings.video.nits \(store.streamSettings.hdrTargetPeakNits)"))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                     .monospacedDigit()
                             }
                             Slider(
@@ -157,7 +157,7 @@ struct VideoSettingsView: View {
                                 Text(String(localized: "settings.video.contrastRatio"))
                                 Spacer()
                                 Text(formatContrast(store.streamSettings.hdrTargetContrast))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                                     .monospacedDigit()
                             }
                             Slider(
@@ -199,7 +199,7 @@ struct VideoSettingsView: View {
                             Text(L10n.StreamingControls.zoomLevel)
                             Spacer()
                             Text(String(format: "%.1fx", store.streamSettings.zoomFactor))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Slider(value: $store.streamSettings.zoomFactor, in: 1.0...2.0, step: 0.1)
                     }

@@ -12,7 +12,7 @@ struct AudioSettingsView: View {
                         Text(L10n.Settings.Audio.volume)
                         Spacer()
                         Text(String(localized: "settings.audio.percent \(Int(store.streamSettings.volume * 100))"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                     Slider(value: $store.streamSettings.volume, in: 0...1) {
@@ -31,7 +31,7 @@ struct AudioSettingsView: View {
                         Text(String(localized: "settings.audio.bufferSize"))
                         Spacer()
                         Text(String(localized: "settings.audio.ms \(store.streamSettings.audioBufferSize)"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     Slider(
                         value: Binding(

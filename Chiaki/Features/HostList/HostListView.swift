@@ -239,8 +239,8 @@ struct HostListView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 8))
             }
             .padding(.top, 12)
             .buttonStyle(.plain)

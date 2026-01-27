@@ -50,7 +50,7 @@ struct PSNLoginView: View {
                         }
                         .padding()
                         .background(.regularMaterial)
-                        .cornerRadius(12)
+                        .clipShape(.rect(cornerRadius: 12))
                     }
                 }
             }
