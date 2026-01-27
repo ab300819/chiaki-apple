@@ -45,5 +45,21 @@
 - **目标**: 补全核心功能遗漏，实现与 Qt/QML 版的功能对齐。
 - **成果**: 完成了 Console PIN 验证、断开动作配置、键盘映射以及 HDR 参数精调。
 
+## M10: SwiftUI 架构优化 (INS-001~005) ✅
+- **目标**: 基于洞察建议进行代码现代化与架构优化。
+- **任务列表**:
+  | 编号 | 名称 | 关联洞察 | 状态 |
+  |------|------|----------|------|
+  | T-101 | API 现代化迁移 | INS-001 | ✅ 已完成 |
+  | T-102 | 状态管理归一化 (@Observable) | INS-002 | ✅ 已完成 |
+  | T-103 | StreamingViewModel 架构解耦 | INS-003 | ✅ 已完成 |
+  | T-104 | 交互精致化：动画曲线优化 | INS-004 → F-013 | ✅ 已完成 |
+  | T-105 | 未来适配：Liquid Glass 预研 | INS-005 → F-014 | ⏸️ 延后 (iOS 26+) |
+- **成果**:
+  - 全局迁移 `.foregroundColor()` → `.foregroundStyle()`，`.cornerRadius()` → `.clipShape()`
+  - 统一使用 `@Observable` 宏替代 `ObservableObject`
+  - 从 StreamingViewModel 提取 `ControllerInputMapper`、`NetworkMonitor`、`StreamStatsManager` 模块
+  - 优化 SwiftUI 动画曲线，提升原生交互体验
+
 ---
 > 更多任务记录详见 [04-dev-tasks.md](04-dev-tasks.md)
