@@ -1864,6 +1864,22 @@
         }
       }
     },
+    "psnLogin.authFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication Failed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "认证失败"
+          }
+        }
+      }
+    },
     "psnLogin.credentialsNote": {
       "localizations": {
         "en": {

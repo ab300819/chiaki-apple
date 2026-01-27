@@ -201,6 +201,14 @@ enum L10n {
         }
     }
 
+    // MARK: - PSN Login
+
+    enum PSNLogin {
+        static let title = String(localized: "psnLogin.title")
+        static let authenticating = String(localized: "psnLogin.authenticating")
+        static let authFailed = String(localized: "psnLogin.authFailed")
+    }
+
     // MARK: - Errors
 
     enum Error {

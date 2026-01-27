@@ -10,7 +10,7 @@ import WebKit
 
 struct PSNLoginView: View {
     @Environment(\.dismiss) var dismiss
-    @StateObject private var service = PSNService.shared
+    @State private var service = PSNService.shared
     @State private var error: Error?
     
     var body: some View {
@@ -26,26 +26,26 @@ struct PSNLoginView: View {
                         }
                     }
                 }
-                .navigationTitle("PSN Login")
+                .navigationTitle(L10n.PSNLogin.title)
                 #if os(iOS) || os(tvOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
+                        Button(L10n.Common.cancel) {
                             dismiss()
                         }
                     }
                 }
-                
+
                 if service.isAuthenticating {
                     ZStack {
                         Color.black.opacity(0.4)
                             .edgesIgnoringSafeArea(.all)
-                        
+
                         VStack(spacing: 12) {
                             ProgressView()
-                            Text("Authenticating...")
+                            Text(L10n.PSNLogin.authenticating)
                                 .font(.subheadline)
                         }
                         .padding()
@@ -54,11 +54,11 @@ struct PSNLoginView: View {
                     }
                 }
             }
-            .alert("Authentication Failed", isPresented: Binding(
+            .alert(L10n.PSNLogin.authFailed, isPresented: Binding(
                 get: { error != nil },
                 set: { if !$0 { error = nil } }
             )) {
-                Button("OK") { error = nil }
+                Button(L10n.Common.ok) { error = nil }
             } message: {
                 if let error = error {
                     Text(error.localizedDescription)
