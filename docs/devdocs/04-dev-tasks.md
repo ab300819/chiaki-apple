@@ -7,7 +7,7 @@
 
 | 编号 | 名称 | 优先级 | TDD 模式 | 状态 |
 |------|------|--------|----------|------|
-| **T-111** | **i18n：深度本地化与 xcstrings 迁移** | P0 | 🟢 可选 | ⏳ 待处理 |
+| **T-111** | **i18n：深度本地化与 xcstrings 迁移** | P0 | 🟢 可选 | ✅ 已完成 |
 | **T-112** | **稳定性：NetworkMonitor 与自动重连** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-113** | **性能：Metal 渲染器节能调优 (VRR)** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-114** | **分发：Info.plist 隐私说明与元数据补全** | P1 | ⚪ 不适用 | ⏳ 待处理 |
@@ -16,14 +16,15 @@
 
 ## 任务详情
 
-### T-111: i18n：深度本地化与 xcstrings 迁移
+### T-111: i18n：深度本地化与 xcstrings 迁移 ✅
 - **目标**: 实现 100% 本地化覆盖，移除硬编码。
 - **关联需求**: F-015, AC-044
-- **涉及文件**: `Localizable.xcstrings`, 全局 SwiftUI 视图
+- **涉及文件**: `Localizable.xcstrings`, `Localization.swift`, `PSNLoginView.swift`
 - **验收标准**:
-  - [ ] 所有的 `Text` 和 `String(localized:)` 均有对应的键值。
-  - [ ] Accessibility 标签完成本地化。
+  - [x] 所有的 `Text` 和 `String(localized:)` 均有对应的键值。
+  - [x] Accessibility 标签完成本地化。
 - **测试方法**: UT-15.1 (静态扫描)。
+- **完成提交**: `20024d5` feat(i18n): localize PSNLoginView hardcoded strings
 
 ### T-112: 稳定性：NetworkMonitor 与自动重连 ✅
 - **目标**: 处理 WiFi/5G 切换时的会话保持。
