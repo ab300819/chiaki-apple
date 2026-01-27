@@ -8,22 +8,34 @@
 import Foundation
 import Observation
 import SwiftUI
-import Combine
 
 @Observable
 @MainActor
 final class HostListViewModel {
     // MARK: - Properties
 
-    var hosts: [ConsoleHost] = []
-    var isDiscovering: Bool = false
+    /// Hosts are computed from HostManager to ensure @Observable tracking works
+    var hosts: [ConsoleHost] {
+        hostManager.hosts
+    }
+
+    var isDiscovering: Bool {
+        hostManager.isDiscovering
+    }
+
     var isLoading: Bool = true  // Start with loading state
-    var errorMessage: String?
+
+    /// Local error message for ViewModel-specific errors
+    private var localErrorMessage: String?
+
+    var errorMessage: String? {
+        get { localErrorMessage ?? hostManager.lastError }
+        set { localErrorMessage = newValue }
+    }
 
     // MARK: - Private Properties
 
     private var _hostManager: HostManager?
-    private var cancellables = Set<AnyCancellable>()
     private var isInitialized = false
 
     /// Safe accessor for host manager (force unwraps after initialization)
@@ -40,7 +52,6 @@ final class HostListViewModel {
         // Defer heavy initialization - don't access .shared here
         if let manager = hostManager {
             self._hostManager = manager
-            setupBindings()
             isLoading = false
             isInitialized = true
         }
@@ -51,35 +62,7 @@ final class HostListViewModel {
         guard !isInitialized else { return }
         isInitialized = true
         _hostManager = HostManager.shared
-        setupBindings()
         isLoading = false
-    }
-
-
-    // MARK: - Setup
-
-    private func setupBindings() {
-        // Observe host manager
-        hostManager.$hosts
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] hosts in
-                self?.hosts = hosts
-            }
-            .store(in: &cancellables)
-
-        hostManager.$isDiscovering
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] discovering in
-                self?.isDiscovering = discovering
-            }
-            .store(in: &cancellables)
-
-        hostManager.$lastError
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] error in
-                self?.errorMessage = error
-            }
-            .store(in: &cancellables)
     }
 
     // MARK: - Discovery
@@ -188,34 +171,8 @@ final class HostListViewModel {
 
 extension HostListViewModel {
     /// Create a view model with mock data for previews
+    /// Note: Uses shared HostManager, preview data comes from MockData
     static func preview() -> HostListViewModel {
-        let vm = HostListViewModel(hostManager: HostManager())
-
-        // Add mock hosts directly
-        var ps5 = ConsoleHost(
-            nickname: "PlayStation 5",
-            address: "192.168.1.100",
-            isPS5: true,
-            registKey: Data([0, 1, 2, 3])
-        )
-        ps5.state = .online
-
-        var ps4 = ConsoleHost(
-            nickname: "PlayStation 4",
-            address: "192.168.1.101",
-            isPS5: false,
-            registKey: Data([4, 5, 6, 7])
-        )
-        ps4.state = .standby
-
-        var unregistered = ConsoleHost(
-            nickname: "New PlayStation",
-            address: "192.168.1.102",
-            isPS5: true
-        )
-        unregistered.state = .online
-
-        vm.hosts = [ps5, ps4, unregistered]
-        return vm
+        HostListViewModel(hostManager: HostManager.shared)
     }
 }

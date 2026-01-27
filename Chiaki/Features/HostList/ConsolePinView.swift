@@ -132,7 +132,7 @@ struct ConsolePinEntryView: View {
 
                 Image(systemName: "lock.shield")
                     .font(.system(size: 60))
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
 
                 Text(String(localized: "consolePin.enterPin \(host.nickname)"))
                     .font(.headline)

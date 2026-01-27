@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AccountSettingsView: View {
-    @StateObject private var psnService = PSNService.shared
+    @State private var psnService = PSNService.shared
     @State private var showingLogin = false
     @State private var isRefreshing = false
     @State private var refreshError: String?
