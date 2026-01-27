@@ -67,6 +67,8 @@ enum L10n {
     enum Streaming {
         static let controls = String(localized: "streaming.controls")
         static let connecting = String(localized: "streaming.connecting")
+        static let reconnecting = String(localized: "streaming.reconnecting")
+        static let videoPlaceholder = String(localized: "streaming.videoPlaceholder")
         static let disconnectConfirmTitle = String(localized: "streaming.disconnectConfirmTitle")
         static let disconnectConfirmMessage = String(localized: "streaming.disconnectConfirmMessage")
         static let disconnectOnly = String(localized: "streaming.disconnectOnly")
@@ -184,6 +186,19 @@ enum L10n {
         static let info = String(localized: "logLevel.info")
         static let debug = String(localized: "logLevel.debug")
         static let verbose = String(localized: "logLevel.verbose")
+    }
+
+    // MARK: - Accessibility
+
+    enum Accessibility {
+        static let disconnectStream = String(localized: "accessibility.disconnectStream")
+        static let openControlsMenu = String(localized: "accessibility.openControlsMenu")
+        static func networkQuality(_ quality: String) -> String {
+            String(localized: "accessibility.networkQuality \(quality)")
+        }
+        static func packetLossStats(loss: Double, dropped: Int, recovered: Int) -> String {
+            String(localized: "accessibility.packetLossStats \(loss) \(dropped) \(recovered)")
+        }
     }
 
     // MARK: - Errors

@@ -133,6 +133,9 @@ final class MetalVideoRenderer: NSObject {
     /// Dropped frame counter
     private(set) var droppedFrameCount: UInt64 = 0
 
+    /// Flag to indicate if a new frame has been submitted and needs rendering
+    private var needsRedraw = false
+
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
 
     // MARK: - Initialization
@@ -346,6 +349,7 @@ final class MetalVideoRenderer: NSObject {
         }
 
         frameCount += 1
+        needsRedraw = true
         updateTransform()
         onFrameSubmitted?(pixelBuffer)
     }

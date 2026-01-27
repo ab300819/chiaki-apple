@@ -6,6 +6,7 @@
 // Service for handling PSN authentication and user profile fetching
 
 import Foundation
+import Observation
 import Combine
 
 /// Information about a PSN account
@@ -28,13 +29,14 @@ struct PSNTokens: Codable {
 }
 
 /// Service for PSN login and token management
+@Observable
 @MainActor
-final class PSNService: ObservableObject {
-    // MARK: - Published Properties
+final class PSNService {
+    // MARK: - Properties
     
-    @Published private(set) var account: PSNAccount?
-    @Published private(set) var isAuthenticated: Bool = false
-    @Published private(set) var isAuthenticating: Bool = false
+    private(set) var account: PSNAccount?
+    private(set) var isAuthenticated: Bool = false
+    private(set) var isAuthenticating: Bool = false
     
     // MARK: - Constants
     

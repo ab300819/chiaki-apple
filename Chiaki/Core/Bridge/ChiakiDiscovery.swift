@@ -7,6 +7,7 @@
 // Handles PlayStation console discovery on local network
 
 import Foundation
+import Observation
 import Combine
 import Network
 import Darwin
@@ -72,14 +73,18 @@ struct DiscoveredHost: Identifiable, Equatable, Hashable {
 
 // MARK: - Discovery Service
 
+@Observable
 @MainActor
-final class DiscoveryService: ObservableObject {
-    @Published private(set) var discoveredHosts: [DiscoveredHost] = []
-    @Published private(set) var isDiscovering: Bool = false
-    @Published private(set) var lastError: String?
+final class DiscoveryService {
+    private(set) var discoveredHosts: [DiscoveredHost] = []
+    private(set) var isDiscovering: Bool = false
+    private(set) var lastError: String?
 
     private var nativeService = chiaki_discovery_service_t()
     private var isInitialized = false
+
+    /// Callback triggered when hosts are updated
+    var onHostsUpdated: (([DiscoveredHost]) -> Void)?
 
     init() {
         Logger.discovery.info("DiscoveryService initialized")
@@ -199,6 +204,7 @@ final class DiscoveryService: ObservableObject {
 
     func updateDiscoveredHosts(_ hosts: [DiscoveredHost]) {
         self.discoveredHosts = hosts
+        onHostsUpdated?(hosts)
     }
 }
 

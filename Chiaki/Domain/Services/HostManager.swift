@@ -6,24 +6,30 @@
 // Unified host management combining discovery and storage
 
 import Foundation
+import Observation
 import Combine
 
 // MARK: - Host Manager
 
 /// Unified host management service
 /// Combines discovery service and persistent storage
+@Observable
 @MainActor
-final class HostManager: ObservableObject {
-    // MARK: - Published Properties
+final class HostManager {
+    // MARK: - Properties
 
     /// All known hosts (merged from storage and discovery)
-    @Published private(set) var hosts: [ConsoleHost] = []
+    private(set) var hosts: [ConsoleHost] = []
 
     /// Whether discovery is active
-    @Published private(set) var isDiscovering: Bool = false
+    var isDiscovering: Bool {
+        discoveryService.isDiscovering
+    }
 
     /// Last error message
-    @Published private(set) var lastError: String?
+    var lastError: String? {
+        discoveryService.lastError
+    }
 
     // MARK: - Dependencies
 
@@ -52,24 +58,10 @@ final class HostManager: ObservableObject {
     // MARK: - Setup
 
     private func setupBindings() {
-        // Observe discovery service
-        discoveryService.$discoveredHosts
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] discovered in
-                self?.mergeDiscoveredHosts(discovered)
-            }
-            .store(in: &cancellables)
-
-        discoveryService.$isDiscovering
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$isDiscovering)
-
-        discoveryService.$lastError
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$lastError)
-
-        // Note: HostStore uses @Observable, so changes are tracked via SwiftUI
-        // and we refresh hosts directly when needed via loadStoredHosts()
+        // Observe discovery service via callback
+        discoveryService.onHostsUpdated = { [weak self] discovered in
+            self?.mergeDiscoveredHosts(discovered)
+        }
     }
 
     private func loadStoredHosts() {

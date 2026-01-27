@@ -3925,6 +3925,38 @@
         }
       }
     },
+    "streaming.reconnecting": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnecting..."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新连接..."
+          }
+        }
+      }
+    },
+    "streaming.videoPlaceholder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stream will appear here"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面将在此显示"
+          }
+        }
+      }
+    },
     "streaming.restMode": {
       "localizations": {
         "en": {
