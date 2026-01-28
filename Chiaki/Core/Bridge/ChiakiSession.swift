@@ -608,6 +608,7 @@ final class ChiakiSessionWrapper {
     private func handleConnected() {
         updateState(.streaming)
         streamStatistics?.sessionStarted()
+        HapticsManager.shared.playSuccess()
 
         // Start audio player
         do {
@@ -674,6 +675,7 @@ final class ChiakiSessionWrapper {
         if reason.isError {
             let error = SessionError.from(quitReason: reason)
             updateState(.error(error))
+            HapticsManager.shared.playError()
             logError("ChiakiSessionWrapper: Quit with error - \(reason.displayString): \(reasonStr ?? "")")
         } else {
             updateState(.idle)

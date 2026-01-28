@@ -75,6 +75,10 @@ final class StreamStatistics {
     private var lastFrameRateUpdate = Date()
     private var framesSinceLastUpdate: UInt64 = 0
 
+    /// Last time haptic warning was triggered (for throttling)
+    private var lastHapticWarningTime: Date?
+    private let hapticWarningThrottleInterval: TimeInterval = 5.0
+
     private let lock = NSLock()
 
     // MARK: - Initialization
@@ -115,6 +119,24 @@ final class StreamStatistics {
     /// Record packet loss event
     /// - Parameter lossRate: Current loss rate (0.0 - 1.0)
     func recordPacketLoss(_ lossRate: Double) {
+        // Trigger haptic warning for significant packet loss (> 5%), throttled to avoid spam
+        if lossRate > 0.05 {
+            let now = Date()
+            let shouldTrigger: Bool
+            if let lastWarning = lastHapticWarningTime {
+                shouldTrigger = now.timeIntervalSince(lastWarning) >= hapticWarningThrottleInterval
+            } else {
+                shouldTrigger = true
+            }
+
+            if shouldTrigger {
+                lastHapticWarningTime = now
+                Task { @MainActor in
+                    HapticsManager.shared.playWarning()
+                }
+            }
+        }
+
         lock.lock()
         defer { lock.unlock() }
 
