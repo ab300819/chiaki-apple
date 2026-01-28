@@ -1,6 +1,6 @@
 # 项目上下文：Chiaki-ng Apple 原生客户端
 
-**生成时间**：2026-01-28 16:45
+**生成时间**：2026-01-28 17:15
 **生成工具**：/devdocs-onboard
 
 ---
@@ -31,8 +31,8 @@ Chiaki-ng Apple 原生客户端是 PlayStation 4/5 远程游玩的跨平台应�
 | F-014 | Liquid Glass 适配 | P3 | ⏸️ 延后 (iOS 26+) |
 | F-015 | 深度本地化 | P0 | ✅ 已完成 |
 | F-016 | 网络弹性与自动重连 | P0 | ✅ 已完成 |
-| F-017 | 能效管理 (VRR) | P1 | ⏳ 待开发 |
-| F-018 | 应用分发元数据 | P1 | ⏳ 待开发 |
+| F-017 | 能效管理 (VRR) | P1 | 🔄 进行中 |
+| F-018 | 应用分发元数据 | P1 | 🔄 进行中 |
 | F-019 | 完善日志系统 | P0 | ⏳ 待开发 |
 
 ### 1.3 技术栈
@@ -88,6 +88,7 @@ Chiaki-ng Apple 原生客户端是 PlayStation 4/5 远程游玩的跨平台应�
 | **MetalVideoRenderer** | YUV→RGB 渲染 | `Core/Video/MetalVideoRenderer.swift` |
 | **AudioPlayer** | 低延迟音频播放 | `Core/Audio/AudioPlayer.swift` |
 | **ControllerManager** | 控制器输入处理 | `Core/Controllers/ControllerManager.swift` |
+| **HapticsManager** | 语义化触觉反馈 | `Core/Controllers/HapticsManager.swift` |
 | **NetworkMonitor** | 网络状态监控 | `Core/Network/NetworkMonitor.swift` |
 | **Logger** | 统一日志系统 | `Utilities/Logger.swift` |
 
@@ -163,8 +164,8 @@ chiaki-apple/
 
 | 类型 | 总数 | 已完成 | 进行中 | 完成率 |
 |------|------|--------|--------|--------|
-| 功能点 (F-XXX) | 19 | 14 | 0 | 74% |
-| M11 任务 (T-XXX) | 14 | 2 | 0 | 14% |
+| 功能点 (F-XXX) | 19 | 14 | 2 | 74% |
+| M11 任务 (T-XXX) | 14 | 4 | 2 | 29% |
 | 里程碑 | 11 | 10 | 1 | 91% |
 
 ### 4.2 里程碑状态
@@ -179,19 +180,28 @@ chiaki-apple/
 
 | 时间 | 任务 | 提交 |
 |------|------|------|
+| 2026-01-28 | T-116: 语义化触觉反馈 (HapticsManager) | `d9e98ac` |
+| 2026-01-28 | T-114: Info.plist 隐私说明 | `da63492` |
 | 2026-01-28 | T-111: i18n 深度本地化 | `20024d5` |
 | 2026-01-28 | T-112: NetworkMonitor 自动重连 | `d378546` |
-| 2026-01-28 | F-019 文档设计 | `2683475` |
 
-### 4.4 未提交变更
+### 4.4 当前进行中
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| T-113: Metal VRR 节能调优 | 🔄 核心实现完成 | VRR idle 检测已实现，待 Instruments 验证 |
+| T-115: tvOS App Icon | 🔄 配置完成 | 尺寸定义已添加，待图片资源 |
+
+### 4.5 未提交变更
 
 当前工作区干净，无未提交变更。
+本地分支领先 origin/dev 20 个提交。
 
 ---
 
 ## 5. 待办任务
 
-### 5.1 当前里程碑 (M11) 任务
+### 5.1 当前里程碑 (M11) 待办任务
 
 | 优先级 | 任务 | TDD | 依赖 | 关联需求 |
 |--------|------|-----|------|----------|
@@ -199,8 +209,10 @@ chiaki-apple/
 | **P0** | T-118: Logger 集成 FileLogHandler | 🟡 推荐 | T-117 | F-019, AC-049 |
 | **P0** | T-119: DiagnosticsExporter 诊断包导出 | 🔴 强制 | T-117, T-118 | F-019, AC-051/053 |
 | P1 | T-120: CrashReporter 崩溃捕获 | 🔴 强制 | T-117 | F-019, AC-052 |
-| P1 | T-113: Metal VRR 节能调优 | ⚪ N/A | T-112 | F-017, AC-046 |
-| P1 | T-114: Info.plist 隐私说明 | ⚪ N/A | 无 | F-018, AC-047 |
+| P1 | T-121: LogViewerView 增强 | 🟢 可选 | T-119 | F-019, AC-051 |
+| P1 | T-122: CrashReportView 崩溃报告 UI | 🟢 可选 | T-120 | F-019, AC-052 |
+| P1 | T-123: App 启动集成 | ⚪ N/A | T-121, T-122 | F-019 |
+| P1 | T-124: 核心流程日志覆盖增强 | ⚪ N/A | T-118 | F-019, AC-054 |
 
 ### 5.2 推荐执行顺序
 
@@ -334,4 +346,6 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 4. **查阅 DevDocs** 遇到细节问题查阅对应文档
 5. **遵循 TDD** P0 任务必须先写测试
 
-**当前推荐**：执行 `/devdocs-dev-workflow T-117` 开始 FileLogHandler 开发
+**当前推荐**：
+- 继续日志系统：执行 `/devdocs-dev-workflow T-117` 开始 FileLogHandler 开发
+- 或完成进行中任务：T-113 需 Instruments 验证，T-115 需图片资源
