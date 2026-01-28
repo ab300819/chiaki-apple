@@ -12,7 +12,7 @@ import os
 
 /// Protocol for logging backends
 protocol LogHandler: Sendable {
-    func log(level: ChiakiLogSeverity, message: String, file: String, function: String, line: Int)
+    func log(level: ChiakiLogSeverity, message: String, category: String, file: String, function: String, line: Int)
 }
 
 // MARK: - Apple OSLog Handler
@@ -25,9 +25,9 @@ final class OSLogHandler: LogHandler, @unchecked Sendable {
         self.logger = os.Logger(subsystem: subsystem, category: category)
     }
 
-    func log(level: ChiakiLogSeverity, message: String, file: String, function: String, line: Int) {
+    func log(level: ChiakiLogSeverity, message: String, category: String, file: String, function: String, line: Int) {
         let fileName = (file as NSString).lastPathComponent
-        let formattedMessage = "[\(fileName):\(line)] \(function) - \(message)"
+        let formattedMessage = "[\(category)] [\(fileName):\(line)] \(function) - \(message)"
 
         switch level {
         case .debug:
@@ -97,6 +97,7 @@ final class Logger: Sendable {
     func log(
         level: ChiakiLogSeverity,
         _ message: @autoclosure () -> String,
+        category: String = "App",
         file: String = #file,
         function: String = #function,
         line: Int = #line
@@ -105,7 +106,7 @@ final class Logger: Sendable {
         let msg = message()
         
         // Add to history
-        let entry = LogEntry(level: level, message: msg, category: "App")
+        let entry = LogEntry(level: level, message: msg, category: category)
         historyLock.lock()
         logHistory.append(entry)
         if logHistory.count > maxHistory {
@@ -114,7 +115,7 @@ final class Logger: Sendable {
         historyLock.unlock()
 
         for handler in handlers {
-            handler.log(level: level, message: msg, file: file, function: function, line: line)
+            handler.log(level: level, message: msg, category: category, file: file, function: function, line: line)
         }
     }
 
