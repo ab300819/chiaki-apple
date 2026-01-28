@@ -15,7 +15,7 @@
 | **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ✅ 已完成 |
-| **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ⏳ 待处理 |
+| **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ⏳ 待处理 |
 | **T-121** | **日志：LogViewerView 增强与诊断包 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
 | **T-122** | **日志：CrashReportView 崩溃报告 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
@@ -108,31 +108,32 @@
   - [x] Preview 环境判断正确
 - **完成提交**: `409317a` feat(core): integrate FileLogHandler into Logger system (T-118)
 
-### T-119: 日志：DiagnosticsExporter 诊断包导出 🔴
+### T-119: 日志：DiagnosticsExporter 诊断包导出 ✅
 
 - **目标**: 实现诊断包生成和敏感信息脱敏。
 - **关联需求**: F-019, AC-051, AC-053
 - **TDD 模式**: 🔴 强制（核心逻辑）
 - **涉及文件**:
-  - `Chiaki/Utilities/DiagnosticsExporter.swift` (新增)
+  - `Chiaki/Utilities/DiagnosticsExporter.swift` ✅
 - **依赖**: T-117, T-118
 - **验收标准**:
-  - [ ] 生成 ZIP 包含: 日志文件、设备信息、网络状态、配置快照
-  - [ ] IP 脱敏: `192.168.1.100` → `192.168.xxx.xxx`
-  - [ ] Token 脱敏: 保留前 8 位 + `...`
-  - [ ] User ID 脱敏: SHA256 哈希后取前 16 位
-  - [ ] MAC 地址脱敏: 保留前 3 段
-  - [ ] 注册密钥完全隐藏: `[REDACTED]`
+  - [x] 生成 ZIP 包含: 日志文件、设备信息、网络状态、配置快照
+  - [x] IP 脱敏: `192.168.1.100` → `192.168.xxx.xxx`
+  - [x] Token 脱敏: 保留前 8 位 + `...`
+  - [x] User ID 脱敏: SHA256 哈希后取前 16 位
+  - [x] MAC 地址脱敏: 保留前 3 段
+  - [x] 注册密钥完全隐藏: `[REDACTED]`
 - **测试方法**:
-  - UT-19.5: 测试 IP 脱敏
-  - UT-19.6: 测试 Token 脱敏
-  - UT-19.7: 测试 User ID 脱敏
-  - UT-19.8: 测试日志内容批量脱敏
-  - IT-19.2: 集成测试 ZIP 生成和内容验证
+  - [x] UT-19.5: 测试 IP 脱敏
+  - [x] UT-19.6: 测试 Token 脱敏
+  - [x] UT-19.7: 测试 User ID 脱敏
+  - [x] UT-19.8: 测试日志内容批量脱敏
+  - [x] IT-19.2: 集成测试 ZIP 生成和内容验证
 - **Review 要点**:
-  - [ ] 脱敏规则覆盖所有敏感字段
-  - [ ] ZIP 文件结构正确
-  - [ ] 异步导出不阻塞 UI
+  - [x] 脱敏规则覆盖所有敏感字段
+  - [x] ZIP 文件结构正确
+  - [x] 异步导出不阻塞 UI
+- **完成提交**: `5e9baa7` feat(core): implement DiagnosticsExporter with data anonymization (T-119)
 
 ### T-120: 日志：CrashReporter 崩溃捕获 🔴
 

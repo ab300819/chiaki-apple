@@ -1481,11 +1481,13 @@ jobs:
 | AC-011 | IT-003.2 | 集成测试 |
 | AC-012 | IT-003.3, IT-003.4 | 集成测试 |
 | AC-013-034 | 手动测试清单 | 手动测试 |
-| AC-038 | AdvancedTests.testObservableMigration | 单元测试 |
+| AC-038 | AdvancedTests.swift | 单元测试 |
 | AC-039 | ControllerInputMapperTests, StreamStatsManagerTests | 单元测试 |
 | AC-045 | NetworkMonitorTests | 集成测试 |
-| AC-049 | FileLogHandlerTests | 单元测试 |
+| AC-049 | FileLogHandlerTests, LoggerIntegrationTests | 单元测试 |
 | AC-050 | FileLogHandlerTests | 单元测试 |
+| AC-051 | DiagnosticsExporterTests | 单元测试 |
+| AC-053 | DiagnosticsExporterTests | 单元测试 |
 
 ### 10.3 测试覆盖状态
 
@@ -1496,7 +1498,7 @@ jobs:
 | 高级测试 (P0/P1) | 5 组 | 5 | 100% | Session/Discovery/ViewModel/Keychain/Statistics |
 | E2E 测试 | 5 组 | 5 | **100%** | E2E-001~005 全部实现 |
 
-> **更新时间**: 2026-01-26 (--trace 扫描)
+> **更新时间**: 2026-01-29 (--trace 扫描)
 > **测试用例总数**: 181 (单元/集成) + 45 (E2E) = 226
 > **通过率**: 173/181 单元测试通过 (8 个音频测试因模拟器限制失败)
 
@@ -1521,6 +1523,8 @@ jobs:
 | `StreamStatsManagerTests.swift` | - | AC-039 | `ChiakiTests/StreamStatsManagerTests.swift` |
 | `FileLogHandlerTests.swift` | - | AC-049, AC-050 | `ChiakiTests/Utilities/FileLogHandlerTests.swift` |
 | `LoggerIntegrationTests.swift` | - | AC-049 | `ChiakiTests/Utilities/LoggerIntegrationTests.swift` |
+| `DiagnosticsExporterTests.swift` | 5 | AC-051, AC-053 | `ChiakiTests/Utilities/DiagnosticsExporterTests.swift` |
+| `VRRTests.swift` | 4 | AC-046 | `ChiakiTests/VRRTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 

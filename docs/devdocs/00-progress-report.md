@@ -1,6 +1,6 @@
 # 进度报告 (Progress Report)
 
-**生成时间**：2026-01-28
+**生成时间**：2026-01-29
 **检查范围**：代码追溯扫描 (--trace)
 **检查方法**：代码标注扫描 + DevDocs 交叉验证
 
@@ -10,7 +10,7 @@
 |------|------|--------|--------|--------|--------|
 | 功能点 (F-XXX) | 19 | 16 | 3 | 0 | 84% |
 | 里程碑 (M1-M11) | 11 | 10 | 1 | 0 | 91% |
-| 开发任务 (M11) | 14 | 4 | 0 | 10 | 28% |
+| 开发任务 (M11) | 14 | 5 | 0 | 9 | 35% |
 | 单元测试 (UT) | 12 组 | 10 | 1 | 1 | 83% |
 | 集成测试 (IT) | 8 组 | 6 | 1 | 1 | 75% |
 
@@ -25,6 +25,8 @@
 | AC-045 | 自动重连机制 | `NetworkMonitor.swift` | `NetworkMonitorTests.swift` | ✅ |
 | AC-049 | 日志写入 Documents/Logs | `FileLogHandler.swift`, `Logger.swift` | `FileLogHandlerTests.swift`, `LoggerIntegrationTests.swift` | ✅ |
 | AC-050 | 日志轮换与清理 | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
+| AC-051 | 诊断包生成 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
+| AC-053 | 诊断包数据脱敏 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
 
 ## 3. 开发任务同步 (T-XXX)
 
@@ -34,16 +36,15 @@
 | **T-112** | ✅ 已完成 | `NetworkMonitor.swift` | 自动重连逻辑已实现 |
 | **T-117** | ✅ 已完成 | `FileLogHandler.swift` | 日志持久化核心逻辑已实现 |
 | **T-118** | ✅ 已完成 | `Logger.swift` | Logger 系统已集成文件日志 |
+| **T-119** | ✅ 已完成 | `DiagnosticsExporter.swift` | 诊断包导出与脱敏功能已实现 |
 
 ## 4. 偏差汇总
 
 ### 4.1 文档落后偏差
-- [ ] `03-test-cases.md` 的 Section 10.2 之前未包含 AC-038~AC-050 的映射。 (已通过本次同步修复)
-- [ ] `03-test-cases.md` 的 Section 10.4 之前未包含新增加的测试文件。 (已通过本次同步修复)
+- [x] `03-test-cases.md` 的 Section 10.2 之前未包含 AC-038~AC-053 的映射。 (已通过本次同步修复)
+- [x] `03-test-cases.md` 的 Section 10.4 之前未包含新增加的测试文件。 (已通过本次同步修复)
 
 ### 4.2 实现缺失偏差
-- [ ] **T-118 Logger 集成**: `Logger.swift` 尚未集成 `FileLogHandler`。 -> 指派 Skill: `/devdocs-dev-workflow`
-- [ ] **T-119 诊断包导出**: `DiagnosticsExporter.swift` 尚未实现。 -> 指派 Skill: `/devdocs-dev-workflow`
 - [ ] **T-120 崩溃捕获**: `CrashReporter.swift` 尚未实现。 -> 指派 Skill: `/devdocs-dev-workflow`
 
 ## 5. 下一步建议
