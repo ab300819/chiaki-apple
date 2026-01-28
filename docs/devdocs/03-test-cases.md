@@ -1481,6 +1481,11 @@ jobs:
 | AC-011 | IT-003.2 | 集成测试 |
 | AC-012 | IT-003.3, IT-003.4 | 集成测试 |
 | AC-013-034 | 手动测试清单 | 手动测试 |
+| AC-038 | AdvancedTests.testObservableMigration | 单元测试 |
+| AC-039 | ControllerInputMapperTests, StreamStatsManagerTests | 单元测试 |
+| AC-045 | NetworkMonitorTests | 集成测试 |
+| AC-049 | FileLogHandlerTests | 单元测试 |
+| AC-050 | FileLogHandlerTests | 单元测试 |
 
 ### 10.3 测试覆盖状态
 
@@ -1511,6 +1516,10 @@ jobs:
 | `SettingsUITests.swift` | 12 | E2E-003.1~13 | `ChiakiUITests/SettingsUITests.swift` |
 | `TVOSUITests.swift` | 9 | E2E-004.1~9 | `ChiakiUITests/TVOSUITests.swift` |
 | `AddHostUITests.swift` | 7 | E2E-005.1~7 | `ChiakiUITests/AddHostUITests.swift` |
+| `ControllerInputMapperTests.swift` | - | AC-039 | `ChiakiTests/ControllerInputMapperTests.swift` |
+| `NetworkMonitorTests.swift` | - | AC-045 | `ChiakiTests/NetworkMonitorTests.swift` |
+| `StreamStatsManagerTests.swift` | - | AC-039 | `ChiakiTests/StreamStatsManagerTests.swift` |
+| `FileLogHandlerTests.swift` | - | AC-049, AC-050 | `ChiakiTests/Utilities/FileLogHandlerTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 

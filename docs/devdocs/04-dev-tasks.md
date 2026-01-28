@@ -13,7 +13,7 @@
 | **T-114** | **分发：Info.plist 隐私说明与元数据补全** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-115** | **分发：多平台 App Icon 资产准备** | P2 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ⏳ 待处理 |
-| **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ⏳ 待处理 |
+| **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ⏳ 待处理 |
 | **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ⏳ 待处理 |
 | **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ⏳ 待处理 |
@@ -65,27 +65,28 @@
 > **来源**: F-019 完善日志系统 (INS-011 ~ INS-015)
 > **关联需求**: AC-049 ~ AC-053
 
-### T-117: 日志：FileLogHandler 文件持久化 🔴
+### T-117: 日志：FileLogHandler 文件持久化 ✅
 
 - **目标**: 实现日志文件写入和轮换策略。
 - **关联需求**: F-019, AC-049, AC-050
 - **TDD 模式**: 🔴 强制（核心逻辑）
 - **涉及文件**:
-  - `Chiaki/Utilities/FileLogHandler.swift` (新增)
+  - `Chiaki/Utilities/FileLogHandler.swift` ✅
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 日志写入 `Documents/Logs/chiaki-current.log`
-  - [ ] 单文件超过 5MB 时自动轮换为 `chiaki-{timestamp}.log`
-  - [ ] 保留最近 7 个日志文件，自动删除旧文件
-  - [ ] 日志格式: `[时间] [级别] [分类] 消息`
+  - [x] 日志写入 `Documents/Logs/chiaki-current.log`
+  - [x] 单文件超过 5MB 时自动轮换为 `chiaki-{timestamp}.log`
+  - [x] 保留最近 7 个日志文件，自动删除旧文件
+  - [x] 日志格式: `[时间] [级别] [分类] 消息`
 - **测试方法**:
-  - UT-19.1: 测试日志写入文件
-  - UT-19.2: 测试轮换触发条件 (模拟 5MB)
-  - UT-19.3: 测试旧文件清理 (模拟 8 个文件)
+  - [x] UT-19.1: 测试日志写入文件
+  - [x] UT-19.2: 测试轮换触发条件 (模拟 5MB)
+  - [x] UT-19.3: 测试旧文件清理 (模拟 8 个文件)
 - **Review 要点**:
-  - [ ] 文件写入线程安全 (writeLock)
-  - [ ] 文件句柄正确释放
-  - [ ] 轮换时不丢失日志
+  - [x] 文件写入线程安全 (writeLock)
+  - [x] 文件句柄正确释放
+  - [x] 轮换时不丢失日志
+- **完成提交**: `f591f60` feat(core): implement FileLogHandler for log persistence (T-117)
 
 ### T-118: 日志：Logger 集成 FileLogHandler 🟡
 
