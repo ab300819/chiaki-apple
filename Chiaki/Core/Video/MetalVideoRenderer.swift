@@ -797,9 +797,15 @@ extension MetalVideoRenderer: MTKViewDelegate {
             // If we've been idle for too long, pause the view to save power
             if idleFrameCount > idleThreshold && !view.isPaused {
                 view.isPaused = true
+                logDebug("🔋 VRR: Paused rendering after \(idleThreshold) idle frames")
             }
             frameLock.unlock()
             return
+        }
+
+        // Log resume if coming out of pause
+        if view.isPaused {
+            logDebug("🔋 VRR: Resumed rendering (new frame received)")
         }
 
         // Reset redraw flag and idle counter before rendering
