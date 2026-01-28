@@ -15,12 +15,14 @@ final class HostListViewModel {
     // MARK: - Properties
 
     /// Hosts are computed from HostManager to ensure @Observable tracking works
+    /// Returns empty array if not yet initialized (safe for SwiftUI view init)
     var hosts: [ConsoleHost] {
-        hostManager.hosts
+        _hostManager?.hosts ?? []
     }
 
+    /// Returns false if not yet initialized (safe for SwiftUI view init)
     var isDiscovering: Bool {
-        hostManager.isDiscovering
+        _hostManager?.isDiscovering ?? false
     }
 
     var isLoading: Bool = true  // Start with loading state
@@ -28,8 +30,9 @@ final class HostListViewModel {
     /// Local error message for ViewModel-specific errors
     private var localErrorMessage: String?
 
+    /// Returns local error or hostManager error (nil-safe before initialization)
     var errorMessage: String? {
-        get { localErrorMessage ?? hostManager.lastError }
+        get { localErrorMessage ?? _hostManager?.lastError }
         set { localErrorMessage = newValue }
     }
 

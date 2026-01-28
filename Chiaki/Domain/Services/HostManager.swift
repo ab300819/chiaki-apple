@@ -62,6 +62,22 @@ final class HostManager {
         discoveryService.onHostsUpdated = { [weak self] discovered in
             self?.mergeDiscoveredHosts(discovered)
         }
+
+        // Observe HostStore changes using withObservationTracking
+        // This ensures HostManager.hosts syncs when hostStore.hosts changes
+        observeHostStoreChanges()
+    }
+
+    /// Continuously observe HostStore.hosts for changes
+    private func observeHostStoreChanges() {
+        withObservationTracking {
+            _ = hostStore.hosts
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.syncHostsFromStore()
+                self?.observeHostStoreChanges()
+            }
+        }
     }
 
     private func loadStoredHosts() {

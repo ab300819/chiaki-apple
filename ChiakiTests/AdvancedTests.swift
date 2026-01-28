@@ -563,8 +563,7 @@ struct StreamStatisticsTests {
         // No frames = 0 drop rate
         #expect(stats.frameDropRate == 0)
 
-        // 2 decoded, 1 dropped = 50% drop rate
-        stats.recordVideoFrame(size: 1000, droppedCount: 0, wasRecovered: false)
+        // 1 decoded, 1 dropped = 50% drop rate (total=2, dropRate=1/2)
         stats.recordVideoFrame(size: 1000, droppedCount: 1, wasRecovered: false)
         #expect(stats.frameDropRate == 0.5)
     }
