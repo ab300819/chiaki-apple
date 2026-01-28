@@ -2373,3 +2373,575 @@ enum Logger {
 ### 9.3 性能管理
 
 - **渲染控制**: 在 `MetalVideoRenderer` 中增加 `isStatic` 检测，若连续 5 帧无变化且非游戏状态，降低 Metal 刷新频率。
+
+---
+
+## 10. 完善日志系统 [增量]
+
+> **变更来源**: F-019 完善日志系统
+> **变更日期**: 2026-01-28
+> **关联验收标准**: AC-049 ~ AC-053
+
+### 10.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `Logger` | 修改 | 新增 FileLogHandler，修改日志记录流程 |
+| `LogViewerView` | 修改 | 新增诊断包导出按钮，读取文件日志 |
+| `DiagnosticsExporter` | **新增** | 诊断包生成与敏感信息脱敏 |
+| `FileLogHandler` | **新增** | 日志文件持久化与轮换 |
+| `CrashReporter` | **新增** | 崩溃捕获与上次崩溃查看 |
+| `ChiakiApp` | 修改 | 启动时初始化崩溃捕获 |
+
+#### 兼容性评估
+
+| 变更类型 | 向后兼容 | 说明 |
+|----------|----------|------|
+| 新增 FileLogHandler | ✅ 兼容 | 新增 handler，不影响现有日志接口 |
+| 新增 DiagnosticsExporter | ✅ 兼容 | 新增独立服务 |
+| 新增诊断包导出 UI | ✅ 兼容 | 新增按钮，不影响现有功能 |
+| 崩溃捕获 | ✅ 兼容 | 仅捕获异常，不影响正常流程 |
+
+### 10.2 架构概览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    日志系统架构                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐   ┌──────────────┐   ┌─────────────────┐  │
+│  │ logInfo()   │   │ Logger.      │   │ ChiakiLogBridge │  │
+│  │ logError()  │──▶│ shared       │◀──│ (libchiaki)     │  │
+│  │ Logger.xxx  │   │ @MainActor   │   │                 │  │
+│  └─────────────┘   └──────┬───────┘   └─────────────────┘  │
+│                           │                                 │
+│         ┌─────────────────┼─────────────────┐              │
+│         ▼                 ▼                 ▼              │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────┐  │
+│  │ OSLogHandler│   │FileLogHandler│   │ logHistory[]   │  │
+│  │ (os.log)   │   │ (新增)       │   │ (内存 1000条)   │  │
+│  └─────────────┘   └──────┬───────┘   └─────────────────┘  │
+│                           │                                 │
+│                    ┌──────▼───────┐                        │
+│                    │ 日志文件      │                        │
+│                    │ Documents/   │                        │
+│                    │ Logs/        │                        │
+│                    │ ├── chiaki-  │                        │
+│                    │ │   current. │                        │
+│                    │ │   log      │                        │
+│                    │ ├── chiaki-  │                        │
+│                    │ │   1.log    │                        │
+│                    │ └── ...      │                        │
+│                    └──────────────┘                        │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                    诊断包导出                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────┐                                       │
+│  │DiagnosticsExporter│                                      │
+│  └────────┬────────┘                                       │
+│           │                                                 │
+│    ┌──────┴──────┬──────────────┬──────────────┐          │
+│    ▼             ▼              ▼              ▼          │
+│ ┌──────┐  ┌───────────┐  ┌───────────┐  ┌─────────────┐  │
+│ │日志   │  │设备信息    │  │网络状态    │  │配置快照      │  │
+│ │文件   │  │           │  │           │  │(脱敏)       │  │
+│ └──────┘  └───────────┘  └───────────┘  └─────────────┘  │
+│           │                                                 │
+│           ▼                                                 │
+│    ┌─────────────────┐                                     │
+│    │ 敏感信息脱敏     │                                     │
+│    │ - IP 部分遮蔽   │                                     │
+│    │ - Token 截断   │                                     │
+│    │ - ID 哈希化    │                                     │
+│    └────────┬────────┘                                     │
+│             ▼                                               │
+│    ┌─────────────────┐                                     │
+│    │ diagnostics.zip │                                     │
+│    └─────────────────┘                                     │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                    崩溃捕获                                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  App 启动                                                   │
+│      │                                                      │
+│      ▼                                                      │
+│  ┌─────────────────┐                                       │
+│  │ CrashReporter   │                                       │
+│  │ .initialize()   │                                       │
+│  └────────┬────────┘                                       │
+│           │                                                 │
+│   ┌───────┴───────┐                                        │
+│   ▼               ▼                                        │
+│ ┌──────────┐  ┌───────────────┐                           │
+│ │检查上次   │  │注册信号处理器  │                           │
+│ │崩溃日志   │  │SIGABRT/SIGSEGV│                           │
+│ └──────────┘  └───────────────┘                           │
+│                                                             │
+│  运行时异常                                                  │
+│      │                                                      │
+│      ▼                                                      │
+│  ┌─────────────────┐                                       │
+│  │ 写入崩溃日志     │                                       │
+│  │ crash_report.log│                                       │
+│  └─────────────────┘                                       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 10.3 模块设计
+
+#### 10.3.1 FileLogHandler（新增）
+
+**职责**: 将日志实时写入文件，实现日志轮换策略。
+
+**关联需求**: AC-049 (日志持久化), AC-050 (日志轮换)
+
+```swift
+/// 日志文件处理器（关联：AC-049, AC-050）
+final class FileLogHandler: LogHandler, @unchecked Sendable {
+    // MARK: - Configuration
+
+    /// 单个日志文件最大大小 (5MB)
+    static let maxFileSize: UInt64 = 5 * 1024 * 1024
+
+    /// 保留的日志文件数量 (7个)
+    static let maxFileCount = 7
+
+    /// 日志目录名
+    static let logDirectoryName = "Logs"
+
+    /// 当前日志文件名
+    static let currentLogFileName = "chiaki-current.log"
+
+    // MARK: - Properties
+
+    private let fileManager = FileManager.default
+    private var fileHandle: FileHandle?
+    private var currentFileSize: UInt64 = 0
+    private let writeLock = NSLock()
+    private let dateFormatter: DateFormatter
+
+    // MARK: - Initialization
+
+    init() throws
+
+    // MARK: - LogHandler Protocol
+
+    func log(level: ChiakiLogSeverity, message: String,
+             file: String, function: String, line: Int)
+
+    // MARK: - File Management
+
+    /// 获取日志目录路径
+    func logDirectoryURL() -> URL
+
+    /// 获取所有日志文件（按时间排序）
+    func allLogFiles() -> [URL]
+
+    /// 执行日志轮换
+    private func rotateIfNeeded()
+
+    /// 清理旧日志文件
+    private func cleanupOldLogs()
+}
+```
+
+**日志轮换策略**:
+1. 当 `chiaki-current.log` 超过 5MB 时触发轮换
+2. 重命名为 `chiaki-{timestamp}.log`
+3. 创建新的 `chiaki-current.log`
+4. 删除超过 7 个的旧日志文件
+5. 总日志占用空间上限约 35MB
+
+**日志文件格式**:
+```
+[2026-01-28 10:30:15.123] [INFO] [Session] Connected to PlayStation 5
+[2026-01-28 10:30:16.456] [DEBUG] [Network] Packet received, size=1024
+[2026-01-28 10:30:17.789] [ERROR] [Video] Decode failed: invalid NAL unit
+```
+
+#### 10.3.2 DiagnosticsExporter（新增）
+
+**职责**: 生成诊断包，包含日志、设备信息、网络状态和脱敏后的配置。
+
+**关联需求**: AC-051 (诊断包导出), AC-053 (敏感信息脱敏)
+
+```swift
+/// 诊断包导出器（关联：AC-051, AC-053）
+@MainActor
+final class DiagnosticsExporter {
+
+    // MARK: - Export Content
+
+    struct DiagnosticsPackage {
+        let logFiles: [URL]           // 所有日志文件
+        let deviceInfo: DeviceInfo    // 设备信息
+        let networkInfo: NetworkInfo  // 网络状态
+        let configSnapshot: String    // 脱敏后的配置
+        let crashReport: String?      // 上次崩溃报告（如有）
+    }
+
+    struct DeviceInfo: Codable {
+        let model: String             // 设备型号
+        let osVersion: String         // 系统版本
+        let appVersion: String        // 应用版本
+        let buildNumber: String       // 构建号
+        let locale: String            // 语言区域
+        let timezone: String          // 时区
+    }
+
+    struct NetworkInfo: Codable {
+        let isConnected: Bool
+        let connectionType: String    // WiFi / Cellular / Ethernet
+        let isExpensive: Bool
+        let isConstrained: Bool
+    }
+
+    // MARK: - Public Methods
+
+    /// 生成诊断包 ZIP 文件
+    func exportDiagnostics() async throws -> URL
+
+    // MARK: - Sanitization (AC-053)
+
+    /// 脱敏 IP 地址 (192.168.1.100 → 192.168.xxx.xxx)
+    func sanitizeIP(_ ip: String) -> String
+
+    /// 脱敏令牌 (显示前8位 + "...")
+    func sanitizeToken(_ token: String) -> String
+
+    /// 脱敏用户 ID (SHA256 哈希后取前16位)
+    func sanitizeUserID(_ id: String) -> String
+
+    /// 脱敏日志内容
+    func sanitizeLogContent(_ content: String) -> String
+}
+```
+
+**诊断包内容结构**:
+```
+diagnostics-2026-01-28T103015.zip
+├── logs/
+│   ├── chiaki-current.log
+│   ├── chiaki-1.log
+│   └── chiaki-2.log
+├── device-info.json
+├── network-info.json
+├── config-snapshot.json (脱敏后)
+└── crash-report.txt (如有)
+```
+
+**脱敏规则**:
+
+| 敏感信息类型 | 脱敏规则 | 示例 |
+|-------------|---------|------|
+| IP 地址 | 保留前两段，后两段替换为 xxx | `192.168.1.100` → `192.168.xxx.xxx` |
+| Access Token | 保留前 8 位 + "..." | `eyJhbGciOiJSUzI1NiIsInR5...` → `eyJhbGci...` |
+| Refresh Token | 保留前 8 位 + "..." | 同上 |
+| PSN ID | SHA256 哈希后取前 16 位 | `player123` → `a1b2c3d4e5f6g7h8` |
+| MAC 地址 | 保留前 3 段，后 3 段替换为 XX | `AA:BB:CC:DD:EE:FF` → `AA:BB:CC:XX:XX:XX` |
+| 注册密钥 | 完全隐藏 | `[REDACTED]` |
+
+#### 10.3.3 CrashReporter（新增）
+
+**职责**: 捕获应用崩溃，记录崩溃信息供下次启动查看。
+
+**关联需求**: AC-052 (崩溃日志捕获)
+
+```swift
+/// 崩溃报告器（关联：AC-052）
+final class CrashReporter {
+    static let shared = CrashReporter()
+
+    // MARK: - File Paths
+
+    private static let crashReportFileName = "crash_report.log"
+    private static let pendingCrashFileName = "pending_crash.log"
+
+    // MARK: - Properties
+
+    private(set) var lastCrashReport: CrashReport?
+
+    struct CrashReport: Codable {
+        let timestamp: Date
+        let signal: String?           // SIGABRT, SIGSEGV 等
+        let exception: String?        // Swift 异常信息
+        let stackTrace: [String]      // 调用栈
+        let threadInfo: String        // 线程信息
+        let lastLogEntries: [String]  // 崩溃前最后 50 条日志
+    }
+
+    // MARK: - Initialization
+
+    /// 在 App 启动时调用
+    func initialize()
+
+    // MARK: - Signal Handling
+
+    /// 注册信号处理器
+    private func registerSignalHandlers()
+
+    /// 信号处理回调
+    private static func handleSignal(_ signal: Int32)
+
+    // MARK: - Exception Handling
+
+    /// 设置未捕获异常处理器
+    private func setupExceptionHandler()
+
+    // MARK: - Report Management
+
+    /// 检查是否有上次崩溃报告
+    func checkForPendingCrash() -> CrashReport?
+
+    /// 清除已查看的崩溃报告
+    func clearCrashReport()
+
+    /// 写入崩溃报告
+    private func writeCrashReport(_ report: CrashReport)
+}
+```
+
+**崩溃报告格式**:
+```
+====== CRASH REPORT ======
+Timestamp: 2026-01-28 10:30:15
+Signal: SIGSEGV
+Thread: com.chiaki.streaming (Thread 5)
+
+Exception:
+EXC_BAD_ACCESS (SIGSEGV) at address 0x0000000000000000
+
+Stack Trace:
+0   Chiaki                  0x1000a1234 VideoToolboxDecoder.decodeFrame + 156
+1   Chiaki                  0x1000a5678 ChiakiSessionWrapper.handleVideoData + 89
+2   libchiaki               0x1001b1234 chiaki_session_video_cb + 45
+...
+
+Last 50 Log Entries:
+[10:30:14.123] [DEBUG] [Video] Received video frame, size=15234
+[10:30:14.456] [INFO] [Session] Processing video data
+[10:30:15.000] [ERROR] [Video] Invalid NAL unit received
+==========================
+```
+
+### 10.4 核心接口
+
+#### IFileLogHandler（关联：AC-049, AC-050）
+
+| 方法 | 参数 | 返回值 | 关联 | 说明 |
+|------|------|--------|------|------|
+| `log` | `level, message, file, function, line` | `void` | AC-049 | 写入日志到文件 |
+| `logDirectoryURL` | - | `URL` | AC-049 | 获取日志目录 |
+| `allLogFiles` | - | `[URL]` | AC-049 | 获取所有日志文件 |
+| `rotateIfNeeded` | - | `void` | AC-050 | 检查并执行轮换 |
+| `cleanupOldLogs` | - | `void` | AC-050 | 清理旧日志 |
+
+#### IDiagnosticsExporter（关联：AC-051, AC-053）
+
+| 方法 | 参数 | 返回值 | 关联 | 说明 |
+|------|------|--------|------|------|
+| `exportDiagnostics` | - | `URL` (async) | AC-051 | 生成诊断包 |
+| `sanitizeIP` | `String` | `String` | AC-053 | 脱敏 IP |
+| `sanitizeToken` | `String` | `String` | AC-053 | 脱敏令牌 |
+| `sanitizeUserID` | `String` | `String` | AC-053 | 脱敏用户 ID |
+| `sanitizeLogContent` | `String` | `String` | AC-053 | 脱敏日志内容 |
+
+#### ICrashReporter（关联：AC-052）
+
+| 方法 | 参数 | 返回值 | 关联 | 说明 |
+|------|------|--------|------|------|
+| `initialize` | - | `void` | AC-052 | 初始化崩溃捕获 |
+| `checkForPendingCrash` | - | `CrashReport?` | AC-052 | 检查上次崩溃 |
+| `clearCrashReport` | - | `void` | AC-052 | 清除崩溃报告 |
+
+### 10.5 代码结构变更
+
+```
+Chiaki/
+├── Utilities/
+│   ├── Logger.swift                    # 修改：集成 FileLogHandler
+│   ├── FileLogHandler.swift            # 新增：日志文件持久化
+│   ├── CrashReporter.swift             # 新增：崩溃捕获
+│   └── DiagnosticsExporter.swift       # 新增：诊断包导出
+│
+├── Features/
+│   └── Settings/
+│       ├── LogViewerView.swift         # 修改：新增诊断包导出按钮
+│       └── CrashReportView.swift       # 新增：崩溃报告查看
+│
+└── App/
+    └── ChiakiApp.swift                 # 修改：启动时初始化 CrashReporter
+```
+
+### 10.6 Logger 修改
+
+需要修改现有 `Logger` 类以集成 `FileLogHandler`：
+
+```swift
+// Logger.swift 修改
+
+@MainActor
+final class Logger: Sendable {
+    static let shared = Logger()
+
+    private var handlers: [LogHandler]
+    // ... existing code ...
+
+    private init() {
+        #if DEBUG
+        self.levelMask = .all
+        #else
+        self.levelMask = .production
+        #endif
+
+        var initialHandlers: [LogHandler] = []
+
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            let osLogHandler = OSLogHandler(subsystem: "ltd.hotter.chiaki", category: "App")
+            initialHandlers.append(osLogHandler)
+
+            // 新增：文件日志处理器 (AC-049)
+            if let fileHandler = try? FileLogHandler() {
+                initialHandlers.append(fileHandler)
+            }
+        }
+
+        self.handlers = initialHandlers
+    }
+
+    // 新增：获取 FileLogHandler 以访问日志文件
+    var fileLogHandler: FileLogHandler? {
+        handlers.compactMap { $0 as? FileLogHandler }.first
+    }
+}
+```
+
+### 10.7 UI 变更
+
+#### LogViewerView 修改
+
+```swift
+// LogViewerView.swift 新增按钮
+
+HStack {
+    // 现有的级别筛选...
+
+    Spacer()
+
+    // 现有的导出按钮
+    Button(action: { exportLogs() }) {
+        Label(L10n.Settings.Logs.export, systemImage: "square.and.arrow.up")
+    }
+
+    // 新增：诊断包导出按钮 (AC-051)
+    Button(action: { exportDiagnostics() }) {
+        Label(L10n.Settings.Logs.exportDiagnostics, systemImage: "doc.zipper")
+    }
+}
+```
+
+#### CrashReportView（新增）
+
+```swift
+/// 崩溃报告查看视图（关联：AC-052）
+struct CrashReportView: View {
+    let crashReport: CrashReporter.CrashReport
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // 崩溃时间
+                    // 信号/异常信息
+                    // 调用栈
+                    // 最后日志条目
+                }
+            }
+            .navigationTitle(L10n.CrashReport.title)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.CrashReport.dismiss) {
+                        CrashReporter.shared.clearCrashReport()
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### 10.8 初始化流程
+
+```swift
+// ChiakiApp.swift 修改
+
+@main
+struct ChiakiApp: App {
+    @State private var showCrashReport = false
+    @State private var pendingCrashReport: CrashReporter.CrashReport?
+
+    init() {
+        // 初始化崩溃捕获 (AC-052)
+        CrashReporter.shared.initialize()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .onAppear {
+                    // 检查上次崩溃 (AC-052)
+                    if let crash = CrashReporter.shared.checkForPendingCrash() {
+                        pendingCrashReport = crash
+                        showCrashReport = true
+                    }
+                }
+                .sheet(isPresented: $showCrashReport) {
+                    if let report = pendingCrashReport {
+                        CrashReportView(crashReport: report)
+                    }
+                }
+        }
+    }
+}
+```
+
+### 10.9 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-049: 日志持久化 | `FileLogHandler` | 日志实时写入文件，重启后可查看 |
+| AC-050: 日志轮换 | `FileLogHandler.rotateIfNeeded()` | 5MB/文件，保留 7 个，上限 35MB |
+| AC-051: 诊断包导出 | `DiagnosticsExporter` | 一键生成 ZIP 包含完整诊断信息 |
+| AC-052: 崩溃捕获 | `CrashReporter` | 信号/异常捕获，下次启动可查看 |
+| AC-053: 敏感信息脱敏 | `DiagnosticsExporter.sanitize*()` | IP/Token/ID 自动脱敏 |
+
+---
+
+## 设计变更记录
+
+### v1.3.0 (2026-01-28)
+
+**变更来源**: F-019 完善日志系统 (INS-011 ~ INS-015)
+
+**新增模块**:
+- `FileLogHandler` - 日志文件持久化（关联 AC-049, AC-050）
+- `DiagnosticsExporter` - 诊断包导出与脱敏（关联 AC-051, AC-053）
+- `CrashReporter` - 崩溃捕获（关联 AC-052）
+- `CrashReportView` - 崩溃报告查看 UI
+
+**修改模块**:
+- `Logger` - 集成 FileLogHandler
+- `LogViewerView` - 新增诊断包导出按钮
+- `ChiakiApp` - 启动时初始化崩溃捕获
+
+**破坏性变更**: 无
+
+**迁移说明**: 无需迁移，纯增量功能
