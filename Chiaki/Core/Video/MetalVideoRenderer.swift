@@ -98,12 +98,18 @@ final class MetalVideoRenderer: NSObject {
 
     /// Current display mode
     var displayMode: VideoDisplayMode = .normal {
-        didSet { updateTransform() }
+        didSet {
+            updateTransform()
+            triggerRedraw()
+        }
     }
 
     /// Zoom factor (only used in zoom mode)
     var zoomFactor: Float = 1.0 {
-        didSet { updateTransform() }
+        didSet {
+            updateTransform()
+            triggerRedraw()
+        }
     }
 
     /// Video source size
@@ -133,10 +139,34 @@ final class MetalVideoRenderer: NSObject {
     /// Dropped frame counter
     private(set) var droppedFrameCount: UInt64 = 0
 
+    /// Weak reference to the view for power management
+    weak var mtkView: MTKView?
+
     /// Flag to indicate if a new frame has been submitted and needs rendering
     private var needsRedraw = false
 
+    /// Counter for idle frames (no new content)
+    private var idleFrameCount: Int = 0
+
+    /// Threshold for switching to paused mode (e.g., 2 seconds at 60fps)
+    private let idleThreshold: Int = 120
+
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
+
+    // MARK: - Redraw Trigger
+
+    /// Notify that the view needs to be redrawn
+    private func triggerRedraw() {
+        frameLock.lock()
+        needsRedraw = true
+        frameLock.unlock()
+
+        #if os(macOS)
+        mtkView?.needsDisplay = true
+        #else
+        mtkView?.setNeedsDisplay()
+        #endif
+    }
 
     // MARK: - Initialization
 
@@ -350,8 +380,14 @@ final class MetalVideoRenderer: NSObject {
 
         frameCount += 1
         needsRedraw = true
+        idleFrameCount = 0
         updateTransform()
         onFrameSubmitted?(pixelBuffer)
+
+        // Resume continuous rendering if paused (streaming resumed)
+        if let view = mtkView, view.isPaused {
+            view.isPaused = false
+        }
     }
 
     private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache) {
@@ -523,6 +559,7 @@ final class MetalVideoRenderer: NSObject {
     func updateViewSize(_ size: CGSize) {
         viewSize = size
         updateTransform()
+        triggerRedraw()
     }
 
     private func updateTransform() {
@@ -754,6 +791,22 @@ extension MetalVideoRenderer: MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        frameLock.lock()
+        if !needsRedraw {
+            idleFrameCount += 1
+            // If we've been idle for too long, pause the view to save power
+            if idleFrameCount > idleThreshold && !view.isPaused {
+                view.isPaused = true
+            }
+            frameLock.unlock()
+            return
+        }
+
+        // Reset redraw flag and idle counter before rendering
+        needsRedraw = false
+        idleFrameCount = 0
+        frameLock.unlock()
+
         guard let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor else {
             return

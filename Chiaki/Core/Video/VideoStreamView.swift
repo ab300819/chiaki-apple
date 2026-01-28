@@ -76,7 +76,7 @@ struct VideoStreamView: ViewRepresentable {
         mtkView.framebufferOnly = true
         mtkView.preferredFramesPerSecond = preferredFramesPerSecond
         mtkView.isPaused = false
-        mtkView.enableSetNeedsDisplay = false
+        mtkView.enableSetNeedsDisplay = true
         
         #if os(iOS) || os(tvOS)
         mtkView.contentMode = .scaleToFill
@@ -87,6 +87,7 @@ struct VideoStreamView: ViewRepresentable {
 
         // Setup delegate
         if let renderer = renderer {
+            renderer.mtkView = mtkView
             mtkView.delegate = renderer
             renderer.updateViewSize(mtkView.drawableSize)
         }
@@ -99,6 +100,7 @@ struct VideoStreamView: ViewRepresentable {
     private func updateMTKView(_ mtkView: MTKView, context: Context) {
         // Update renderer reference
         if let renderer = renderer {
+            renderer.mtkView = mtkView
             mtkView.delegate = renderer
             renderer.displayMode = displayMode
             renderer.zoomFactor = zoomFactor
