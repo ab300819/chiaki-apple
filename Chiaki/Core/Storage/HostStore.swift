@@ -191,6 +191,13 @@ final class HostStore {
         Logger.storage.info("Cleared all stored hosts")
     }
 
+    /// Export hosts as JSON data
+    func exportHosts() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(hosts)
+    }
+
     /// Merge discovered host with stored host
     func mergeDiscoveredHost(_ discovered: DiscoveredHost) -> ConsoleHost {
         // Try to find existing host by address or host ID

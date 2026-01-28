@@ -14,7 +14,7 @@
 | **T-115** | **分发：多平台 App Icon 资产准备** | P2 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ✅ 已完成 |
-| **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ⏳ 待处理 |
+| **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ✅ 已完成 |
 | **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ⏳ 待处理 |
 | **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ⏳ 待处理 |
 | **T-121** | **日志：LogViewerView 增强与诊断包 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
@@ -88,24 +88,25 @@
   - [x] 轮换时不丢失日志
 - **完成提交**: `f591f60` feat(core): implement FileLogHandler for log persistence (T-117)
 
-### T-118: 日志：Logger 集成 FileLogHandler 🟡
+### T-118: 日志：Logger 集成 FileLogHandler ✅
 
 - **目标**: 将 FileLogHandler 集成到现有 Logger 系统。
 - **关联需求**: F-019, AC-049
 - **TDD 模式**: 🟡 推荐
 - **涉及文件**:
-  - `Chiaki/Utilities/Logger.swift` (修改)
+  - `Chiaki/Utilities/Logger.swift` ✅
 - **依赖**: T-117
 - **验收标准**:
-  - [ ] Logger.shared 初始化时自动添加 FileLogHandler
-  - [ ] 提供 `fileLogHandler` 属性访问日志文件
-  - [ ] Preview 模式下不启用文件日志
+  - [x] Logger.shared 初始化时自动添加 FileLogHandler
+  - [x] 提供 `fileLogHandler` 属性访问日志文件
+  - [x] Preview 模式下不启用文件日志
 - **测试方法**:
-  - UT-19.4: 测试 Logger 包含 FileLogHandler
-  - IT-19.1: 集成测试日志同时输出到 os.log 和文件
+  - [x] UT-19.4: 测试 Logger 包含 FileLogHandler
+  - [x] IT-19.1: 集成测试日志同时输出到 os.log 和文件
 - **Review 要点**:
-  - [ ] 初始化失败不影响 Logger 正常工作
-  - [ ] Preview 环境判断正确
+  - [x] 初始化失败不影响 Logger 正常工作
+  - [x] Preview 环境判断正确
+- **完成提交**: `409317a` feat(core): integrate FileLogHandler into Logger system (T-118)
 
 ### T-119: 日志：DiagnosticsExporter 诊断包导出 🔴
 

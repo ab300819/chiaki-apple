@@ -10,7 +10,7 @@ import SwiftUI
 #if os(iOS) || os(macOS)
 @main
 struct ChiakiApp: App {
-    @State private var settingsStore = SettingsStore()
+    @State private var settingsStore = SettingsStore.shared
     @State private var navigationManager = NavigationManager()
     @State private var hostStore = HostStore.shared
     

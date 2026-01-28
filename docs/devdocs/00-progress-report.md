@@ -8,9 +8,9 @@
 
 | 类型 | 总数 | 已完成 | 进行中 | 未开始 | 完成率 |
 |------|------|--------|--------|--------|--------|
-| 功能点 (F-XXX) | 19 | 14 | 5 | 0 | 73% |
+| 功能点 (F-XXX) | 19 | 16 | 3 | 0 | 84% |
 | 里程碑 (M1-M11) | 11 | 10 | 1 | 0 | 91% |
-| 开发任务 (M11) | 14 | 3 | 0 | 11 | 21% |
+| 开发任务 (M11) | 14 | 4 | 0 | 10 | 28% |
 | 单元测试 (UT) | 12 组 | 10 | 1 | 1 | 83% |
 | 集成测试 (IT) | 8 组 | 6 | 1 | 1 | 75% |
 
@@ -23,7 +23,7 @@
 | AC-038 | 迁移至 @Observable | (Implicit) | `AdvancedTests.swift` | ✅ |
 | AC-039 | 架构解耦：提取子模块 | `ControllerInputMapper.swift`, `StreamStatsManager.swift` | `ControllerInputMapperTests.swift`, `StreamStatsManagerTests.swift` | ✅ |
 | AC-045 | 自动重连机制 | `NetworkMonitor.swift` | `NetworkMonitorTests.swift` | ✅ |
-| AC-049 | 日志写入 Documents/Logs | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
+| AC-049 | 日志写入 Documents/Logs | `FileLogHandler.swift`, `Logger.swift` | `FileLogHandlerTests.swift`, `LoggerIntegrationTests.swift` | ✅ |
 | AC-050 | 日志轮换与清理 | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
 
 ## 3. 开发任务同步 (T-XXX)
@@ -33,6 +33,7 @@
 | **T-111** | ✅ 已完成 | `Localizable.xcstrings` | 深度本地化完成 |
 | **T-112** | ✅ 已完成 | `NetworkMonitor.swift` | 自动重连逻辑已实现 |
 | **T-117** | ✅ 已完成 | `FileLogHandler.swift` | 日志持久化核心逻辑已实现 |
+| **T-118** | ✅ 已完成 | `Logger.swift` | Logger 系统已集成文件日志 |
 
 ## 4. 偏差汇总
 

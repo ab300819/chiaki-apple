@@ -4,6 +4,8 @@ import Observation
 /// Settings storage managing persistence to UserDefaults
 @Observable
 class SettingsStore {
+    @MainActor static let shared = SettingsStore()
+
     var streamSettings: StreamSettings {
         didSet {
             saveSettings()

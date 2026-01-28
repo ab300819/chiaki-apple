@@ -4,6 +4,9 @@
 // Chiaki - PlayStation Remote Play Client for Apple Platforms
 //
 // Unified logging system that integrates with both Apple's os.log and libchiaki's logging
+//
+// @requirement F-019 - 完善日志系统
+// @satisfies AC-049 - 日志写入 Documents/Logs (通过集成 FileLogHandler)
 
 import Foundation
 import os

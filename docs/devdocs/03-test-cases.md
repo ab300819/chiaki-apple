@@ -1520,6 +1520,7 @@ jobs:
 | `NetworkMonitorTests.swift` | - | AC-045 | `ChiakiTests/NetworkMonitorTests.swift` |
 | `StreamStatsManagerTests.swift` | - | AC-039 | `ChiakiTests/StreamStatsManagerTests.swift` |
 | `FileLogHandlerTests.swift` | - | AC-049, AC-050 | `ChiakiTests/Utilities/FileLogHandlerTests.swift` |
+| `LoggerIntegrationTests.swift` | - | AC-049 | `ChiakiTests/Utilities/LoggerIntegrationTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 
