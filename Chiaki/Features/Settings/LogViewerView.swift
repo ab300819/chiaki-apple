@@ -13,6 +13,11 @@ struct LogViewerView: View {
     @State private var selectedLevel: ChiakiLogSeverity?
     @State private var isExporting = false
     @State private var exportDocument: LogDocument?
+    
+    @State private var isExportingDiagnostics = false
+    @State private var diagnosticPackageURL: URL?
+    @State private var showShareSheet = false
+    @State private var exportError: String?
 
     private var filteredLogs: [Logger.LogEntry] {
         Logger.shared.logHistory.filter { entry in
@@ -36,11 +41,26 @@ struct LogViewerView: View {
                 .pickerStyle(.menu)
 
                 Spacer()
-
-                Button(action: {
-                    exportLogs()
-                }) {
-                    Label(L10n.Settings.Logs.export, systemImage: "square.and.arrow.up")
+                
+                if isExportingDiagnostics {
+                    ProgressView()
+                        .padding(.horizontal)
+                } else {
+                    Menu {
+                        Button(action: {
+                            exportLogs()
+                        }) {
+                            Label(L10n.Settings.Logs.export, systemImage: "doc.text")
+                        }
+                        
+                        Button(action: {
+                            Task { await exportDiagnostics() }
+                        }) {
+                            Label(L10n.Settings.Logs.exportDiagnostics, systemImage: "archivebox")
+                        }
+                    } label: {
+                        Label(L10n.Settings.Logs.export, systemImage: "square.and.arrow.up")
+                    }
                 }
             }
             .padding()
@@ -66,6 +86,37 @@ struct LogViewerView: View {
             if case .failure(let error) = result {
                 Logger.storage.error("Failed to export logs: \(error.localizedDescription)")
             }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = diagnosticPackageURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
+        .alert("Export Error", isPresented: .init(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
+            Button(L10n.Common.ok) {}
+        } message: {
+            if let error = exportError {
+                Text(error)
+            }
+        }
+    }
+
+    private func exportDiagnostics() async {
+        isExportingDiagnostics = true
+        defer { isExportingDiagnostics = false }
+        
+        do {
+            let exporter = DiagnosticsExporter()
+            let url = try await exporter.export()
+            await MainActor.run {
+                self.diagnosticPackageURL = url
+                self.showShareSheet = true
+            }
+        } catch {
+            await MainActor.run {
+                self.exportError = error.localizedDescription
+            }
+            Logger.storage.error("Failed to export diagnostics: \(error.localizedDescription)")
         }
     }
 
@@ -194,3 +245,46 @@ extension ChiakiLogSeverity: CaseIterable {
         LogViewerView()
     }
 }
+
+#if os(iOS)
+struct ShareSheet: UIViewControllerRepresentable {
+    var activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+#elseif os(macOS)
+struct ShareSheet: View {
+    @Environment(\.dismiss) var dismiss
+    var activityItems: [Any]
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(L10n.Settings.Logs.diagnosticExportSuccess)
+                .font(.headline)
+            
+            if let url = activityItems.first as? URL {
+                Text(url.lastPathComponent)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Button(L10n.Settings.Logs.showInFinder) {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            
+            Button(L10n.Common.done) {
+                dismiss()
+            }
+        }
+        .padding()
+        .frame(width: 300)
+    }
+}
+#endif

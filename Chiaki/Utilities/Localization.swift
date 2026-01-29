@@ -158,12 +158,16 @@ enum L10n {
         enum Logs {
             static let title = String(localized: "settings.logs.title")
             static let export = String(localized: "settings.logs.export")
+            static let exportDiagnostics = String(localized: "settings.logs.exportDiagnostics")
+            static let exportingDiagnostics = String(localized: "settings.logs.exportingDiagnostics")
             static let allLevels = String(localized: "settings.logs.allLevels")
             static let levelFilter = String(localized: "settings.logs.levelFilter")
             static let searchPrompt = String(localized: "settings.logs.searchPrompt")
             static let exportHeader = String(localized: "settings.logs.exportHeader")
             static let exportGenerated = String(localized: "settings.logs.exportGenerated")
             static let exportTotalEntries = String(localized: "settings.logs.exportTotalEntries")
+            static let diagnosticExportSuccess = String(localized: "settings.logs.diagnosticExportSuccess")
+            static let showInFinder = String(localized: "settings.logs.showInFinder")
         }
 
         enum Keyboard {
