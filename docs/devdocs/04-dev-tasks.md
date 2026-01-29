@@ -16,7 +16,7 @@
 | **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ✅ 已完成 |
 | **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ✅ 已完成 |
-| **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ⏳ 待处理 |
+| **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ✅ 已完成 |
 | **T-121** | **日志：LogViewerView 增强与诊断包 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
 | **T-122** | **日志：CrashReportView 崩溃报告 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
 | **T-123** | **日志：App 启动集成与本地化** | P1 | ⚪ 不适用 | ⏳ 待处理 |
@@ -135,29 +135,30 @@
   - [x] 异步导出不阻塞 UI
 - **完成提交**: `5e9baa7` feat(core): implement DiagnosticsExporter with data anonymization (T-119)
 
-### T-120: 日志：CrashReporter 崩溃捕获 🔴
+### T-120: 日志：CrashReporter 崩溃捕获 ✅
 
 - **目标**: 捕获应用崩溃，记录崩溃信息。
 - **关联需求**: F-019, AC-052
 - **TDD 模式**: 🔴 强制（核心逻辑）
 - **涉及文件**:
-  - `Chiaki/Utilities/CrashReporter.swift` (新增)
+  - `Chiaki/Utilities/CrashReporter.swift` ✅
 - **依赖**: T-117
 - **验收标准**:
-  - [ ] 注册 SIGABRT、SIGSEGV 信号处理器
-  - [ ] 捕获 Swift 未处理异常
-  - [ ] 崩溃时写入 `crash_report.log`
-  - [ ] 记录: 时间戳、信号/异常、调用栈、最后 50 条日志
-  - [ ] 下次启动时可检测到崩溃报告
+  - [x] 注册 SIGABRT、SIGSEGV 信号处理器
+  - [x] 捕获 Swift 未处理异常
+  - [x] 崩溃时写入 `crash_report.log`
+  - [x] 记录: 时间戳、信号/异常、调用栈、最后 50 条日志
+  - [x] 下次启动时可检测到崩溃报告
 - **测试方法**:
-  - UT-19.9: 测试崩溃报告写入
-  - UT-19.10: 测试崩溃报告读取
-  - UT-19.11: 测试崩溃报告清除
-  - (手动) 模拟崩溃验证捕获
+  - [x] UT-19.9: 测试崩溃报告写入
+  - [x] UT-19.10: 测试崩溃报告读取
+  - [x] UT-19.11: 测试崩溃报告清除
+  - [x] (手动) 模拟崩溃验证捕获
 - **Review 要点**:
-  - [ ] 信号处理器内不使用不安全的函数
-  - [ ] 崩溃报告格式可解析
-  - [ ] 不影响正常异常处理流程
+  - [x] 信号处理器内不使用不安全的函数
+  - [x] 崩溃报告格式可解析
+  - [x] 不影响正常异常处理流程
+- **完成提交**: `0562dcb` feat(core): implement CrashReporter for failure analysis (T-120)
 
 ### T-121: 日志：LogViewerView 增强与诊断包 UI 🟢
 

@@ -61,10 +61,15 @@ final class Logger: Sendable {
         handlers.compactMap { $0 as? FileLogHandler }.first
     }
     
-    // Log history for in-app viewer
     private(set) var logHistory: [LogEntry] = []
     private let maxHistory = 1000
     private let historyLock = NSLock()
+
+    func getHistory() -> [LogEntry] {
+        historyLock.lock()
+        defer { historyLock.unlock() }
+        return logHistory
+    }
 
     struct LogEntry: Identifiable, Sendable {
         let id = UUID()

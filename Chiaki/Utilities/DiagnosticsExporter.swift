@@ -56,7 +56,12 @@ final class DiagnosticsExporter: Sendable {
         let configDir = tempDir.appendingPathComponent("config")
         try fileManager.createDirectory(at: configDir, withIntermediateDirectories: true)
         
-        // Hosts
+        if CrashReporter.shared.hasCrashReport() {
+            if let crashReport = try? CrashReporter.shared.readCrashReport() {
+                try? crashReport.write(to: infoDir.appendingPathComponent("crash_report.log"), atomically: true, encoding: .utf8)
+            }
+        }
+        
         let hostsData = await MainActor.run { try? HostStore.shared.exportHosts() }
         if let hostsData = hostsData,
            let hosts = try? JSONSerialization.jsonObject(with: hostsData) as? [[String: Any]] {

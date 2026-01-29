@@ -14,6 +14,10 @@ struct ChiakiApp: App {
     @State private var navigationManager = NavigationManager()
     @State private var hostStore = HostStore.shared
     
+    init() {
+        CrashReporter.shared.setup()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
