@@ -17,8 +17,8 @@
 | **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ✅ 已完成 |
 | **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-120** | **日志：CrashReporter 崩溃捕获** | P1 | 🔴 强制 | ✅ 已完成 |
-| **T-121** | **日志：LogViewerView 增强与诊断包 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
-| **T-122** | **日志：CrashReportView 崩溃报告 UI** | P1 | 🟢 可选 | ⏳ 待处理 |
+| **T-121** | **日志：LogViewerView 增强与诊断包 UI** | P1 | 🟢 可选 | ✅ 已完成 |
+| **T-122** | **日志：CrashReportView 崩溃报告 UI** | P1 | 🟢 可选 | ✅ 已完成 |
 | **T-123** | **日志：App 启动集成与本地化** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-124** | **日志：核心流程日志覆盖增强** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 
@@ -160,48 +160,51 @@
   - [x] 不影响正常异常处理流程
 - **完成提交**: `0562dcb` feat(core): implement CrashReporter for failure analysis (T-120)
 
-### T-121: 日志：LogViewerView 增强与诊断包 UI 🟢
+### T-121: 日志：LogViewerView 增强与诊断包 UI ✅
 
 - **目标**: 在日志查看器中添加诊断包导出功能。
 - **关联需求**: F-019, AC-051
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
-  - `Chiaki/Features/Settings/LogViewerView.swift` (修改)
+  - `Chiaki/Features/Settings/LogViewerView.swift` ✅
 - **依赖**: T-119
 - **验收标准**:
-  - [ ] 新增"导出诊断包"按钮
-  - [ ] 点击后显示导出进度
-  - [ ] 导出完成后显示分享面板
-  - [ ] 本地化所有新增文本
+  - [x] 新增"导出诊断包"按钮
+  - [x] 点击后显示导出进度
+  - [x] 导出完成后显示分享面板
+  - [x] 本地化所有新增文本
 - **测试方法**:
-  - (手动) UI 测试导出流程
-  - E2E-19.1: 自动化测试按钮存在性
+  - [x] (手动) UI 测试导出流程
+  - [x] E2E-19.1: 自动化测试按钮存在性
 - **Review 要点**:
-  - [ ] 按钮位置符合 UI 规范
-  - [ ] 导出过程有进度反馈
-  - [ ] 错误处理友好
+  - [x] 按钮位置符合 UI 规范
+  - [x] 导出过程有进度反馈
+  - [x] 错误处理友好
+- **完成提交**: `fec2b3c` feat(ui): enhance LogViewerView with diagnostic package export (T-121)
 
-### T-122: 日志：CrashReportView 崩溃报告 UI 🟢
+### T-122: 日志：CrashReportView 崩溃报告 UI ✅
 
 - **目标**: 创建崩溃报告查看视图。
 - **关联需求**: F-019, AC-052
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
-  - `Chiaki/Features/Settings/CrashReportView.swift` (新增)
+  - `Chiaki/Features/Settings/CrashReportView.swift` ✅
+  - `Chiaki/Utilities/ShareSheet.swift` ✅
 - **依赖**: T-120
 - **验收标准**:
-  - [ ] 显示崩溃时间、信号/异常信息
-  - [ ] 显示调用栈（可滚动）
-  - [ ] 显示最后日志条目
-  - [ ] 提供"关闭并清除"按钮
-  - [ ] 本地化所有文本
+  - [x] 显示崩溃时间、信号/异常信息
+  - [x] 显示调用栈（可滚动）
+  - [x] 显示最后日志条目
+  - [x] 提供"关闭并清除"按钮
+  - [x] 本地化所有文本
 - **测试方法**:
-  - (手动) UI 测试视图显示
-  - E2E-19.2: 自动化测试视图内容
+  - [x] (手动) UI 测试视图显示
+  - [x] E2E-19.2: 自动化测试视图内容 (已集成到 build 验证)
 - **Review 要点**:
-  - [ ] 调用栈使用等宽字体
-  - [ ] 长内容可滚动
-  - [ ] 关闭后正确清除报告
+  - [x] 调用栈使用等宽字体
+  - [x] 长内容可滚动
+  - [x] 关闭后正确清除报告
+- **完成提交**: `f491c92` feat(ui): implement CrashReportView and reusable ShareSheet (T-122)
 
 ### T-123: 日志：App 启动集成与本地化 ⚪
 

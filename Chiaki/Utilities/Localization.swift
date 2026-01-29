@@ -170,6 +170,14 @@ enum L10n {
             static let showInFinder = String(localized: "settings.logs.showInFinder")
         }
 
+        enum CrashReport {
+            static let title = String(localized: "settings.crashReport.title")
+            static let detected = String(localized: "settings.crashReport.detected")
+            static let dismissAndClear = String(localized: "settings.crashReport.dismissAndClear")
+            static let copyToClipboard = String(localized: "settings.crashReport.copyToClipboard")
+            static let share = String(localized: "settings.crashReport.share")
+        }
+
         enum Keyboard {
             static let title = String(localized: "settings.keyboard.title")
             static let enableKeyboardInput = String(localized: "settings.keyboard.enableKeyboardInput")
