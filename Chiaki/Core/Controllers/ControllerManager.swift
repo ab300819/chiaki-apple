@@ -163,7 +163,7 @@ final class ControllerManager {
         let info = ControllerInfo(controller: controller)
         connectedControllers.append(info)
 
-        Logger.controller.info("Controller connected: \(info.name) (\(info.productCategory))")
+        Logger.controller.info("Controller connected: \(info.name) (Category: \(info.productCategory), DualSense: \(info.isDualSense))")
 
         // Setup input handlers
         setupInputHandlers(for: controller)

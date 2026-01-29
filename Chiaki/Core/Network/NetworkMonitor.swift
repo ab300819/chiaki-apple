@@ -48,7 +48,7 @@ final class NetworkMonitor {
                     self?.currentInterfaceType = .other
                 }
                 
-                Logger.network.info("Network status changed: isConnected=\(path.status == .satisfied), type=\(self?.currentInterfaceType ?? .other)")
+                Logger.network.info("Network status changed: isConnected=\(path.status == .satisfied), type=\(self?.currentInterfaceType ?? .other), isCellular=\(self?.isCellular ?? false)")
             }
         }
         monitor.start(queue: queue)

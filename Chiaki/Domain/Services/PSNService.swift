@@ -81,9 +81,11 @@ final class PSNService {
         isAuthenticating = true
         defer { isAuthenticating = false }
         
+        Logger.psn.info("Exchanging authorization code for tokens...")
         // Exchange code for tokens
         let tokens = try await exchangeCodeForTokens(code)
         
+        Logger.psn.info("Tokens received, fetching user profile...")
         // Save tokens
         try saveTokens(tokens)
         
@@ -98,7 +100,7 @@ final class PSNService {
         self.account = account
         self.isAuthenticated = true
         
-        Logger.psn.info("Successfully authenticated with PSN as \(account.onlineId)")
+        Logger.psn.info("Successfully authenticated with PSN as \(account.onlineId) (\(account.accountId))")
     }
     
     /// Sign out and clear all credentials

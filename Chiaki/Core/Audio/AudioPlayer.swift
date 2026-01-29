@@ -336,6 +336,9 @@ final class AudioPlayer {
                 (requestedSamples - poppedSamples) * MemoryLayout<Float>.size
             )
             underrunCount += 1
+            if underrunCount % 100 == 0 {
+                logWarning("AudioPlayer: Buffer underrun count: \(underrunCount)")
+            }
         }
 
         // De-interleave to separate channel buffers

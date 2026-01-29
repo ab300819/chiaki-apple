@@ -247,6 +247,7 @@ final class ChiakiSessionWrapper {
             throw SessionError.alreadyConnected
         }
 
+        logInfo("ChiakiSessionWrapper: Connecting to \(host.address) (PS5: \(host.isPS5), AccountID: \(psnAccountId?.map { String(format: "%02x", $0) }.joined() ?? "none"))")
         self.hostConfig = host
 
         // Allocate session
@@ -566,9 +567,11 @@ final class ChiakiSessionWrapper {
     fileprivate func handleEvent(_ event: ChiakiEvent) {
         switch event.type {
         case CHIAKI_EVENT_CONNECTED:
+            logInfo("ChiakiSessionWrapper: Event - Connected")
             handleConnected()
 
         case CHIAKI_EVENT_LOGIN_PIN_REQUEST:
+            logInfo("ChiakiSessionWrapper: Event - Login PIN Request")
             handleLoginPinRequest(pinIncorrect: event.login_pin_request.pin_incorrect)
 
         case CHIAKI_EVENT_NICKNAME_RECEIVED:
@@ -588,16 +591,18 @@ final class ChiakiSessionWrapper {
             handlePlayerIndex(event.player_index)
 
         case CHIAKI_EVENT_KEYBOARD_OPEN:
+            logInfo("ChiakiSessionWrapper: Event - Keyboard Open")
             handleKeyboardOpen()
 
         case CHIAKI_EVENT_KEYBOARD_TEXT_CHANGE:
             handleKeyboardTextChange(event)
 
         case CHIAKI_EVENT_KEYBOARD_REMOTE_CLOSE:
-            // Keyboard closed by remote
+            logInfo("ChiakiSessionWrapper: Event - Keyboard Remote Close")
             break
 
         case CHIAKI_EVENT_QUIT:
+            logInfo("ChiakiSessionWrapper: Event - Quit (reason: \(event.quit.reason))")
             handleQuit(event.quit)
 
         default:

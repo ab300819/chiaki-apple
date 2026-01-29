@@ -96,6 +96,7 @@ final class DiscoveryService {
     func startDiscovery() {
         guard !isDiscovering else { return }
 
+        Logger.discovery.info("Discovery starting... (max hosts: 64)")
         lastError = nil
         
         var options = ChiakiDiscoveryServiceOptions()
@@ -203,6 +204,18 @@ final class DiscoveryService {
     }
 
     func updateDiscoveredHosts(_ hosts: [DiscoveredHost]) {
+        for host in hosts {
+            if !discoveredHosts.contains(where: { $0.id == host.id }) {
+                Logger.discovery.info("Host discovered: \(host.hostName) (\(host.address), PS5: \(host.isPS5))")
+            }
+        }
+        
+        for host in discoveredHosts {
+            if !hosts.contains(where: { $0.id == host.id }) {
+                Logger.discovery.info("Host lost: \(host.hostName) (\(host.address))")
+            }
+        }
+
         self.discoveredHosts = hosts
         onHostsUpdated?(hosts)
     }

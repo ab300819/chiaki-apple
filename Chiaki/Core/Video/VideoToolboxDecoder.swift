@@ -115,6 +115,7 @@ final class VideoToolboxDecoder {
         formatDescription = try createFormatDescription(sps: sps, pps: pps, vps: vps)
 
         // Create decompression session
+        logDebug("VideoToolboxDecoder: Creating session for \(width)x\(height)")
         let destinationAttributes: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
             kCVPixelBufferMetalCompatibilityKey as String: true,
@@ -352,6 +353,11 @@ final class VideoToolboxDecoder {
             while self.frameReorderBuffer.count > self.maxReorderBufferSize {
                 let (buffer, time) = self.frameReorderBuffer.removeFirst()
                 self.decodedFrameCount += 1
+                
+                if self.decodedFrameCount % 100 == 0 {
+                    logDebug("VideoToolboxDecoder: Decoded \(self.decodedFrameCount) frames, dropped \(self.droppedFrameCount)")
+                }
+                
                 self.onFrameDecoded?(buffer, time)
             }
         }
@@ -587,10 +593,12 @@ final class VideoDecoderBridge {
     private func processH264NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
         switch type {
         case 7: // SPS
+            logInfo("VideoDecoderBridge: Received SPS (\(size) bytes)")
             pendingSPS = Data(bytes: data, count: size)
             tryInitializeDecoder()
 
         case 8: // PPS
+            logInfo("VideoDecoderBridge: Received PPS (\(size) bytes)")
             pendingPPS = Data(bytes: data, count: size)
             tryInitializeDecoder()
 
