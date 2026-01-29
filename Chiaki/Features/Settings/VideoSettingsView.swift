@@ -176,6 +176,7 @@ struct VideoSettingsView: View {
 
             Section {
                 Toggle(String(localized: "settings.video.hardwareDecoding"), isOn: $store.streamSettings.hardwareDecodingEnabled)
+                Toggle(String(localized: "settings.video.vrr"), isOn: $store.streamSettings.vrrEnabled)
 
                 Picker(String(localized: "settings.video.colorSpace"), selection: $store.streamSettings.colorSpace) {
                     ForEach(StreamSettings.ColorSpace.allCases) { colorSpace in

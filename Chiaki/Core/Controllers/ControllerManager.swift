@@ -49,6 +49,8 @@ struct ControllerInfo: Identifiable {
 // MARK: - Controller Manager
 
 /// Manages physical game controllers and converts input to ChiakiControllerInput
+/// @requirement F-004 - 控制器支持
+/// @satisfies AC-054 - 核心流程日志覆盖
 @MainActor
 @Observable
 final class ControllerManager {

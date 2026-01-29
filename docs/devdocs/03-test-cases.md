@@ -1487,7 +1487,9 @@ jobs:
 | AC-049 | FileLogHandlerTests, LoggerIntegrationTests | 单元测试 |
 | AC-050 | FileLogHandlerTests | 单元测试 |
 | AC-051 | DiagnosticsExporterTests | 单元测试 |
+| AC-052 | CrashReporterTests, StartupIntegrationTests | 单元+集成 |
 | AC-053 | DiagnosticsExporterTests | 单元测试 |
+| AC-054 | (Code Coverage - manual validation) | 日志覆盖 |
 
 ### 10.3 测试覆盖状态
 
@@ -1525,6 +1527,8 @@ jobs:
 | `LoggerIntegrationTests.swift` | - | AC-049 | `ChiakiTests/Utilities/LoggerIntegrationTests.swift` |
 | `DiagnosticsExporterTests.swift` | 5 | AC-051, AC-053 | `ChiakiTests/Utilities/DiagnosticsExporterTests.swift` |
 | `VRRTests.swift` | 4 | AC-046 | `ChiakiTests/VRRTests.swift` |
+| `CrashReporterTests.swift` | 3 | AC-052 | `ChiakiTests/Utilities/CrashReporterTests.swift` |
+| `StartupIntegrationTests.swift` | 1 | AC-052 | `ChiakiTests/Utilities/StartupIntegrationTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 

@@ -195,7 +195,8 @@ final class StreamingViewModel {
         videoDecoderBridge.configure(
             codec: videoCodec,
             width: Int32(profile.resolution.width),
-            height: Int32(profile.resolution.height)
+            height: Int32(profile.resolution.height),
+            fps: profile.frameRate.rawValue
         )
 
         // Start connection
@@ -323,6 +324,10 @@ final class StreamingViewModel {
         videoRenderer?.displayMode = displayMode.toVideoDisplayMode
         videoRenderer?.zoomFactor = Float(zoomFactor)
         videoRenderer?.setColorSpace(settings.colorSpace.rawValue)
+        videoRenderer?.vrrEnabled = settings.vrrEnabled
+        
+        let profile = lastIsRemote ? settings.remoteProfile : settings.localProfile
+        videoRenderer?.updateRenderingPolicy(fps: profile.frameRate.rawValue)
     }
 
     /// Submit login PIN

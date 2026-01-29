@@ -9,7 +9,7 @@
 |------|------|--------|----------|------|
 | **T-111** | **i18n：深度本地化与 xcstrings 迁移** | P0 | 🟢 可选 | ✅ 已完成 |
 | **T-112** | **稳定性：NetworkMonitor 与自动重连** | P0 | 🔴 强制 | ✅ 已完成 |
-| **T-113** | **性能：Metal 渲染器节能调优 (VRR)** | P1 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-113** | **性能：Metal 渲染器节能调优 (VRR)** | P1 | ⚪ 不适用 | ✅ 已完成 |
 | **T-114** | **分发：Info.plist 隐私说明与元数据补全** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-115** | **分发：多平台 App Icon 资产准备** | P2 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ⏳ 待处理 |
@@ -46,11 +46,20 @@
 - **测试方法**: 🔴 **TDD**: IT-16.1。
 - **完成提交**: `d378546` refactor(streaming): extract modules from StreamingViewModel
 
-### T-113: 性能：Metal 渲染器节能调优 (VRR)
+### T-113: 性能：Metal 渲染器节能调优 (VRR) ✅
 - **目标**: 降低静态画面下的 GPU 功耗。
 - **关联需求**: F-017, AC-046
-- **涉及文件**: `Chiaki/Core/Render/MetalVideoRenderer.swift`
-- **验收标准**: 静态画面下 GPU 负载显著降低。
+- **涉及文件**:
+  - `Chiaki/Core/Video/MetalVideoRenderer.swift` ✅
+  - `Chiaki/Domain/Models/StreamSettings.swift` ✅
+  - `Chiaki/Features/Settings/VideoSettingsView.swift` ✅
+- **验收标准**:
+  - [x] 实现动态刷新率调节（VRR）。
+  - [x] 静态画面下自动降低 Metal 刷新频率至 10Hz。
+  - [x] 无新帧输入超过阈值后进入暂停模式。
+  - [x] 适配 ProMotion 显示器 (preferredFrameRateRange)。
+  - [x] 低电量模式下自动降频。
+- **完成提交**: `f491c92` feat(core): implement Variable Refresh Rate (VRR) for power optimization (T-113)
 
 ### T-114: 分发：Info.plist 隐私说明与元数据补全
 - **目标**: 满足 App Store 隐私审核要求。

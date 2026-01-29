@@ -151,7 +151,45 @@ final class MetalVideoRenderer: NSObject {
     /// Threshold for switching to paused mode (e.g., 2 seconds at 60fps)
     private let idleThreshold: Int = 120
 
+    var vrrEnabled: Bool = true
+
+    /// Current target frame rate
+    private var targetFPS: Int = 60
+
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
+
+    /// @requirement F-017 - 能效管理与渲染优化
+    /// @satisfies AC-046 - 渲染能效优化
+    func updateRenderingPolicy(fps: Int? = nil) {
+        frameLock.lock()
+        if let newFPS = fps {
+            self.targetFPS = newFPS
+        }
+        let currentTarget = self.targetFPS
+        frameLock.unlock()
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let view = self.mtkView else { return }
+            
+            view.preferredFramesPerSecond = currentTarget
+            
+            #if os(iOS) || os(tvOS)
+            if #available(iOS 15.0, tvOS 15.0, *) {
+                if let metalLayer = view.layer as? CAMetalLayer {
+                    let range = CAFrameRateRange(minimum: 10, maximum: Float(currentTarget), preferred: Float(currentTarget))
+                    metalLayer.preferredFrameRateRange = range
+                }
+            }
+            #endif
+            
+            if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                view.preferredFramesPerSecond = min(currentTarget, 30)
+                logDebug("🔋 VRR: Low Power Mode active, capping to 30fps")
+            }
+            
+            logInfo("🔋 VRR: Updated rendering policy to \(view.preferredFramesPerSecond)fps (Target: \(currentTarget))")
+        }
+    }
 
     // MARK: - Redraw Trigger
 
@@ -384,9 +422,11 @@ final class MetalVideoRenderer: NSObject {
         updateTransform()
         onFrameSubmitted?(pixelBuffer)
 
-        // Resume continuous rendering if paused (streaming resumed)
-        if let view = mtkView, view.isPaused {
-            view.isPaused = false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let view = self.mtkView else { return }
+            if view.isPaused {
+                view.isPaused = false
+            }
         }
     }
 
@@ -794,7 +834,11 @@ extension MetalVideoRenderer: MTKViewDelegate {
         frameLock.lock()
         if !needsRedraw {
             idleFrameCount += 1
-            // If we've been idle for too long, pause the view to save power
+            
+            if vrrEnabled && idleFrameCount > 5 && view.preferredFramesPerSecond > 10 {
+                view.preferredFramesPerSecond = 10
+            }
+            
             if idleFrameCount > idleThreshold && !view.isPaused {
                 view.isPaused = true
                 logDebug("🔋 VRR: Paused rendering after \(idleThreshold) idle frames")
@@ -803,14 +847,17 @@ extension MetalVideoRenderer: MTKViewDelegate {
             return
         }
 
-        // Log resume if coming out of pause
         if view.isPaused {
             logDebug("🔋 VRR: Resumed rendering (new frame received)")
         }
 
-        // Reset redraw flag and idle counter before rendering
         needsRedraw = false
         idleFrameCount = 0
+        
+        if vrrEnabled && view.preferredFramesPerSecond != targetFPS {
+            view.preferredFramesPerSecond = targetFPS
+        }
+        
         frameLock.unlock()
 
         guard let drawable = view.currentDrawable,

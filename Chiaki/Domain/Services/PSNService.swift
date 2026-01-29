@@ -29,6 +29,8 @@ struct PSNTokens: Codable {
 }
 
 /// Service for PSN login and token management
+/// @requirement F-005 - PSN 账户登录
+/// @satisfies AC-054 - 核心流程日志覆盖
 @Observable
 @MainActor
 final class PSNService {

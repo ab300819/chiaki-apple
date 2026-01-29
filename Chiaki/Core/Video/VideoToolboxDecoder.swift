@@ -5,6 +5,8 @@
 //
 // Hardware-accelerated video decoder using VideoToolbox
 // Design based on chiaki-ng/android video-decoder.c dual-thread model
+// @requirement F-001 - 核心流媒体
+// @satisfies AC-054 - 核心流程日志覆盖
 
 import Foundation
 import VideoToolbox
@@ -439,13 +441,17 @@ final class VideoDecoderBridge {
     }
 
     /// Configure decoder parameters (call before streaming starts)
-    func configure(codec: ChiakiVideoCodec, width: Int32, height: Int32) {
+    func configure(codec: ChiakiVideoCodec, width: Int32, height: Int32, fps: Int? = nil) {
         initLock.lock()
         defer { initLock.unlock() }
 
         self.codec = codec
         self.width = width
         self.height = height
+
+        if let fps = fps {
+            renderer?.updateRenderingPolicy(fps: fps)
+        }
 
         // Reset pending parameter sets
         pendingSPS = nil

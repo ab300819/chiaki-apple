@@ -14,6 +14,7 @@ import Observation
  * 网络状态监控器
  * @requirement F-016 - 网络弹性与自动重连
  * @satisfies AC-045 - 自动重连机制
+ * @satisfies AC-054 - 核心流程日志覆盖
  */
 @Observable
 final class NetworkMonitor {

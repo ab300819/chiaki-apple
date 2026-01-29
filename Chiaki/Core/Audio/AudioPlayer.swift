@@ -5,6 +5,8 @@
 //
 // Low-latency audio player using AVAudioEngine with pull-mode rendering
 // Design based on chiaki-ng/android audio-output.cpp Oboe callback model
+// @requirement F-001 - 核心流媒体
+// @satisfies AC-054 - 核心流程日志覆盖
 
 import Foundation
 import AVFoundation

@@ -37,14 +37,15 @@ struct StreamSettings: Codable, Equatable {
     var swapCrossCircle: Bool = false // Japanese layout swap
     var touchControllerOpacity: Double = 0.7 // 0.3 - 1.0
     var motionControlsEnabled: Bool = false
-    var showControllerHints: Bool = true // Show button hints in streaming view
+    var showControllerHints: Bool = true
+    var vrrEnabled: Bool = true
 
     enum CodingKeys: String, CodingKey {
         case localProfile, remoteProfile, codec, hardwareDecodingEnabled, colorSpace, hdrEnabled
         case hdrTargetPeakNits, hdrTargetContrast
         case volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
-        case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled, showControllerHints
+        case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled, showControllerHints, vrrEnabled
     }
 
     /// Video display mode for streaming
@@ -133,6 +134,7 @@ struct StreamSettings: Codable, Equatable {
         self.touchControllerOpacity = (try? container.decode(Double.self, forKey: .touchControllerOpacity)) ?? 0.7
         self.motionControlsEnabled = (try? container.decode(Bool.self, forKey: .motionControlsEnabled)) ?? false
         self.showControllerHints = (try? container.decode(Bool.self, forKey: .showControllerHints)) ?? true
+        self.vrrEnabled = (try? container.decode(Bool.self, forKey: .vrrEnabled)) ?? true
     }
 
     func encode(to encoder: Encoder) throws {
@@ -157,6 +159,7 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(touchControllerOpacity, forKey: .touchControllerOpacity)
         try container.encode(motionControlsEnabled, forKey: .motionControlsEnabled)
         try container.encode(showControllerHints, forKey: .showControllerHints)
+        try container.encode(vrrEnabled, forKey: .vrrEnabled)
     }
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {

@@ -5,6 +5,8 @@
 //
 // Swift wrapper for libchiaki discovery service
 // Handles PlayStation console discovery on local network
+// @requirement F-002 - PS 主机发现
+// @satisfies AC-054 - 核心流程日志覆盖
 
 import Foundation
 import Observation

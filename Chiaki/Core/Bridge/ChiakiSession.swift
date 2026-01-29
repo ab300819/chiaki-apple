@@ -5,6 +5,8 @@
 //
 // Swift wrapper for libchiaki session management
 // Handles connection, video/audio callbacks, and controller input
+// @requirement F-001 - 核心流媒体
+// @satisfies AC-054 - 核心流程日志覆盖
 
 import Foundation
 import CoreMedia
@@ -231,6 +233,12 @@ final class ChiakiSessionWrapper {
     /// Configure stream quality
     func configure(stream: StreamConfig) {
         self.streamConfig = stream
+        videoDecoderBridge?.configure(
+            codec: stream.codec,
+            width: Int32(stream.resolution.width),
+            height: Int32(stream.resolution.height),
+            fps: Int(stream.fps.rawValue)
+        )
     }
 
     // MARK: - Connection

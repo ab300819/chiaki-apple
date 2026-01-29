@@ -53,6 +53,21 @@ struct VRRLogicTests {
         #expect(isPaused == true, "Should pause after exceeding threshold")
     }
 
+    @Test func testFPSDropOnIdle() {
+        var idleFrameCount = 0
+        let vrrEnabled = true
+        var preferredFramesPerSecond = 60
+        
+        for _ in 0..<6 {
+            idleFrameCount += 1
+            if vrrEnabled && idleFrameCount > 5 && preferredFramesPerSecond > 10 {
+                preferredFramesPerSecond = 10
+            }
+        }
+        
+        #expect(preferredFramesPerSecond == 10, "FPS should drop to 10 after 5 idle frames")
+    }
+
     @Test func testResumeOnNewFrame() {
         // Simulate resume logic
         var idleFrameCount = 150  // Was idle

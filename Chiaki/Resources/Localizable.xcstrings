@@ -3988,6 +3988,22 @@
         }
       }
     },
+    "settings.video.vrr": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dynamic Refresh Rate (VRR)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动态刷新率 (VRR)"
+          }
+        }
+      }
+    },
     "streaming.connecting": {
       "localizations": {
         "en": {
