@@ -14,6 +14,8 @@ struct ChiakiApp: App {
     @State private var navigationManager = NavigationManager()
     @State private var hostStore = HostStore.shared
     
+    @State private var pendingCrashReport: String?
+    
     init() {
         CrashReporter.shared.setup()
     }
@@ -25,6 +27,15 @@ struct ChiakiApp: App {
                 .environment(navigationManager)
                 .environment(hostStore)
                 .tint(ChiakiTheme.brandPurple)
+                .onAppear {
+                    checkForCrashReport()
+                }
+                .sheet(item: Binding(
+                    get: { pendingCrashReport.map { CrashReportItem(content: $0) } },
+                    set: { pendingCrashReport = $0?.content }
+                )) { item in
+                    CrashReportView(report: item.content)
+                }
         }
         #if os(macOS)
         .windowStyle(.hiddenTitleBar)
@@ -117,5 +128,18 @@ struct ChiakiApp: App {
         }
     }
     #endif
+
+    private func checkForCrashReport() {
+        if CrashReporter.shared.hasCrashReport() {
+            if let report = try? CrashReporter.shared.readCrashReport() {
+                pendingCrashReport = report
+            }
+        }
+    }
+}
+
+private struct CrashReportItem: Identifiable {
+    let id = UUID()
+    let content: String
 }
 #endif
