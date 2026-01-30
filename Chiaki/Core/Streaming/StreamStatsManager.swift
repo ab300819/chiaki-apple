@@ -28,6 +28,7 @@ final class StreamStatsManager {
     var recoveredFrames: Int = 0
     var isPoorConnection: Bool = false
     var connectionQuality: ConnectionQuality = .unknown
+    var isHDR: Bool = false
     
     // MARK: - Dependencies
     
@@ -67,5 +68,6 @@ final class StreamStatsManager {
         
         isPoorConnection = packetLoss > 5.0
         currentResolution = "1080p" // TODO: Get from session
+        isHDR = session?.isHDR ?? false
     }
 }

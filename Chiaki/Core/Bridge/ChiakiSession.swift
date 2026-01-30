@@ -165,6 +165,11 @@ final class ChiakiSessionWrapper {
     private(set) var serverNickname: String?
     private(set) var playerIndex: UInt8 = 0
 
+    /// Whether the current stream is HDR (H.265 HDR codec)
+    var isHDR: Bool {
+        streamConfig.codec.isHDR
+    }
+
     private var session: UnsafeMutablePointer<ChiakiSession>?
     private var chiakiLog: UnsafeMutablePointer<ChiakiLog>?
 

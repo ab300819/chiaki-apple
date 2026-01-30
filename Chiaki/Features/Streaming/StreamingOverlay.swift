@@ -8,7 +8,12 @@ struct StreamingOverlay: View {
         HStack(spacing: 0) {
             // Left side: Video stats
             HStack(spacing: 16) {
-                StatItem(icon: "display", value: stats.currentResolution)
+                HStack(spacing: 8) {
+                    StatItem(icon: "display", value: stats.currentResolution)
+                    if stats.isHDR {
+                        HDRBadge()
+                    }
+                }
                 StatItem(
                     icon: "speedometer",
                     value: String(format: "%.0f FPS", stats.currentFrameRate)
@@ -184,17 +189,55 @@ private struct PacketLossItem: View {
     }
 }
 
+// MARK: - HDR Badge
+
+private struct HDRBadge: View {
+    var body: some View {
+        #if os(tvOS)
+        Text("HDR")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                LinearGradient(
+                    colors: [.purple, .pink],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+        #else
+        Text("HDR")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(
+                LinearGradient(
+                    colors: [.purple, .pink],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+        #endif
+    }
+}
+
+// MARK: - Stat Item
+
 private struct StatItem: View {
     let icon: String
     let value: String
-    
+
     var body: some View {
         HStack(spacing: 6) {
             #if os(tvOS)
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.secondary)
-            
+
             Text(value)
                 .font(.system(size: 24, design: .monospaced))
                 .fontWeight(.medium)
@@ -203,7 +246,7 @@ private struct StatItem: View {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
-            
+
             Text(value)
                 .font(.system(size: 12, design: .monospaced))
                 .fontWeight(.medium)
