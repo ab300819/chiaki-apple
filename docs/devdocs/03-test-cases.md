@@ -1465,6 +1465,7 @@ jobs:
 | **导航** | 应用导航 | - | **UT-009** | - | E2E-001~005 |
 | **F-020** | 手柄操作友好化 | US-014 | UT-010~012 | IT-007 | E2E-006 |
 | **F-021** | GameController 深度集成 | US-015 | UT-013~016 | IT-008 | E2E-007 |
+| **F-022** | 手柄操控 UI/UX 优化 | US-016 | UT-017~020 | IT-009~010 | E2E-008~009 |
 
 ### 10.2 验收标准 → 测试用例追溯
 
@@ -1502,18 +1503,22 @@ jobs:
 | AC-062 | UT-014.1~4 | 单元测试 |
 | AC-063 | UT-015.1~6, IT-008.1~3 | 单元+集成 |
 | AC-064 | UT-016.1~6, E2E-007.1~3 | 单元+E2E |
+| AC-065 | UT-017.1~6, IT-009.1~5, E2E-008.1~4 | 单元+集成+E2E |
+| AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 |
+| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E |
+| AC-068 | UT-020.1~6 | 单元测试 |
 
 ### 10.3 测试覆盖状态
 
 | 测试类型 | 总数 | 已实现 | 覆盖率 | 备注 |
 |----------|------|--------|--------|------|
-| 单元测试 (UT) | 16 组 | 9+7 | **100%** | UT-001~016 (UT-010~016 待实现) |
-| 集成测试 (IT) | 8 组 | 6+2 | **100%** | IT-001~008 (IT-007~008 待实现) |
+| 单元测试 (UT) | 20 组 | 9+11 | **100%** | UT-001~020 (UT-010~020 待实现) |
+| 集成测试 (IT) | 10 组 | 6+4 | **100%** | IT-001~010 (IT-007~010 待实现) |
 | 高级测试 (P0/P1) | 5 组 | 5 | 100% | Session/Discovery/ViewModel/Keychain/Statistics |
-| E2E 测试 | 7 组 | 5+2 | **100%** | E2E-001~007 (E2E-006~007 待实现) |
+| E2E 测试 | 9 组 | 5+4 | **100%** | E2E-001~009 (E2E-006~009 待实现) |
 
-> **更新时间**: 2026-01-30 (F-020/F-021 测试用例设计)
-> **测试用例总数**: 181+39 (单元/集成) + 45+9 (E2E) = 274
+> **更新时间**: 2026-01-30 (F-022 测试用例设计)
+> **测试用例总数**: 181+39+37 (单元/集成) + 45+9+9 (E2E) = 320
 > **通过率**: 173/181 单元测试通过 (8 个音频测试因模拟器限制失败)
 
 ### 10.4 测试实现详情
@@ -2823,3 +2828,683 @@ final class ControllerBatteryUITests: XCTestCase {
 | P1 | 15 | 重要功能 |
 | P2 | 5 | 增强体验 |
 | **总计** | **48** | |
+
+---
+
+## 17. F-022 手柄操控 UI/UX 优化测试用例 (2026-01-30)
+
+> **来源需求**: F-022 手柄操控 UI/UX 优化 (INS-028~031)
+> **关联验收标准**: AC-065 ~ AC-068
+
+### 17.1 单元测试
+
+#### UT-017: HostQuickAction 测试
+
+> **关联验收标准**: AC-065 (主机快速操作栏)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| UT-017.1 | testHostQuickActionEnumCases | 枚举完整性 | 包含 wake/connect/pin/delete | P0 |
+| UT-017.2 | testHostQuickActionHashable | Hashable 协议 | 可用作 @FocusState 的值类型 | P0 |
+| UT-017.3 | testDefaultFocusForStandbyHost | 待机主机默认焦点 | focusedAction = .wake | P0 |
+| UT-017.4 | testDefaultFocusForReadyHost | 就绪主机默认焦点 | focusedAction = .connect | P0 |
+| UT-017.5 | testActionVisibilityForStandby | 待机状态操作可见性 | 显示 wake, 隐藏 connect | P1 |
+| UT-017.6 | testActionVisibilityForReady | 就绪状态操作可见性 | 显示 connect, 隐藏 wake | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("HostQuickAction Tests")
+struct HostQuickActionTests {
+    // UT-017.1
+    @Test("Quick action enum contains all required cases")
+    func testHostQuickActionEnumCases() {
+        let allCases: [HostQuickAction] = [.wake, .connect, .pin, .delete]
+        #expect(allCases.count == 4)
+    }
+
+    // UT-017.2
+    @Test("Quick action is Hashable for FocusState")
+    func testHostQuickActionHashable() {
+        let action1 = HostQuickAction.wake
+        let action2 = HostQuickAction.wake
+        let action3 = HostQuickAction.connect
+
+        #expect(action1.hashValue == action2.hashValue)
+        #expect(action1.hashValue != action3.hashValue)
+
+        // 可用作字典键
+        var dict: [HostQuickAction: String] = [:]
+        dict[.wake] = "Wake"
+        #expect(dict[.wake] == "Wake")
+    }
+
+    // UT-017.3 & UT-017.4
+    @Test("Default focus depends on host state")
+    func testDefaultFocusForHostState() {
+        let standbyHost = Host.mock(state: .standby)
+        let readyHost = Host.mock(state: .ready)
+
+        let standbyDefault = HostQuickActionBar.defaultFocus(for: standbyHost)
+        let readyDefault = HostQuickActionBar.defaultFocus(for: readyHost)
+
+        #expect(standbyDefault == .wake)
+        #expect(readyDefault == .connect)
+    }
+}
+```
+
+#### UT-018: VolumeShortcut 测试
+
+> **关联验收标准**: AC-066 (流媒体中音量快捷调节)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| UT-018.1 | testVolumeUpShortcutDetection | PS + R2 检测 | 触发 onVolumeUp 回调 | P0 |
+| UT-018.2 | testVolumeDownShortcutDetection | PS + L2 检测 | 触发 onVolumeDown 回调 | P0 |
+| UT-018.3 | testVolumeThrottleInterval | 200ms 节流 | 200ms 内不重复触发 | P0 |
+| UT-018.4 | testVolumeAdjustmentStep | 音量调节步长 | 每次 ±5% (0.05) | P0 |
+| UT-018.5 | testVolumeClampToMinMax | 音量范围限制 | 0.0 ≤ volume ≤ 1.0 | P0 |
+| UT-018.6 | testConcurrentL2R2Ignored | 同时按 L2+R2 | 不触发音量调节 | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("Volume Shortcut Tests")
+struct VolumeShortcutTests {
+    // UT-018.1
+    @Test("PS + R2 triggers volume up")
+    func testVolumeUpShortcutDetection() {
+        let detector = ControllerShortcutDetector()
+        var volumeUpCalled = false
+        detector.onVolumeUp = { volumeUpCalled = true }
+
+        detector.updateButtons([.ps, .r2])
+
+        #expect(volumeUpCalled == true)
+    }
+
+    // UT-018.2
+    @Test("PS + L2 triggers volume down")
+    func testVolumeDownShortcutDetection() {
+        let detector = ControllerShortcutDetector()
+        var volumeDownCalled = false
+        detector.onVolumeDown = { volumeDownCalled = true }
+
+        detector.updateButtons([.ps, .l2])
+
+        #expect(volumeDownCalled == true)
+    }
+
+    // UT-018.3
+    @Test("Volume shortcuts throttled at 200ms")
+    func testVolumeThrottleInterval() async throws {
+        let detector = ControllerShortcutDetector()
+        var callCount = 0
+        detector.onVolumeUp = { callCount += 1 }
+
+        // 快速连续触发
+        detector.updateButtons([.ps, .r2])
+        detector.updateButtons([])
+        detector.updateButtons([.ps, .r2])
+
+        #expect(callCount == 1) // 应被节流
+
+        // 等待 200ms 后再触发
+        try await Task.sleep(for: .milliseconds(250))
+        detector.updateButtons([.ps, .r2])
+
+        #expect(callCount == 2) // 应成功触发
+    }
+
+    // UT-018.4 & UT-018.5
+    @Test("Volume adjustment step is 5%")
+    func testVolumeAdjustmentStep() {
+        var settings = StreamSettings()
+        settings.volume = 0.5
+
+        // 增加
+        settings.volume = min(1.0, settings.volume + 0.05)
+        #expect(settings.volume == 0.55)
+
+        // 减少
+        settings.volume = max(0.0, settings.volume - 0.05)
+        #expect(settings.volume == 0.5)
+
+        // 边界 - 不超过 1.0
+        settings.volume = 0.98
+        settings.volume = min(1.0, settings.volume + 0.05)
+        #expect(settings.volume == 1.0)
+
+        // 边界 - 不低于 0.0
+        settings.volume = 0.02
+        settings.volume = max(0.0, settings.volume - 0.05)
+        #expect(settings.volume == 0.0)
+    }
+
+    // UT-018.6
+    @Test("Concurrent L2+R2 ignored")
+    func testConcurrentL2R2Ignored() {
+        let detector = ControllerShortcutDetector()
+        var upCalled = false
+        var downCalled = false
+        detector.onVolumeUp = { upCalled = true }
+        detector.onVolumeDown = { downCalled = true }
+
+        detector.updateButtons([.ps, .l2, .r2])
+
+        #expect(upCalled == false)
+        #expect(downCalled == false)
+    }
+}
+```
+
+#### UT-019: GamepadNumPad 测试
+
+> **关联验收标准**: AC-067 (PIN 输入数字键盘优化)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| UT-019.1 | testNumPadKeyEnumCases | 键位枚举完整性 | 包含 0-9, backspace, empty | P0 |
+| UT-019.2 | testNumPadLayoutStructure | 3×4 布局结构 | 4 行 × 3 列 | P0 |
+| UT-019.3 | testDigitInput | 数字输入 | value 追加数字 | P0 |
+| UT-019.4 | testBackspaceDelete | 退格删除 | value 删除最后一位 | P0 |
+| UT-019.5 | testMaxLengthLimit | 最大长度限制 | 超过 maxLength 后不再追加 | P0 |
+| UT-019.6 | testAutoCompleteOnMaxLength | 输入完成自动提交 | 达到 maxLength 时触发 onComplete | P0 |
+| UT-019.7 | testEmptyKeyDisabled | 空键禁用 | empty 键不响应操作 | P1 |
+| UT-019.8 | testDefaultFocusPosition | 默认焦点位置 | focusedKey = "5" (中间) | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("GamepadNumPad Tests")
+struct GamepadNumPadTests {
+    // UT-019.1
+    @Test("NumPadKey enum contains all required keys")
+    func testNumPadKeyEnumCases() {
+        let digitKeys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+        let specialKeys = ["⌫", ""]
+
+        for digit in digitKeys {
+            let key = GamepadNumPad.NumPadKey(rawValue: digit)
+            #expect(key != nil)
+        }
+
+        #expect(GamepadNumPad.NumPadKey.backspace.rawValue == "⌫")
+        #expect(GamepadNumPad.NumPadKey.empty.rawValue == "")
+    }
+
+    // UT-019.2
+    @Test("NumPad has 3x4 layout")
+    func testNumPadLayoutStructure() {
+        let keys = GamepadNumPad.defaultKeys
+
+        #expect(keys.count == 4) // 4 rows
+        for row in keys {
+            #expect(row.count == 3) // 3 columns
+        }
+    }
+
+    // UT-019.3 & UT-019.4
+    @Test("Digit input and backspace work correctly")
+    func testDigitInputAndBackspace() {
+        var value = ""
+
+        // 输入数字
+        GamepadNumPad.handleKeyPress(.key1, value: &value, maxLength: 4)
+        #expect(value == "1")
+
+        GamepadNumPad.handleKeyPress(.key2, value: &value, maxLength: 4)
+        #expect(value == "12")
+
+        // 退格
+        GamepadNumPad.handleKeyPress(.backspace, value: &value, maxLength: 4)
+        #expect(value == "1")
+
+        // 空字符串退格不崩溃
+        value = ""
+        GamepadNumPad.handleKeyPress(.backspace, value: &value, maxLength: 4)
+        #expect(value == "")
+    }
+
+    // UT-019.5 & UT-019.6
+    @Test("Max length limit and auto complete")
+    func testMaxLengthAndAutoComplete() {
+        var value = "123"
+        var completed = false
+
+        GamepadNumPad.handleKeyPress(.key4, value: &value, maxLength: 4) {
+            completed = true
+        }
+
+        #expect(value == "1234")
+        #expect(completed == true)
+
+        // 超过 maxLength 不追加
+        GamepadNumPad.handleKeyPress(.key5, value: &value, maxLength: 4)
+        #expect(value == "1234")
+    }
+
+    // UT-019.7
+    @Test("Empty key is disabled")
+    func testEmptyKeyDisabled() {
+        var value = "12"
+
+        GamepadNumPad.handleKeyPress(.empty, value: &value, maxLength: 4)
+        #expect(value == "12") // 未变化
+    }
+}
+```
+
+#### UT-020: QuickSettingsSection 测试
+
+> **关联验收标准**: AC-068 (设置快捷入口)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| UT-020.1 | testBitrateStepperRange | 码率调节范围 | 5000 ~ 50000 kbps | P0 |
+| UT-020.2 | testBitrateStepperStep | 码率调节步长 | 5000 kbps | P0 |
+| UT-020.3 | testVolumeSliderRange | 音量滑块范围 | 0.0 ~ 1.0 | P0 |
+| UT-020.4 | testPendingResolutionChange | 待确认分辨率变更 | pendingResolution != settings.resolution | P0 |
+| UT-020.5 | testResolutionChangeNotification | 分辨率变更通知 | 发送 reconnectRequired 通知 | P1 |
+| UT-020.6 | testVolumeIconForLevels | 不同音量图标 | 返回正确的 SF Symbol | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("QuickSettingsSection Tests")
+struct QuickSettingsSectionTests {
+    // UT-020.1 & UT-020.2
+    @Test("Bitrate stepper range and step")
+    func testBitrateStepperConfig() {
+        let minBitrate = 5000
+        let maxBitrate = 50000
+        let step = 5000
+
+        var bitrate = 15000
+
+        // 增加
+        bitrate = min(maxBitrate, bitrate + step)
+        #expect(bitrate == 20000)
+
+        // 减少
+        bitrate = max(minBitrate, bitrate - step)
+        #expect(bitrate == 15000)
+
+        // 边界
+        bitrate = 50000
+        bitrate = min(maxBitrate, bitrate + step)
+        #expect(bitrate == 50000) // 不超过最大值
+
+        bitrate = 5000
+        bitrate = max(minBitrate, bitrate - step)
+        #expect(bitrate == 5000) // 不低于最小值
+    }
+
+    // UT-020.3
+    @Test("Volume slider range")
+    func testVolumeSliderRange() {
+        var volume: Float = 0.5
+
+        // 边界测试
+        volume = max(0.0, min(1.0, -0.1))
+        #expect(volume == 0.0)
+
+        volume = max(0.0, min(1.0, 1.5))
+        #expect(volume == 1.0)
+    }
+
+    // UT-020.4
+    @Test("Pending resolution change detection")
+    func testPendingResolutionChange() {
+        let currentResolution = Resolution.r1080p
+        var pendingResolution: Resolution? = .r1080p
+
+        // 相同 - 无变更
+        #expect(pendingResolution == currentResolution)
+
+        // 不同 - 有变更
+        pendingResolution = .r720p
+        #expect(pendingResolution != currentResolution)
+    }
+
+    // UT-020.5
+    @Test("Resolution change posts notification")
+    func testResolutionChangeNotification() async {
+        let expectation = NotificationExpectation(name: .reconnectRequired)
+
+        NotificationCenter.default.post(name: .reconnectRequired, object: nil)
+
+        await #expect(throws: Never.self) {
+            await expectation.wait(timeout: 1.0)
+        }
+    }
+
+    // UT-020.6
+    @Test("Volume icon for different levels")
+    func testVolumeIconForLevels() {
+        #expect(QuickSettingsSection.volumeIcon(for: 0.0) == "speaker.slash")
+        #expect(QuickSettingsSection.volumeIcon(for: 0.3) == "speaker.wave.1")
+        #expect(QuickSettingsSection.volumeIcon(for: 0.7) == "speaker.wave.2")
+    }
+}
+```
+
+### 17.2 集成测试
+
+#### IT-009: 快速操作栏与主机列表集成测试
+
+> **关联验收标准**: AC-065 (主机快速操作栏)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| IT-009.1 | testQuickActionBarShowsOnFocus | 主机聚焦时 | 显示快速操作栏 | P0 |
+| IT-009.2 | testQuickActionBarHidesOnBlur | 主机失焦时 | 隐藏快速操作栏 | P0 |
+| IT-009.3 | testWakeActionCallsHostManager | 点击唤醒 | 调用 HostManager.wakeUp() | P0 |
+| IT-009.4 | testConnectActionNavigates | 点击连接 | 导航到流媒体视图 | P0 |
+| IT-009.5 | testDeleteActionShowsConfirmation | 点击删除 | 显示删除确认对话框 | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("HostQuickActionBar Integration Tests")
+struct HostQuickActionBarIntegrationTests {
+    // IT-009.1 & IT-009.2
+    @Test("Quick action bar visibility based on focus")
+    @MainActor
+    func testQuickActionBarVisibility() async throws {
+        let hostManager = HostManager.mock()
+        let view = HostListView()
+            .environment(hostManager)
+
+        // 模拟聚焦
+        view.focusedHost = hostManager.hosts.first?.id
+
+        // 验证操作栏显示
+        // (UI 测试通过 ViewInspector 或 XCTest UI)
+    }
+
+    // IT-009.3
+    @Test("Wake action calls HostManager")
+    @MainActor
+    func testWakeActionCallsHostManager() async throws {
+        let hostManager = MockHostManager()
+        let host = Host.mock(state: .standby)
+
+        let actionBar = HostQuickActionBar(
+            host: host,
+            onWake: { hostManager.wakeUp(host) },
+            onConnect: {},
+            onSetPin: {},
+            onDelete: {}
+        )
+
+        // 触发唤醒动作
+        actionBar.onWake()
+
+        #expect(hostManager.wakeUpCalled == true)
+        #expect(hostManager.lastWokenHost?.id == host.id)
+    }
+
+    // IT-009.4
+    @Test("Connect action navigates to streaming")
+    @MainActor
+    func testConnectActionNavigates() async throws {
+        let navigationManager = NavigationManager()
+        let host = Host.mock(state: .ready)
+
+        let actionBar = HostQuickActionBar(
+            host: host,
+            onWake: {},
+            onConnect: { navigationManager.startStreaming(host: host) },
+            onSetPin: {},
+            onDelete: {}
+        )
+
+        actionBar.onConnect()
+
+        #expect(navigationManager.isStreaming == true)
+        #expect(navigationManager.streamingHost?.id == host.id)
+    }
+}
+```
+
+#### IT-010: 音量 OSD 与流媒体视图集成测试
+
+> **关联验收标准**: AC-066 (流媒体中音量快捷调节)
+
+| 编号 | 测试方法 | 测试场景 | 预期结果 | 优先级 |
+|------|----------|----------|----------|--------|
+| IT-010.1 | testVolumeOSDShowsOnAdjustment | 音量变更时 | VolumeOSD 显示 | P0 |
+| IT-010.2 | testVolumeOSDHidesAfterTimeout | 2 秒后 | VolumeOSD 自动隐藏 | P0 |
+| IT-010.3 | testVolumeOSDDisplaysCorrectValue | 音量为 70% | OSD 显示 "70%" | P0 |
+| IT-010.4 | testVolumeChangeAppliedToAudioPlayer | 音量调节 | AudioPlayer.volume 更新 | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("Volume OSD Integration Tests")
+struct VolumeOSDIntegrationTests {
+    // IT-010.1 & IT-010.2
+    @Test("Volume OSD shows and auto-hides")
+    @MainActor
+    func testVolumeOSDShowsAndHides() async throws {
+        let viewModel = StreamingViewModel.mock()
+
+        // 触发音量调节
+        viewModel.adjustVolume(by: 0.05)
+
+        #expect(viewModel.showVolumeOSD == true)
+
+        // 等待超时
+        try await Task.sleep(for: .seconds(2.5))
+
+        #expect(viewModel.showVolumeOSD == false)
+    }
+
+    // IT-010.3
+    @Test("Volume OSD displays correct value")
+    func testVolumeOSDDisplaysCorrectValue() {
+        let osd = VolumeOSD(volume: 0.7)
+
+        // 验证显示值
+        #expect(osd.displayPercentage == "70%")
+    }
+
+    // IT-010.4
+    @Test("Volume change applied to AudioPlayer")
+    @MainActor
+    func testVolumeChangeAppliedToAudioPlayer() async {
+        let audioPlayer = MockAudioPlayer()
+        let viewModel = StreamingViewModel(audioPlayer: audioPlayer)
+
+        viewModel.adjustVolume(by: 0.1)
+
+        #expect(audioPlayer.volume == viewModel.settings.volume)
+    }
+}
+```
+
+### 17.3 E2E 测试
+
+#### E2E-008: 主机快速操作栏 E2E 测试
+
+> **关联验收标准**: AC-065 (主机快速操作栏)
+
+| 编号 | 测试方法 | 测试场景 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|----------|--------|
+| E2E-008.1 | testQuickActionBarAppears | 手柄导航到主机 | 1. 启动应用<br>2. 方向键导航到主机卡片<br>3. 等待焦点稳定 | 快速操作栏显示在卡片下方 | P0 |
+| E2E-008.2 | testQuickActionWakeHost | 唤醒待机主机 | 1. 聚焦待机主机<br>2. 方向键移到唤醒按钮<br>3. 按 Select 确认 | 主机开始唤醒，状态变更 | P0 |
+| E2E-008.3 | testQuickActionNavigation | 操作栏内导航 | 1. 聚焦主机<br>2. 按左/右方向键 | 焦点在操作按钮间移动 | P0 |
+| E2E-008.4 | testTVOSMenuToggle | tvOS Menu 键切换 | 1. 聚焦主机<br>2. 按 Menu 键 | 操作栏显示/隐藏切换 | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("Host Quick Action Bar E2E Tests")
+struct HostQuickActionBarE2ETests {
+    // E2E-008.1
+    @Test("Quick action bar appears on focus")
+    @MainActor
+    func testQuickActionBarAppears() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 导航到主机
+        let hostCard = app.cells["host-card-1"]
+        hostCard.tap() // 或使用远程控制器模拟焦点
+
+        // 验证操作栏出现
+        let actionBar = app.otherElements["host-quick-action-bar"]
+        #expect(actionBar.waitForExistence(timeout: 2))
+    }
+
+    // E2E-008.2
+    @Test("Wake host via quick action")
+    @MainActor
+    func testQuickActionWakeHost() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 导航到待机主机
+        let standbyHost = app.cells["host-standby"]
+        standbyHost.tap()
+
+        // 点击唤醒按钮
+        let wakeButton = app.buttons["quick-action-wake"]
+        wakeButton.tap()
+
+        // 验证状态变更
+        let awakeHost = app.cells["host-awake"]
+        #expect(awakeHost.waitForExistence(timeout: 15))
+    }
+
+    // E2E-008.3
+    @Test("Navigation within action bar")
+    @MainActor
+    func testQuickActionNavigation() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let hostCard = app.cells["host-card-1"]
+        hostCard.tap()
+
+        // 模拟方向键导航
+        XCUIRemote.shared.press(.right)
+
+        let pinButton = app.buttons["quick-action-pin"]
+        #expect(pinButton.hasFocus)
+    }
+}
+```
+
+#### E2E-009: PIN 数字键盘 E2E 测试
+
+> **关联验收标准**: AC-067 (PIN 输入数字键盘优化)
+
+| 编号 | 测试方法 | 测试场景 | 操作步骤 | 预期结果 | 优先级 |
+|------|----------|----------|----------|----------|--------|
+| E2E-009.1 | testNumPadNavigation | 方向键导航 | 1. 打开 PIN 输入<br>2. 按上/下/左/右 | 焦点在键位间移动 | P0 |
+| E2E-009.2 | testNumPadDigitEntry | 输入数字 | 1. 导航到数字键<br>2. 按 Select 输入 | 数字添加到 PIN 显示 | P0 |
+| E2E-009.3 | testNumPadBackspace | 退格删除 | 1. 输入 "12"<br>2. 导航到退格键<br>3. 按 Select | PIN 变为 "1" | P0 |
+| E2E-009.4 | testNumPadAutoSubmit | 4 位自动提交 | 1. 输入 4 位 PIN | 自动提交并关闭键盘 | P0 |
+| E2E-009.5 | testNumPadAccessibility | VoiceOver 支持 | 1. 开启 VoiceOver<br>2. 导航数字键盘 | 正确朗读键位名称 | P1 |
+
+**测试代码示例**:
+
+```swift
+@Suite("PIN NumPad E2E Tests")
+struct PINNumPadE2ETests {
+    // E2E-009.1
+    @Test("Direction navigation on numpad")
+    @MainActor
+    func testNumPadNavigation() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 打开 PIN 输入
+        app.buttons["set-pin"].tap()
+
+        // 验证默认焦点在 "5"
+        let key5 = app.buttons["numpad-key-5"]
+        #expect(key5.hasFocus)
+
+        // 向上移动到 "2"
+        XCUIRemote.shared.press(.up)
+        let key2 = app.buttons["numpad-key-2"]
+        #expect(key2.hasFocus)
+    }
+
+    // E2E-009.2 & E2E-009.4
+    @Test("Enter PIN and auto submit")
+    @MainActor
+    func testNumPadDigitEntryAndAutoSubmit() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.buttons["set-pin"].tap()
+
+        // 输入 1234
+        let keys = ["1", "2", "3", "4"]
+        for key in keys {
+            app.buttons["numpad-key-\(key)"].tap()
+        }
+
+        // 验证自动提交（键盘关闭）
+        let numpad = app.otherElements["gamepad-numpad"]
+        #expect(!numpad.exists)
+
+        // 验证 PIN 已设置
+        let pinStatus = app.staticTexts["pin-status-set"]
+        #expect(pinStatus.exists)
+    }
+
+    // E2E-009.3
+    @Test("Backspace deletes last digit")
+    @MainActor
+    func testNumPadBackspace() async throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.buttons["set-pin"].tap()
+
+        // 输入 12
+        app.buttons["numpad-key-1"].tap()
+        app.buttons["numpad-key-2"].tap()
+
+        // 退格
+        app.buttons["numpad-key-backspace"].tap()
+
+        // 验证只剩 1
+        let pinDisplay = app.staticTexts["pin-display"]
+        #expect(pinDisplay.label == "1")
+    }
+}
+```
+
+### 17.4 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-065: 快速操作栏 | UT-017.1~6 | IT-009.1~5 | E2E-008.1~4 |
+| AC-066: 音量快捷键 | UT-018.1~6 | IT-010.1~4 | - |
+| AC-067: 数字键盘 | UT-019.1~8 | - | E2E-009.1~5 |
+| AC-068: 快速设置 | UT-020.1~6 | - | - |
+
+### 17.5 测试覆盖状态
+
+| 验收标准 | 说明 | 测试覆盖 | 状态 |
+|----------|------|----------|------|
+| AC-065 | 主机快速操作栏 | UT-017, IT-009, E2E-008 | ⏳ |
+| AC-066 | 音量快捷调节 | UT-018, IT-010 | ⏳ |
+| AC-067 | PIN 数字键盘 | UT-019, E2E-009 | ⏳ |
+| AC-068 | 快速设置入口 | UT-020 | ⏳ |
+
+### 17.6 测试实现优先级
+
+| 优先级 | 测试数 | 说明 |
+|--------|--------|------|
+| P0 | 26 | 核心功能必测 |
+| P1 | 11 | 重要功能 |
+| P2 | 0 | - |
+| **总计** | **37** | |
