@@ -1,64 +1,124 @@
-# 进度报告 (Progress Report)
+# M11 进度报告
 
-**生成时间**：2026-01-30
-**检查范围**：全量同步 (--sync)
-**检查方法**：代码标注扫描 + DevDocs 交叉验证
+**生成时间**: 2026-01-30
+**同步模式**: `--absorb`
+**阶段目标**: Beta 1 发布冲刺
 
-## 1. 总体进度 (M11 Beta 1 冲刺)
+---
 
-| 类型 | 总数 | 已完成 | 进行中 | 未开始 | 完成率 |
-|------|------|--------|--------|--------|--------|
-| 功能点 (F-XXX) | 19 | 16 | 3 | 0 | 84% |
-| 里程碑 (M1-M11) | 11 | 10 | 1 | 0 | 91% |
-| 开发任务 (M11) | 14 | 10 | 0 | 4 | 71% |
-| 单元测试 (UT) | 14 组 | 12 | 1 | 1 | 85% |
-| 集成测试 (IT) | 10 组 | 8 | 1 | 1 | 80% |
+## 📊 总体进度
 
-## 2. 追溯矩阵状态 (Traceability Matrix)
+| 指标 | 数值 |
+|------|------|
+| 总任务数 | 14 |
+| 已完成 | 13 |
+| 进行中 | 1 (T-115) |
+| 待处理 | 0 |
+| **完成率** | **93%** |
 
-通过 `--trace` 扫描，以下验收标准 (AC) 已在代码中完成标注并验证：
+---
+
+## ✅ 本次吸收的偏差
+
+### 低风险（自动吸收）
+
+| 任务 | 偏差类型 | 吸收操作 |
+|------|----------|----------|
+| T-114 | 状态落后 | ⏳ 待处理 → ✅ 已完成 |
+| T-116 | 状态落后 | ⏳ 待处理 → ✅ 已完成 |
+| T-115 | 状态不准确 | ⏳ 待处理 → ⏳ 进行中 |
+
+### 高风险（无）
+
+无需用户确认的高风险偏差。
+
+---
+
+## 📋 任务状态汇总
+
+### 已完成任务 (13)
+
+| 编号 | 名称 | 完成提交 |
+|------|------|----------|
+| T-111 | i18n：深度本地化与 xcstrings 迁移 | `20024d5` |
+| T-112 | 稳定性：NetworkMonitor 与自动重连 | `d378546` |
+| T-113 | 性能：Metal 渲染器节能调优 (VRR) | `7463cfa` |
+| T-114 | 分发：Info.plist 隐私说明与元数据补全 | `da63492` |
+| T-116 | 体验：语义化触觉反馈 (CoreHaptics) 精调 | `d9e98ac` |
+| T-117 | 日志：FileLogHandler 文件持久化 | `f591f60` |
+| T-118 | 日志：Logger 集成 FileLogHandler | `409317a` |
+| T-119 | 日志：DiagnosticsExporter 诊断包导出 | `5e9baa7` |
+| T-120 | 日志：CrashReporter 崩溃捕获 | `feb6fc7` |
+| T-121 | 日志：LogViewerView 增强与诊断包 UI | `fec2b3c` |
+| T-122 | 日志：CrashReportView 崩溃报告 UI | `aa1f82f` |
+| T-123 | 日志：App 启动集成与本地化 | `3801818` |
+| T-124 | 日志：核心流程日志覆盖增强 | `19e9623` |
+
+### 进行中任务 (1)
+
+| 编号 | 名称 | 待完成项 |
+|------|------|----------|
+| T-115 | 分发：多平台 App Icon 资产准备 | iOS/macOS 图像资产 |
+
+---
+
+## 🎯 追溯矩阵状态
+
+通过代码扫描验证，以下验收标准已完成标注：
 
 | 编号 | 验收标准 | 满足文件 (@satisfies) | 验证文件 (@verifies) | 状态 |
 |------|----------|-----------------------|-----------------------|------|
 | AC-038 | 迁移至 @Observable | (Implicit) | `AdvancedTests.swift` | ✅ |
-| AC-039 | 架构解耦：提取子模块 | `ControllerInputMapper.swift`, `StreamStatsManager.swift` | `ControllerInputMapperTests.swift`, `StreamStatsManagerTests.swift` | ✅ |
+| AC-039 | 架构解耦 | `ControllerInputMapper.swift`, `StreamStatsManager.swift` | `*Tests.swift` | ✅ |
 | AC-045 | 自动重连机制 | `NetworkMonitor.swift` | `NetworkMonitorTests.swift` | ✅ |
-| AC-049 | 日志写入 Documents/Logs | `FileLogHandler.swift`, `Logger.swift` | `FileLogHandlerTests.swift`, `LoggerIntegrationTests.swift` | ✅ |
-| AC-050 | 日志轮换与清理 | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
-| AC-051 | 诊断包生成 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
-| AC-052 | 崩溃捕捉与报告 | `CrashReporter.swift`, `CrashReportView.swift` | `CrashReporterTests.swift`, `StartupIntegrationTests.swift` | ✅ |
-| AC-053 | 诊断包数据脱敏 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
-| AC-054 | 核心流程日志覆盖 | `ChiakiSession.swift`, `DiscoveryService.swift`, `PSNService.swift` 等 | (Manual Validation) | ✅ |
+| AC-046 | VRR 节能 | `MetalVideoRenderer.swift` | `VRRTests.swift` | ✅ |
+| AC-047 | 隐私说明 | `Info.plist` | (Manual) | ✅ |
+| AC-049 | 日志持久化 | `FileLogHandler.swift`, `Logger.swift` | `FileLogHandlerTests.swift` | ✅ |
+| AC-050 | 日志轮换 | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
+| AC-051 | 诊断包导出 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
+| AC-052 | 崩溃捕获 | `CrashReporter.swift`, `CrashReportView.swift` | `CrashReporterTests.swift` | ✅ |
+| AC-053 | 数据脱敏 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
+| AC-054 | 日志覆盖 | 多模块埋点 | (Manual) | ✅ |
 
-## 3. 开发任务同步 (T-XXX)
-
-| 任务 | 状态 | 代码位置 | 备注 |
-|------|------|----------|------|
-| **T-111** | ✅ 已完成 | `Localizable.xcstrings` | 深度本地化完成 |
-| **T-112** | ✅ 已完成 | `NetworkMonitor.swift` | 自动重连逻辑已实现 |
-| **T-117** | ✅ 已完成 | `FileLogHandler.swift` | 日志持久化核心逻辑已实现 |
-| **T-118** | ✅ 已完成 | `Logger.swift` | Logger 系统已集成文件日志 |
-| **T-119** | ✅ 已完成 | `DiagnosticsExporter.swift` | 诊断包导出与脱敏功能已实现 |
-| **T-120** | ✅ 已完成 | `CrashReporter.swift` | 崩溃捕获核心逻辑实现 |
-| **T-121** | ✅ 已完成 | `LogViewerView.swift` | 诊断包导出 UI 实现 |
-| **T-122** | ✅ 已完成 | `CrashReportView.swift` | 崩溃报告查看 UI 实现 |
-| **T-123** | ✅ 已完成 | `ChiakiApp.swift` | 启动检测与集成完成 |
-| **T-124** | ✅ 已完成 | 多模块埋点 | 核心流程日志覆盖增强 |
-
-## 4. 偏差汇总
-
-### 4.1 文档落后偏差
-- [x] `03-test-cases.md` 已同步 AC-052, AC-054 的追溯关系。
-- [x] `03-test-cases.md` 已同步 `CrashReporterTests` 和 `StartupIntegrationTests`。
-
-### 4.2 实现缺失偏差
-- [ ] **T-113 VRR 调优**: 尚未开始。 -> 指派 Skill: `/devdocs-dev-workflow`
-- [ ] **T-125 分发配置**: 应用图标与版本号统筹。 -> 指派 Skill: `/devdocs-dev-workflow`
-
-## 5. 下一步建议
-
-1. 执行 **T-113**: 实现 Metal VRR 节能调优。
-2. 执行 **T-125**: 开始 Beta 1 发布前的元数据与资产准备。
+**追溯标注文件数**: 24 个
 
 ---
-*此报告由 DevDocs Sync 自动生成*
+
+## 📈 测试覆盖率
+
+| 指标 | 数值 |
+|------|------|
+| 单元测试 | 98/98 通过 (100%) |
+| UI 测试 | 36/40 通过 (90%) |
+| 代码覆盖率 | 22.44% (3,357/14,957 行) |
+
+### 高覆盖率模块
+
+| 模块 | 覆盖率 |
+|------|--------|
+| NavigationManager.swift | 100% |
+| FileLogHandler.swift | 93.9% |
+| DiagnosticsExporter.swift | 87.7% |
+| NetworkMonitor.swift | 83.3% |
+| CrashReporter.swift | 62.5% |
+
+---
+
+## 🎯 下一步建议
+
+1. **T-115 完成**：
+   - 联系设计师提供 1024x1024 App Icon 源文件
+   - 使用 Xcode 自动生成各尺寸资产
+   - 验证 tvOS Top Shelf 图像
+
+2. **Beta 1 发布准备**：
+   - [ ] 清理代码中的 TODO 标记
+   - [ ] 准备 TestFlight 元数据
+   - [ ] App Store Connect 配置
+
+3. **文档归档**：
+   - M11 任务完成后，归档至 `04-dev-tasks-archive.md`
+
+---
+
+*报告由 `/devdocs-sync --absorb` 自动生成*

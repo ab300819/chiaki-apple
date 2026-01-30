@@ -1,6 +1,6 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务 (M11)
 
-> **状态更新**: 2026-01-28 (F-019 日志系统增量)
+> **状态更新**: 2026-01-30 (T-114/T-116 状态同步)
 > **阶段目标**: Beta 1 发布冲刺：生产就绪、体验打磨与稳定性增强 (M11)
 
 ## 任务概览
@@ -10,9 +10,9 @@
 | **T-111** | **i18n：深度本地化与 xcstrings 迁移** | P0 | 🟢 可选 | ✅ 已完成 |
 | **T-112** | **稳定性：NetworkMonitor 与自动重连** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-113** | **性能：Metal 渲染器节能调优 (VRR)** | P1 | ⚪ 不适用 | ✅ 已完成 |
-| **T-114** | **分发：Info.plist 隐私说明与元数据补全** | P1 | ⚪ 不适用 | ⏳ 待处理 |
-| **T-115** | **分发：多平台 App Icon 资产准备** | P2 | ⚪ 不适用 | ⏳ 待处理 |
-| **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-114** | **分发：Info.plist 隐私说明与元数据补全** | P1 | ⚪ 不适用 | ✅ 已完成 |
+| **T-115** | **分发：多平台 App Icon 资产准备** | P2 | ⚪ 不适用 | ⏳ 进行中 |
+| **T-116** | **体验：语义化触觉反馈 (CoreHaptics) 精调** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-117** | **日志：FileLogHandler 文件持久化** | P0 | 🔴 强制 | ✅ 已完成 |
 | **T-118** | **日志：Logger 集成 FileLogHandler** | P0 | 🟡 推荐 | ✅ 已完成 |
 | **T-119** | **日志：DiagnosticsExporter 诊断包导出** | P0 | 🔴 强制 | ✅ 已完成 |
@@ -61,11 +61,47 @@
   - [x] 低电量模式下自动降频。
 - **完成提交**: `f491c92` feat(core): implement Variable Refresh Rate (VRR) for power optimization (T-113)
 
-### T-114: 分发：Info.plist 隐私说明与元数据补全
+### T-114: 分发：Info.plist 隐私说明与元数据补全 ✅
 - **目标**: 满足 App Store 隐私审核要求。
 - **关联需求**: F-018, AC-047
-- **涉及文件**: `Info.plist`
-- **验收标准**: 包含具体的麦克风、蓝牙和局域网扫描用途说明。
+- **涉及文件**:
+  - `Chiaki/Resources/Info.plist` ✅
+- **验收标准**:
+  - [x] `NSLocalNetworkUsageDescription` - 局域网发现主机说明
+  - [x] `NSMicrophoneUsageDescription` - 语音聊天用途说明
+  - [x] `NSBluetoothAlwaysUsageDescription` - 控制器连接说明
+  - [x] `NSBonjourServices` - Remote Play 服务声明
+- **完成提交**: `da63492` chore(meta): add privacy usage descriptions (T-114)
+
+### T-115: 分发：多平台 App Icon 资产准备 ⏳
+- **目标**: 提供符合 Apple 规范的多尺寸 App Icon。
+- **关联需求**: F-018, AC-048
+- **涉及文件**:
+  - `Chiaki/Resources/Assets.xcassets/AppIcon.appiconset/`
+  - `ChiakiTV/Resources/Assets.xcassets/App Icon & Top Shelf Image.brandassets/`
+- **验收标准**:
+  - [ ] iOS App Icon 资产（1024x1024 + 自动生成尺寸）
+  - [ ] macOS App Icon 资产
+  - [x] tvOS App Icon 配置（已添加尺寸定义）
+- **当前进度**: tvOS 配置已完成，待设计师提供实际图像资产
+- **部分提交**: `a570925` chore(assets): add tvOS app icon size definitions (T-115)
+
+### T-116: 体验：语义化触觉反馈 (CoreHaptics) 精调 ✅
+- **目标**: 为核心操作提供一致的触觉反馈体验。
+- **关联需求**: F-007, AC-017
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/HapticsManager.swift` ✅
+  - `Chiaki/Core/Bridge/ChiakiSession.swift` (集成) ✅
+  - `Chiaki/Core/Streaming/StreamStatistics.swift` (集成) ✅
+- **验收标准**:
+  - [x] 实现 `HapticsManager` 单例管理器
+  - [x] 提供语义化反馈方法: `playSuccess()`, `playWarning()`, `playError()`, `playSelection()`
+  - [x] 支持 CoreHaptics 高级反馈: `playHeartbeat()`, `playRumble()`
+  - [x] 连接成功触发 success 反馈
+  - [x] 连接错误触发 error 反馈
+  - [x] 丢包警告触发 warning 反馈（带节流）
+  - [x] iOS/macOS 平台适配
+- **完成提交**: `d9e98ac` feat(haptics): add semantic haptic feedback manager (T-116)
 
 ---
 
