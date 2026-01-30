@@ -448,3 +448,172 @@
 ### 确认结果
 
 - [x] INS-027: 已确认 → T-135
+
+---
+
+## 洞察收集：手柄全操控 UI/UX 深度优化
+
+**收集时间**：2026-01-30
+**来源类型**：🎨 UI/UX 审查
+**分析范围**：导航结构、菜单层级、操作步骤、tvOS 适配
+
+### 背景
+
+用户使用 Chiaki 时主要依赖手柄操作，很少切换到触控或键盘。经过对应用导航结构的全面审查，发现以下特点：
+
+**当前优势**：
+- 顶层导航简洁（仅 2 个主标签：Hosts、Settings）
+- 设置菜单层级浅（最多 3 层）
+- tvOS 已有焦点管理 (`@FocusState`) 和命令处理
+- F-020 已规划基础手柄支持（焦点管理、组合键）
+
+**待改进领域**：
+| 问题类型 | 影响程度 | 当前状态 |
+|----------|----------|----------|
+| 常用操作步骤多 | 高 | 3+ 步访问常用功能 |
+| 文本/数字输入 | 中 | 依赖系统键盘 |
+| 流媒体中调整设置 | 中 | 需断开重连 |
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-028 | 主机快速操作栏（替代长按菜单） | 🎨 | P1 | 🔄 已转化 |
+| INS-029 | 流媒体中音量快捷调节 | 🎨 | P2 | 🔄 已转化 |
+| INS-030 | PIN 输入数字键盘优化 | 🎨 | P2 | 🔄 已转化 |
+| INS-031 | 设置快捷入口（流媒体中直接访问） | 🎨 | P3 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-028: 主机快速操作栏
+
+- **现状**: 唤醒、设置 PIN、删除等操作需要长按主机卡片打开上下文菜单，手柄操作需要 3 步（聚焦 → 长按 → 选择）
+- **建议**: 为选中的主机卡片添加底部快速操作栏，显示常用按钮
+- **影响范围**: HostListView.swift, TVHostCardView.swift
+- **预期收益**:
+  - 减少操作步骤：3 步 → 1 步
+  - 手柄 Select 键直接显示操作选项
+  - 避免长按等待时间
+- **实现要点**:
+  ```swift
+  // 选中主机时显示操作栏
+  if focusedHost == host.id {
+      HStack(spacing: 16) {
+          Button("唤醒") { wakeUp(host) }
+              .focused($focusedAction, equals: .wake)
+          Button("PIN") { showPinView(host) }
+              .focused($focusedAction, equals: .pin)
+          Button("删除") { deleteHost(host) }
+              .focused($focusedAction, equals: .delete)
+      }
+      .transition(.move(edge: .bottom).combined(with: .opacity))
+  }
+  ```
+
+#### INS-029: 流媒体中音量快捷调节
+
+- **现状**: 调整音量需要：点击屏幕 → 打开控制菜单 → 找到滑块 → 调整（4 步）
+- **建议**: 添加手柄快捷键：PS+L2 音量减、PS+R2 音量加（±5%），无需打开菜单
+- **影响范围**: ControllerShortcutDetector.swift, StreamingViewModel.swift
+- **预期收益**:
+  - 游戏中快速调节音量
+  - 无需中断游戏打开菜单
+  - 与常见游戏机操作习惯一致
+- **实现要点**:
+  ```swift
+  // 在 ControllerShortcutDetector 中扩展
+  var onVolumeUp: (() -> Void)?
+  var onVolumeDown: (() -> Void)?
+
+  // PS + L2 → 音量 -5%
+  if buttons.contains([.ps, .l2]) && !buttons.contains(.r2) {
+      onVolumeDown?()
+  }
+  // PS + R2 → 音量 +5%
+  if buttons.contains([.ps, .r2]) && !buttons.contains(.l2) {
+      onVolumeUp?()
+  }
+  ```
+- **注意**: 需要显示临时音量提示（OSD 风格）
+
+#### INS-030: PIN 输入数字键盘优化
+
+- **现状**: ConsolePinView 使用标准 TextField，tvOS 需要调出系统键盘输入 4 位数字
+- **建议**: 创建手柄友好的数字键盘视图，用方向键选择数字
+- **影响范围**: ConsolePinView.swift, 新建 GamepadNumPad.swift
+- **预期收益**:
+  - 消除对系统键盘的依赖
+  - 手柄方向键 + 确认键即可输入
+  - 更快的输入体验（约 3 秒 vs 10+ 秒）
+- **实现要点**:
+  ```swift
+  // 3x4 数字键盘布局
+  struct GamepadNumPad: View {
+      @Binding var value: String
+      @FocusState private var focusedKey: String?
+
+      let keys = [
+          ["1", "2", "3"],
+          ["4", "5", "6"],
+          ["7", "8", "9"],
+          ["", "0", "⌫"]
+      ]
+
+      var body: some View {
+          VStack(spacing: 12) {
+              ForEach(keys, id: \.self) { row in
+                  HStack(spacing: 12) {
+                      ForEach(row, id: \.self) { key in
+                          NumPadKey(key: key, action: { handleKey(key) })
+                              .focused($focusedKey, equals: key)
+                      }
+                  }
+              }
+          }
+      }
+  }
+  ```
+
+#### INS-031: 设置快捷入口
+
+- **现状**: 流媒体中修改视频设置需要：断开 → 返回主界面 → 设置 → 视频 → 修改 → 重新连接（6 步）
+- **建议**: 在控制菜单中添加"快速设置"入口，可直接调整常用视频/音频参数
+- **影响范围**: StreamingControlsView.swift, 新建 QuickSettingsSection.swift
+- **预期收益**:
+  - 流媒体中直接调整码率、分辨率
+  - 无需断开连接即可优化体验
+  - 减少 6 步操作为 2 步
+- **实现要点**:
+  ```swift
+  // 在 StreamingControlsView 中添加
+  Section {
+      DisclosureGroup("快速设置") {
+          // 码率调整
+          Stepper("码率: \(bitrate/1000)Mbps",
+                  value: $bitrate,
+                  in: 5000...50000,
+                  step: 5000)
+
+          // 分辨率选择（需要重连生效）
+          Picker("分辨率", selection: $resolution) {
+              Text("720p").tag(Resolution.r720p)
+              Text("1080p").tag(Resolution.r1080p)
+          }
+          .disabled(true) // 标注需要重连
+
+          Text("* 分辨率变更需重新连接")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+      }
+  }
+  ```
+- **注意**: 部分设置（如分辨率）无法热更新，需要标注"重连后生效"
+
+---
+
+### 确认结果
+
+- [x] INS-028: 已确认 → F-022 / AC-065
+- [x] INS-029: 已确认 → F-022 / AC-066
+- [x] INS-030: 已确认 → F-022 / AC-067
+- [x] INS-031: 已确认 → F-022 / AC-068
