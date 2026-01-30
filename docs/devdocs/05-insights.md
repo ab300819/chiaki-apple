@@ -392,3 +392,59 @@
 - [x] INS-024: 已确认 → F-021 / AC-062
 - [x] INS-025: 已确认 → F-021 / AC-063
 - [x] INS-026: 已确认 → F-021 / AC-064
+
+---
+
+## 洞察收集：StreamingOverlay 信息完善
+
+**收集时间**：2026-01-30
+**来源类型**：💡 内部反馈
+
+### 背景
+
+用户建议在 StreamingOverlay 增加 HDR 标志，以便直观确认当前流的视频规格。
+
+**现有代码支持情况**：
+- `ChiakiVideoCodec.h265HDR` 已定义，提供 `isHDR` 属性
+- `StreamSettings.hdrEnabled` 控制 HDR 请求
+- `StreamingOverlay` 显示分辨率、帧率、延迟、码率、丢包
+- **但未显示 HDR 状态**
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-027 | StreamingOverlay HDR 标志 | 💡 | P2 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-027: StreamingOverlay HDR 标志
+
+- **现状**: StreamingOverlay 不显示当前流是否为 HDR
+- **建议**: 在分辨率旁添加 "HDR" 徽章
+- **影响范围**: StreamStatsManager.swift, StreamingOverlay.swift
+- **预期收益**: 用户可直观确认 HDR 状态，完善视频规格信息展示
+- **实现要点**:
+  ```swift
+  // StreamStatsManager
+  var isHDR: Bool = false
+
+  // StreamingOverlay - 分辨率旁显示 HDR 徽章
+  HStack(spacing: 16) {
+      StatItem(icon: "display", value: stats.currentResolution)
+      if stats.isHDR {
+          Text("HDR")
+              .font(.system(size: 10, weight: .bold))
+              .padding(.horizontal, 6)
+              .padding(.vertical, 2)
+              .background(LinearGradient(...))
+              .clipShape(RoundedRectangle(cornerRadius: 4))
+      }
+  }
+  ```
+
+---
+
+### 确认结果
+
+- [x] INS-027: 已确认 → T-135
