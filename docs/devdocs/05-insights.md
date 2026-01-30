@@ -172,6 +172,7 @@
 
 **收集时间**：2026-01-30
 **来源类型**：💡 内部反馈 + 🎨 UI/UX 审查
+**参考文档**：`controller-insight.md` (GameController 框架调研)
 
 ### 背景
 
@@ -180,6 +181,11 @@
 1. 流媒体控制菜单必须触摸屏幕才能操作
 2. tvOS 上焦点反馈不明确
 3. 缺少手柄快捷键支持
+
+**技术背景**（来自 controller-insight.md）：
+- GameController 框架支持 iOS / iPadOS / macOS / tvOS / visionOS
+- 系统原生支持 DualSense、DualShock 4、Xbox、Switch Pro、MFi 控制器
+- 开发层面无需区分厂商，使用 `physicalInputProfile` 检测能力而非型号
 
 ### 建议汇总
 
@@ -198,31 +204,70 @@
 - **现状**: `StreamingControlsView` 中的按钮、滑块均无 `@FocusState` 管理
 - **建议**: 添加焦点枚举和 `.focused()` 修饰符
 - **影响范围**: StreamingControlsView.swift
+- **技术参考**: SwiftUI `@FocusState` + `FocusedValue` 实现焦点追踪
+- **实现要点**:
+  ```swift
+  enum ControlFocus: Hashable {
+      case disconnectButton, micToggle, volumeSlider, qualityPicker
+  }
+  @FocusState private var focusedControl: ControlFocus?
+  ```
 
 #### INS-018: tvOS 菜单按钮无焦点反馈
 - **现状**: tvOS 控制菜单按钮使用 `.buttonStyle(.plain)`，无焦点视觉反馈
 - **建议**: 创建 `FocusableButtonStyle`，焦点时添加边框/缩放效果
 - **影响范围**: StreamingControlsView.swift
+- **技术参考**: tvOS HIG 推荐焦点时 1.05x 缩放 + 阴影
+- **实现要点**:
+  ```swift
+  struct FocusableButtonStyle: ButtonStyle {
+      @Environment(\.isFocused) var isFocused
+      func makeBody(configuration: Configuration) -> some View {
+          configuration.label
+              .scaleEffect(isFocused ? 1.05 : 1.0)
+              .overlay(isFocused ? RoundedRectangle(...).stroke(...) : nil)
+      }
+  }
+  ```
 
 #### INS-019: 控制菜单无焦点陷阱
 - **现状**: 菜单打开时手柄方向键可能操作背景视频层
-- **建议**: 使用 `FocusScope` 或条件禁用实现焦点隔离
+- **建议**: 使用 `focusSection()` 或条件 disabled 实现焦点隔离
 - **影响范围**: StreamingView.swift
+- **技术参考**: tvOS `focusSection()` modifier 创建焦点边界
+- **实现要点**: 菜单显示时禁用背景层的焦点响应
 
 #### INS-020: tvOS 方向键导航不完整
 - **现状**: 仅处理 `onExitCommand` 和 `onPlayPauseCommand`
 - **建议**: 添加 `onMoveCommand` 处理完整方向键导航
 - **影响范围**: StreamingView.swift
+- **技术参考**: tvOS 支持 `.onMoveCommand { direction in ... }`
+- **实现要点**:
+  ```swift
+  .onMoveCommand { direction in
+      switch direction {
+      case .up, .down, .left, .right: handleNavigation(direction)
+      @unknown default: break
+      }
+  }
+  ```
 
 #### INS-021: 手柄快捷操作缺失
 - **现状**: 必须通过触摸 UI 才能打开控制菜单
 - **建议**: 添加组合键：PS+Options 打开菜单，L1+R1+PS 断开连接
 - **影响范围**: ControllerManager.swift, StreamingViewModel.swift
+- **技术参考**: GameController 通过 `valueChangedHandler` 检测按键组合
+- **实现要点**:
+  - 在输入映射层（推荐结构第 2 层）检测组合键
+  - 组合键不应转发到 PlayStation（仅本地 UI 操作）
+  - 需要防抖机制避免误触发（建议 200ms 延迟确认）
 
 #### INS-022: 控制菜单关闭后焦点丢失
 - **现状**: 关闭菜单后焦点可能跳转到意外位置
 - **建议**: 实现焦点记忆和恢复逻辑
 - **影响范围**: StreamingControlsView.swift
+- **技术参考**: SwiftUI `@FocusState` 绑定可编程设置
+- **实现要点**: 记录菜单打开前的焦点状态，关闭时恢复
 
 ---
 
@@ -241,6 +286,7 @@
 
 **收集时间**：2026-01-30
 **来源类型**：📄 技术审计
+**参考文档**：`controller-insight.md` (GameController 框架调研)
 
 ### 背景
 
@@ -255,6 +301,11 @@
 - ChiakiControllerInput 序列化（libchiaki C 协议桥接）
 - 虚拟触控手柄（非物理控制器）
 - macOS 键盘映射（GameController 不支持键盘）
+
+**调研结论**（来自 controller-insight.md）：
+> **根据"能力是否存在"启用功能，而不是根据"型号字符串"判断**
+> - 使用 `physicalInputProfile` 检测能力（推荐）
+> - 避免依赖 `vendorName`（不稳定）
 
 ### 建议汇总
 
@@ -273,6 +324,19 @@
 - **建议**: 实现 `GCDualSenseAdaptiveTriggers` 支持，解码 PS5 扳机效果事件
 - **影响范围**: ControllerManager.swift, ChiakiSessionWrapper.swift
 - **预期收益**: 支持 PS5 游戏的自适应扳机反馈
+- **技术参考** (controller-insight.md):
+  - 自适应扳机：✅（iOS 16+）支持阻力/区间反馈
+  - USB 连接能力通常比蓝牙完整
+  - macOS 支持度通常高于 iOS
+- **实现要点**:
+  ```swift
+  if let dualSense = controller.physicalInputProfile as? GCDualSenseGamepad,
+     let triggers = dualSense.leftTrigger.adaptiveTriggers {
+      // 设置扳机效果
+      triggers.setModeFeedbackWithStartPosition(0.3, resistiveStrength: 0.8)
+  }
+  ```
+- **注意**: 需要解码 libchiaki 的 `ChiakiSessionEvent.triggerEffects` 并映射到 GameController 格式
 
 #### INS-024: 启用触控板位置追踪
 
@@ -280,6 +344,17 @@
 - **建议**: 映射触控板 X/Y 坐标到 `ChiakiControllerTouch` 结构
 - **影响范围**: ControllerManager.swift
 - **预期收益**: 支持需要触控板位置的 PS5 游戏
+- **技术参考** (controller-insight.md):
+  - 触摸板：✅ 支持坐标 + 按压
+- **实现要点**:
+  ```swift
+  if let touchpad = dualSense.touchpadButton {
+      // 触控板支持坐标追踪
+      let x = touchpad.touchSurface?.x ?? 0
+      let y = touchpad.touchSurface?.y ?? 0
+      // 映射到 ChiakiControllerTouch
+  }
+  ```
 
 #### INS-025: 统一 Haptics 引擎实例
 
@@ -287,6 +362,12 @@
 - **建议**: 统一由 HapticsManager 管理，ControllerManager 调用其接口
 - **影响范围**: ControllerManager.swift, HapticsManager.swift
 - **预期收益**: 减少资源占用，避免潜在冲突
+- **技术参考** (controller-insight.md):
+  - 高级震动：✅ 支持自动降级兼容
+- **实现要点**:
+  - HapticsManager 提供 `func applyRumble(left: Float, right: Float)` 接口
+  - ControllerManager 移除本地 `CHHapticEngine` 初始化
+  - 引擎生命周期由 HapticsManager 统一管理
 
 #### INS-026: 添加控制器电池电量显示
 
@@ -294,6 +375,14 @@
 - **建议**: 在 UI 中显示连接手柄的电量
 - **影响范围**: ControllerManager.swift, UI 层
 - **预期收益**: 用户体验提升
+- **实现要点**:
+  ```swift
+  if let battery = controller.battery {
+      let level = battery.batteryLevel  // 0.0 ~ 1.0
+      let state = battery.batteryState  // .charging, .discharging, .full
+  }
+  ```
+- **UI 建议**: 在控制器信息区域显示电池图标，低于 20% 时显示警告色
 
 ---
 
