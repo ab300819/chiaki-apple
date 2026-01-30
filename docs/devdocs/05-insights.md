@@ -234,3 +234,72 @@
 - [x] INS-020: 已确认 → F-020 / AC-058
 - [x] INS-021: 已确认 → F-020 / AC-059
 - [x] INS-022: 已确认 → F-020 / AC-060
+
+---
+
+## 洞察收集：GameController 框架使用评估
+
+**收集时间**：2026-01-30
+**来源类型**：📄 技术审计
+
+### 背景
+
+用户询问是否可以更多依赖 `GameController` 框架来简化手柄管理。经调研，当前实现已充分利用 GameController 框架：
+
+- 控制器发现/连接：✅ 使用 `GCController.controllers()` 和通知系统
+- 按钮/摇杆/扳机：✅ 使用 `GCExtendedGamepad` 属性
+- Motion 传感器：✅ 使用 `GCMotion`
+- LED 控制：✅ 使用 `GCLight`
+
+**必须自定义的部分**（无法用 GameController 替代）：
+- ChiakiControllerInput 序列化（libchiaki C 协议桥接）
+- 虚拟触控手柄（非物理控制器）
+- macOS 键盘映射（GameController 不支持键盘）
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-023 | 启用 DualSense 自适应扳机 | 📄 | P2 | 🔄 已转化 |
+| INS-024 | 启用触控板位置追踪 | 📄 | P2 | 🔄 已转化 |
+| INS-025 | 统一 Haptics 引擎实例 | 📄 | P1 | 🔄 已转化 |
+| INS-026 | 添加控制器电池电量显示 | 📄 | P3 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-023: 启用 DualSense 自适应扳机
+
+- **现状**: `adaptiveTriggersEnabled` 属性已声明但未使用（ControllerManager.swift Line 72）
+- **建议**: 实现 `GCDualSenseAdaptiveTriggers` 支持，解码 PS5 扳机效果事件
+- **影响范围**: ControllerManager.swift, ChiakiSessionWrapper.swift
+- **预期收益**: 支持 PS5 游戏的自适应扳机反馈
+
+#### INS-024: 启用触控板位置追踪
+
+- **现状**: 仅检测触控板按钮状态，未使用 `GCDualSenseGamepadTouchpadInput` 位置数据
+- **建议**: 映射触控板 X/Y 坐标到 `ChiakiControllerTouch` 结构
+- **影响范围**: ControllerManager.swift
+- **预期收益**: 支持需要触控板位置的 PS5 游戏
+
+#### INS-025: 统一 Haptics 引擎实例
+
+- **现状**: ControllerManager 和 HapticsManager 各自创建 `CHHapticEngine` 实例
+- **建议**: 统一由 HapticsManager 管理，ControllerManager 调用其接口
+- **影响范围**: ControllerManager.swift, HapticsManager.swift
+- **预期收益**: 减少资源占用，避免潜在冲突
+
+#### INS-026: 添加控制器电池电量显示
+
+- **现状**: `GCController.battery` 属性未使用
+- **建议**: 在 UI 中显示连接手柄的电量
+- **影响范围**: ControllerManager.swift, UI 层
+- **预期收益**: 用户体验提升
+
+---
+
+### 确认结果
+
+- [x] INS-023: 已确认 → F-021 / AC-061
+- [x] INS-024: 已确认 → F-021 / AC-062
+- [x] INS-025: 已确认 → F-021 / AC-063
+- [x] INS-026: 已确认 → F-021 / AC-064

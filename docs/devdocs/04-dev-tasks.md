@@ -1,6 +1,6 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务 (M11)
 
-> **状态更新**: 2026-01-30 (F-020 手柄操作友好化)
+> **状态更新**: 2026-01-30 (F-021 GameController 深度集成)
 > **阶段目标**: Beta 1 发布冲刺：生产就绪、体验打磨与稳定性增强 (M11)
 
 ## 任务概览
@@ -27,6 +27,10 @@
 | **T-128** | **手柄：tvOS 方向键导航** | P1 | 🟢 可选 | ⏳ 待处理 |
 | **T-129** | **手柄：组合键快捷操作** | P1 | 🔴 强制 | ⏳ 待处理 |
 | **T-130** | **手柄：焦点恢复逻辑** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
+| **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
 
 ## 任务详情
 
@@ -408,6 +412,75 @@
 
 ---
 
+## F-021 GameController 深度集成任务 (T-131 ~ T-134)
+
+> **来源**: F-021 GameController 深度集成 (INS-023 ~ INS-026)
+> **关联需求**: AC-061 ~ AC-064
+
+### T-131: DualSense 自适应扳机支持
+
+- **目标**: 启用 DualSense 自适应扳机效果，增强游戏沉浸感。
+- **关联需求**: F-021, AC-061
+- **TDD 模式**: 🟢 可选（硬件依赖）
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerManager.swift`
+  - `Chiaki/Core/Session/ChiakiSessionWrapper.swift`
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 使用 `GCDualSenseAdaptiveTriggers` API
+  - [ ] 解码 ChiakiSessionEvent.triggerEffects 事件
+  - [ ] 映射 PS5 扳机效果到 GameController 格式
+  - [ ] 支持禁用自适应扳机的设置选项
+
+### T-132: 触控板位置追踪
+
+- **目标**: 支持 DualSense 触控板位置追踪，解锁需要触控板的 PS5 游戏。
+- **关联需求**: F-021, AC-062
+- **TDD 模式**: 🟢 可选（硬件依赖）
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerManager.swift`
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 使用 `GCDualSenseGamepadTouchpadInput` 获取位置数据
+  - [ ] 映射 X/Y 坐标到 `ChiakiControllerTouch` 结构
+  - [ ] 支持多点触控（如果 API 支持）
+  - [ ] 触控板按下与位置数据同时上报
+
+### T-133: Haptics 引擎统一
+
+- **目标**: 统一 CHHapticEngine 实例管理，避免资源冲突。
+- **关联需求**: F-021, AC-063
+- **TDD 模式**: 🟡 推荐
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerManager.swift`
+  - `Chiaki/Core/Haptics/HapticsManager.swift`
+- **依赖**: 无
+- **验收标准**:
+  - [ ] HapticsManager 提供共享的 CHHapticEngine 实例
+  - [ ] ControllerManager 通过 HapticsManager 接口执行触觉反馈
+  - [ ] 移除 ControllerManager 中的重复引擎初始化代码
+  - [ ] 引擎生命周期由 HapticsManager 统一管理
+- **测试方法**:
+  - [ ] UT-21.1: 验证引擎单例行为
+  - [ ] UT-21.2: 验证跨模块调用正确性
+
+### T-134: 控制器电池电量显示
+
+- **目标**: 在 UI 中显示连接手柄的电池电量。
+- **关联需求**: F-021, AC-064
+- **TDD 模式**: 🟢 可选（UI 层）
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerManager.swift`
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift`（或新建电池指示组件）
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 使用 `GCController.battery` 获取电量信息
+  - [ ] 在控制器信息中暴露电量属性
+  - [ ] UI 显示电量图标或百分比
+  - [ ] 低电量时显示警告（<20%）
+
+---
+
 ## 依赖关系图
 
 ```mermaid
@@ -456,6 +529,14 @@ graph TD
     T127 --> T128
     T125 --> T130
     T127 --> T130
+
+    %% GameController 深度集成任务
+    T131[T-131: 自适应扳机]
+    T132[T-132: 触控板追踪]
+    T133[T-133: Haptics 统一]
+    T134[T-134: 电池显示]
+
+    %% T-131~T-134 无强依赖，可并行
 ```
 
 ## 执行检查清单
