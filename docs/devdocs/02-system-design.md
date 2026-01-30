@@ -3601,3 +3601,653 @@ struct StreamingControlsView: View {
 | AC-062: 触控板追踪 | `setupTouchpadInput()` + `TouchPoint` | 多点触控位置 |
 | AC-063: Haptics 统一 | `HapticsManager.shared` | 单例引擎管理 |
 | AC-064: 电池显示 | `BatteryInfo` + `ControllerBatteryIndicator` | 电量图标 + 低电量警告 |
+
+---
+
+## 13. 手柄操控 UI/UX 优化设计 [增量]
+
+> **变更来源**: F-022 手柄操控 UI/UX 优化 (INS-028 ~ INS-031)
+> **关联需求**: AC-065 ~ AC-068
+> **设计版本**: v1.5.0
+
+### 13.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| HostListView / TVHostCardView | 修改 | 添加快速操作栏，替代长按菜单 |
+| ControllerShortcutDetector | 修改 | 扩展 PS+L2/R2 音量快捷键检测 |
+| StreamingViewModel | 修改 | 添加音量快捷调节逻辑 |
+| ConsolePinView | 修改 | 集成数字键盘组件 |
+| StreamingControlsView | 修改 | 添加快速设置 Section |
+| HostQuickActionBar | 新增 | 主机快速操作栏组件 |
+| GamepadNumPad | 新增 | 手柄友好的数字键盘 |
+| QuickSettingsSection | 新增 | 流媒体快速设置面板 |
+| VolumeOSD | 新增 | 音量调节浮层提示 |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| 快速操作栏 | ✅ 兼容 | 纯 UI 增强，长按菜单保留作为备选 |
+| 音量快捷键 | ✅ 兼容 | 可选功能，不影响现有操作 |
+| 数字键盘 | ✅ 兼容 | 替代系统键盘，功能等效 |
+| 快速设置 | ✅ 兼容 | 增量功能，不影响完整设置页 |
+
+### 13.2 主机快速操作栏设计（关联 AC-065）
+
+#### 设计思路
+
+- 当主机卡片获得焦点时，底部显示快速操作栏
+- 操作栏包含：唤醒/连接、PIN 设置、删除
+- tvOS 使用 swipe 手势或 Menu 键触发
+- iOS/macOS 保留长按上下文菜单作为备选
+
+#### 焦点状态枚举
+
+```swift
+/// 主机卡片快速操作焦点
+enum HostQuickAction: Hashable {
+    case wake       // 唤醒
+    case connect    // 连接
+    case pin        // 设置 PIN
+    case delete     // 删除
+}
+```
+
+#### HostQuickActionBar 组件
+
+```swift
+/// 主机快速操作栏（关联 AC-065）
+struct HostQuickActionBar: View {
+    let host: Host
+    let onWake: () -> Void
+    let onConnect: () -> Void
+    let onSetPin: () -> Void
+    let onDelete: () -> Void
+
+    @FocusState private var focusedAction: HostQuickAction?
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // 唤醒/连接按钮（根据主机状态）
+            if host.state == .standby {
+                ActionButton(
+                    icon: "power",
+                    label: L10n.Host.wake,
+                    action: onWake
+                )
+                .focused($focusedAction, equals: .wake)
+            } else if host.state == .ready {
+                ActionButton(
+                    icon: "play.fill",
+                    label: L10n.Host.connect,
+                    action: onConnect
+                )
+                .focused($focusedAction, equals: .connect)
+            }
+
+            ActionButton(
+                icon: "lock.shield",
+                label: L10n.Host.setPin,
+                action: onSetPin
+            )
+            .focused($focusedAction, equals: .pin)
+
+            ActionButton(
+                icon: "trash",
+                label: L10n.Host.delete,
+                role: .destructive,
+                action: onDelete
+            )
+            .focused($focusedAction, equals: .delete)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(.rect(cornerRadius: ChiakiTheme.Radius.medium))
+        .onAppear {
+            // 默认聚焦到第一个操作
+            focusedAction = host.state == .standby ? .wake : .connect
+        }
+    }
+}
+
+/// 操作按钮子组件
+private struct ActionButton: View {
+    let icon: String
+    let label: String
+    var role: ButtonRole? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(role: role, action: action) {
+            Label(label, systemImage: icon)
+        }
+        .buttonStyle(FocusableButtonStyle())
+    }
+}
+```
+
+#### HostListView 集成
+
+```swift
+struct HostListView: View {
+    @FocusState private var focusedHost: Host.ID?
+    @State private var showQuickActions = false
+
+    var body: some View {
+        ForEach(hosts) { host in
+            VStack(spacing: 8) {
+                HostCardView(host: host)
+                    .focused($focusedHost, equals: host.id)
+
+                // 快速操作栏：聚焦时显示
+                if focusedHost == host.id && showQuickActions {
+                    HostQuickActionBar(
+                        host: host,
+                        onWake: { wakeHost(host) },
+                        onConnect: { connectToHost(host) },
+                        onSetPin: { showPinSheet(host) },
+                        onDelete: { deleteHost(host) }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: focusedHost)
+        }
+        #if os(tvOS)
+        .onPlayPauseCommand {
+            // Menu 键切换快速操作栏显示
+            showQuickActions.toggle()
+        }
+        #endif
+    }
+}
+```
+
+### 13.3 音量快捷调节设计（关联 AC-066）
+
+#### 设计思路
+
+- 扩展 `ControllerShortcutDetector` 检测 PS+L2/R2
+- 音量调节步长为 5%
+- 显示临时 OSD 提示当前音量
+- 防止快速重复触发（节流 200ms）
+
+#### ControllerShortcutDetector 扩展
+
+```swift
+extension ControllerShortcutDetector {
+    /// 音量快捷键回调
+    var onVolumeUp: (() -> Void)?
+    var onVolumeDown: (() -> Void)?
+
+    /// 检测音量快捷键（关联 AC-066）
+    private func detectVolumeShortcuts(_ buttons: Set<GamepadButton>) {
+        let now = Date()
+
+        // PS + L2 → 音量 -5%
+        if buttons.contains([.ps, .l2]) && !buttons.contains(.r2) {
+            if now.timeIntervalSince(lastVolumeChange) >= volumeThrottleInterval {
+                onVolumeDown?()
+                lastVolumeChange = now
+            }
+        }
+
+        // PS + R2 → 音量 +5%
+        if buttons.contains([.ps, .r2]) && !buttons.contains(.l2) {
+            if now.timeIntervalSince(lastVolumeChange) >= volumeThrottleInterval {
+                onVolumeUp?()
+                lastVolumeChange = now
+            }
+        }
+    }
+
+    private var lastVolumeChange = Date.distantPast
+    private let volumeThrottleInterval: TimeInterval = 0.2  // 200ms 节流
+}
+```
+
+#### VolumeOSD 组件
+
+```swift
+/// 音量调节 OSD 浮层（关联 AC-066）
+struct VolumeOSD: View {
+    let volume: Float  // 0.0 ~ 1.0
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: volumeIcon)
+                .font(.system(size: 24))
+                .foregroundStyle(.white)
+
+            // 音量条
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(.white.opacity(0.3))
+
+                    Capsule()
+                        .fill(.white)
+                        .frame(width: geo.size.width * CGFloat(volume))
+                }
+            }
+            .frame(width: 120, height: 6)
+
+            Text("\(Int(volume * 100))%")
+                .font(.system(size: 16, design: .monospaced))
+                .foregroundStyle(.white)
+                .frame(width: 44, alignment: .trailing)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(.ultraThinMaterial.opacity(0.9))
+        .clipShape(.rect(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.3), radius: 8)
+    }
+
+    private var volumeIcon: String {
+        if volume == 0 { return "speaker.slash.fill" }
+        if volume < 0.33 { return "speaker.wave.1.fill" }
+        if volume < 0.66 { return "speaker.wave.2.fill" }
+        return "speaker.wave.3.fill"
+    }
+}
+```
+
+#### StreamingViewModel 集成
+
+```swift
+extension StreamingViewModel {
+    /// 设置音量快捷键（关联 AC-066）
+    func setupVolumeShortcuts() {
+        shortcutDetector.onVolumeUp = { [weak self] in
+            self?.adjustVolume(by: 0.05)
+        }
+        shortcutDetector.onVolumeDown = { [weak self] in
+            self?.adjustVolume(by: -0.05)
+        }
+    }
+
+    /// 调节音量
+    /// - Parameter delta: 变化量 (-1.0 ~ 1.0)
+    func adjustVolume(by delta: Float) {
+        let newVolume = max(0, min(1, settings.volume + delta))
+        settings.volume = newVolume
+
+        // 显示 OSD
+        showVolumeOSD = true
+
+        // 2 秒后自动隐藏
+        volumeOSDTask?.cancel()
+        volumeOSDTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            showVolumeOSD = false
+        }
+    }
+
+    @Published var showVolumeOSD = false
+    private var volumeOSDTask: Task<Void, Never>?
+}
+```
+
+### 13.4 PIN 输入数字键盘设计（关联 AC-067）
+
+#### 设计思路
+
+- 创建 3×4 数字键盘网格
+- 使用 `@FocusState` 管理键位焦点
+- 支持方向键导航、确认键输入
+- 退格键删除最后一位
+- 输入完成 4 位自动提交
+
+#### GamepadNumPad 组件
+
+```swift
+/// 手柄友好的数字键盘（关联 AC-067）
+struct GamepadNumPad: View {
+    @Binding var value: String
+    let maxLength: Int = 4
+    let onComplete: (String) -> Void
+
+    @FocusState private var focusedKey: NumPadKey?
+
+    enum NumPadKey: String, CaseIterable {
+        case key1 = "1", key2 = "2", key3 = "3"
+        case key4 = "4", key5 = "5", key6 = "6"
+        case key7 = "7", key8 = "8", key9 = "9"
+        case empty = "", key0 = "0", backspace = "⌫"
+
+        var displayValue: String { rawValue }
+        var isBackspace: Bool { self == .backspace }
+        var isEmpty: Bool { self == .empty }
+    }
+
+    private let keys: [[NumPadKey]] = [
+        [.key1, .key2, .key3],
+        [.key4, .key5, .key6],
+        [.key7, .key8, .key9],
+        [.empty, .key0, .backspace]
+    ]
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // PIN 显示
+            HStack(spacing: 12) {
+                ForEach(0..<maxLength, id: \.self) { index in
+                    PinDigitView(
+                        digit: index < value.count ? String(value[value.index(value.startIndex, offsetBy: index)]) : nil,
+                        isFilled: index < value.count
+                    )
+                }
+            }
+            .padding(.bottom, 8)
+
+            // 数字键盘
+            VStack(spacing: 12) {
+                ForEach(keys.indices, id: \.self) { rowIndex in
+                    HStack(spacing: 12) {
+                        ForEach(keys[rowIndex], id: \.rawValue) { key in
+                            NumPadButton(key: key) {
+                                handleKeyPress(key)
+                            }
+                            .focused($focusedKey, equals: key)
+                            .disabled(key.isEmpty)
+                            .opacity(key.isEmpty ? 0 : 1)
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            focusedKey = .key5  // 默认聚焦到中间
+        }
+    }
+
+    private func handleKeyPress(_ key: NumPadKey) {
+        if key.isBackspace {
+            if !value.isEmpty {
+                value.removeLast()
+            }
+        } else if !key.isEmpty && value.count < maxLength {
+            value.append(key.rawValue)
+
+            // 输入完成自动提交
+            if value.count == maxLength {
+                onComplete(value)
+            }
+        }
+    }
+}
+
+/// PIN 数字显示框
+private struct PinDigitView: View {
+    let digit: String?
+    let isFilled: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isFilled ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1))
+                .frame(width: 48, height: 56)
+
+            if let digit {
+                Text(digit)
+                    .font(.system(size: 24, weight: .semibold, design: .monospaced))
+            } else {
+                Circle()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 8, height: 8)
+            }
+        }
+    }
+}
+
+/// 数字键按钮
+private struct NumPadButton: View {
+    let key: GamepadNumPad.NumPadKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.15))
+                    .frame(width: 64, height: 56)
+
+                if key.isBackspace {
+                    Image(systemName: "delete.left")
+                        .font(.system(size: 20))
+                } else {
+                    Text(key.displayValue)
+                        .font(.system(size: 24, weight: .medium, design: .monospaced))
+                }
+            }
+        }
+        .buttonStyle(FocusableButtonStyle())
+    }
+}
+```
+
+#### ConsolePinView 集成
+
+```swift
+struct ConsolePinView: View {
+    @State private var pin = ""
+    let onSubmit: (String) -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Text(L10n.Pin.enterPin)
+                .font(.headline)
+
+            #if os(tvOS)
+            // tvOS 使用数字键盘
+            GamepadNumPad(value: $pin, onComplete: onSubmit)
+            #else
+            // iOS/macOS 提供两种输入方式
+            if UIDevice.current.userInterfaceIdiom == .tv || showNumPad {
+                GamepadNumPad(value: $pin, onComplete: onSubmit)
+
+                Button(L10n.Pin.useKeyboard) {
+                    showNumPad = false
+                }
+                .font(.caption)
+            } else {
+                TextField(L10n.Pin.placeholder, text: $pin)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+
+                Button(L10n.Pin.useNumPad) {
+                    showNumPad = true
+                }
+                .font(.caption)
+            }
+            #endif
+        }
+    }
+
+    @State private var showNumPad = false
+}
+```
+
+### 13.5 快速设置入口设计（关联 AC-068）
+
+#### 设计思路
+
+- 在流媒体控制菜单中添加"快速设置"折叠面板
+- 包含可热更新的设置：码率、音量
+- 需要重连的设置（分辨率）标注提示
+- 设置变更即时生效或标记待重连
+
+#### QuickSettingsSection 组件
+
+```swift
+/// 流媒体快速设置面板（关联 AC-068）
+struct QuickSettingsSection: View {
+    @Environment(SettingsStore.self) private var settings
+    @State private var isExpanded = false
+    @State private var pendingResolution: Resolution?
+
+    var body: some View {
+        DisclosureGroup(L10n.Streaming.quickSettings, isExpanded: $isExpanded) {
+            VStack(spacing: 16) {
+                // 码率调整（可热更新）
+                HStack {
+                    Label(L10n.Settings.bitrate, systemImage: "speedometer")
+                    Spacer()
+                    Stepper(
+                        "\(settings.bitrate / 1000) Mbps",
+                        value: Binding(
+                            get: { settings.bitrate },
+                            set: { settings.bitrate = $0 }
+                        ),
+                        in: 5000...50000,
+                        step: 5000
+                    )
+                }
+
+                // 音量调整（可热更新）
+                HStack {
+                    Label(L10n.Settings.volume, systemImage: volumeIcon)
+                    Slider(value: Binding(
+                        get: { Double(settings.volume) },
+                        set: { settings.volume = Float($0) }
+                    ), in: 0...1)
+                    Text("\(Int(settings.volume * 100))%")
+                        .font(.caption)
+                        .frame(width: 40)
+                }
+
+                Divider()
+
+                // 分辨率选择（需要重连）
+                HStack {
+                    Label(L10n.Settings.resolution, systemImage: "rectangle.on.rectangle")
+                    Spacer()
+                    Picker("", selection: $pendingResolution.animation()) {
+                        Text("720p").tag(Resolution?.some(.r720p))
+                        Text("1080p").tag(Resolution?.some(.r1080p))
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 160)
+                }
+
+                if pendingResolution != nil && pendingResolution != settings.resolution {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text(L10n.Streaming.resolutionChangeRequiresReconnect)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L10n.Streaming.applyAndReconnect) {
+                            applyResolutionChange()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .onAppear {
+            pendingResolution = settings.resolution
+        }
+    }
+
+    private var volumeIcon: String {
+        if settings.volume == 0 { return "speaker.slash" }
+        if settings.volume < 0.5 { return "speaker.wave.1" }
+        return "speaker.wave.2"
+    }
+
+    private func applyResolutionChange() {
+        guard let newResolution = pendingResolution else { return }
+        settings.resolution = newResolution
+        // 触发重连
+        NotificationCenter.default.post(name: .reconnectRequired, object: nil)
+    }
+}
+
+extension Notification.Name {
+    static let reconnectRequired = Notification.Name("reconnectRequired")
+}
+```
+
+#### StreamingControlsView 集成
+
+```swift
+struct StreamingControlsView: View {
+    // ... 现有代码 ...
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // 现有控件...
+
+            Divider()
+
+            // 快速设置（关联 AC-068）
+            QuickSettingsSection()
+        }
+    }
+}
+```
+
+### 13.6 目录结构更新
+
+```
+Chiaki/Features/
+├── HostList/
+│   ├── HostListView.swift           # [修改] 集成快速操作栏
+│   ├── HostQuickActionBar.swift     # [新增] AC-065
+│   └── ...
+├── Streaming/
+│   ├── StreamingView.swift
+│   ├── StreamingControlsView.swift  # [修改] 集成快速设置
+│   ├── QuickSettingsSection.swift   # [新增] AC-068
+│   ├── VolumeOSD.swift              # [新增] AC-066
+│   └── ...
+├── Common/
+│   └── GamepadNumPad.swift          # [新增] AC-067
+└── PSNLogin/
+    └── ConsolePinView.swift         # [修改] 集成数字键盘
+
+Chiaki/Core/Controllers/
+└── ControllerShortcutDetector.swift # [修改] 音量快捷键
+```
+
+### 13.7 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-065: 快速操作栏 | `HostQuickActionBar` + `HostListView` | 替代长按菜单，1 步操作 |
+| AC-066: 音量快捷键 | `ControllerShortcutDetector` + `VolumeOSD` | PS+L2/R2 调节音量 |
+| AC-067: 数字键盘 | `GamepadNumPad` + `ConsolePinView` | 方向键输入 PIN |
+| AC-068: 快速设置 | `QuickSettingsSection` + `StreamingControlsView` | 流媒体中调整设置 |
+
+---
+
+### v1.5.0 (2026-01-30)
+
+**变更来源**: F-022 手柄操控 UI/UX 优化 (INS-028 ~ INS-031)
+
+**新增模块**:
+- `HostQuickActionBar` - 主机快速操作栏（关联 AC-065）
+- `GamepadNumPad` - 手柄友好数字键盘（关联 AC-067）
+- `QuickSettingsSection` - 流媒体快速设置面板（关联 AC-068）
+- `VolumeOSD` - 音量调节浮层提示（关联 AC-066）
+
+**修改模块**:
+- `HostListView` / `TVHostCardView` - 集成快速操作栏（关联 AC-065）
+- `ControllerShortcutDetector` - 扩展音量快捷键检测（关联 AC-066）
+- `StreamingViewModel` - 添加音量快捷调节逻辑（关联 AC-066）
+- `ConsolePinView` - 集成数字键盘组件（关联 AC-067）
+- `StreamingControlsView` - 添加快速设置 Section（关联 AC-068）
+
+**破坏性变更**: 无
+
+**迁移说明**: 无需迁移，纯增量功能
