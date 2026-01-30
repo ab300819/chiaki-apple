@@ -2945,3 +2945,659 @@ struct ChiakiApp: App {
 **破坏性变更**: 无
 
 **迁移说明**: 无需迁移，纯增量功能
+
+---
+
+### v1.4.0 (2026-01-30)
+
+**变更来源**: F-020 手柄操作友好化 (INS-017 ~ INS-022), F-021 GameController 深度集成 (INS-023 ~ INS-026)
+
+**新增模块**:
+- `FocusableButtonStyle` - tvOS 焦点视觉反馈样式（关联 AC-056）
+- `ControllerShortcutDetector` - 手柄组合键检测器（关联 AC-059）
+
+**修改模块**:
+- `StreamingControlsView` - 焦点管理、焦点陷阱、焦点恢复（关联 AC-055, AC-057, AC-060）
+- `StreamingView` - tvOS 方向键导航（关联 AC-058）
+- `ControllerManager` - 自适应扳机、触控板追踪、电池信息、组合键检测（关联 AC-059, AC-061, AC-062, AC-064）
+- `HapticsManager` - 统一引擎管理（关联 AC-063）
+
+**破坏性变更**: 无
+
+**迁移说明**: 无需迁移，纯增量功能
+
+---
+
+## 11. 手柄操作友好化设计 [增量]
+
+> **变更来源**: F-020 手柄操作友好化 (INS-017 ~ INS-022)
+> **关联需求**: AC-055 ~ AC-060
+
+### 11.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| StreamingControlsView | 修改 | 添加焦点状态管理、焦点陷阱、焦点恢复 |
+| StreamingView | 修改 | 添加 tvOS 方向键导航命令处理 |
+| ControllerManager | 修改 | 添加组合键检测逻辑 |
+| FocusableButtonStyle | 新增 | tvOS 焦点视觉反馈样式 |
+| ControllerShortcutDetector | 新增 | 组合键检测器 |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| 新增焦点状态管理 | ✅ 兼容 | 纯 UI 增强 |
+| 新增 tvOS 导航命令 | ✅ 兼容 | 平台条件编译 |
+| 新增组合键检测 | ✅ 兼容 | 可选功能，默认启用 |
+
+### 11.2 焦点管理设计
+
+#### 焦点状态枚举（关联 AC-055）
+
+```swift
+/// 流媒体控制菜单焦点状态
+enum StreamingControlFocus: Hashable {
+    case disconnectButton
+    case micToggle
+    case volumeSlider
+    case qualityPicker
+    case statsToggle
+    case closeButton
+}
+```
+
+#### StreamingControlsView 焦点集成（关联 AC-055, AC-060）
+
+```swift
+struct StreamingControlsView: View {
+    @FocusState private var focusedControl: StreamingControlFocus?
+    @State private var previousFocus: StreamingControlFocus?
+
+    var body: some View {
+        VStack {
+            // 断开连接按钮
+            Button(L10n.Streaming.disconnect) { ... }
+                .focused($focusedControl, equals: .disconnectButton)
+
+            // 麦克风切换
+            Toggle(L10n.Streaming.microphone, isOn: $micEnabled)
+                .focused($focusedControl, equals: .micToggle)
+
+            // 其他控件...
+        }
+        .onAppear {
+            // 菜单打开时聚焦到第一个控件
+            focusedControl = .disconnectButton
+        }
+        .onDisappear {
+            // 记录关闭前的焦点位置
+            previousFocus = focusedControl
+        }
+    }
+
+    /// 恢复焦点（关联 AC-060）
+    func restoreFocus() {
+        focusedControl = previousFocus ?? .disconnectButton
+    }
+}
+```
+
+### 11.3 tvOS 焦点视觉反馈（关联 AC-056）
+
+```swift
+/// tvOS 焦点按钮样式
+struct FocusableButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) private var isFocused
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isFocused ? Color.accentColor : Color.clear, lineWidth: 3)
+            )
+            .shadow(color: isFocused ? .accentColor.opacity(0.5) : .clear, radius: 10)
+            .animation(.easeInOut(duration: 0.15), value: isFocused)
+    }
+}
+```
+
+### 11.4 焦点陷阱设计（关联 AC-057）
+
+```swift
+struct StreamingView: View {
+    @State private var showControls = false
+
+    var body: some View {
+        ZStack {
+            // 视频层
+            VideoPlayerView()
+                .disabled(showControls)  // 焦点陷阱：菜单打开时禁用背景
+
+            // 控制菜单
+            if showControls {
+                StreamingControlsView()
+                    .focusSection()  // tvOS 焦点边界
+            }
+        }
+    }
+}
+```
+
+### 11.5 tvOS 方向键导航（关联 AC-058）
+
+```swift
+extension StreamingView {
+    var body: some View {
+        content
+            #if os(tvOS)
+            .onMoveCommand { direction in
+                handleMoveCommand(direction)
+            }
+            .onExitCommand {
+                handleExitCommand()
+            }
+            .onPlayPauseCommand {
+                handlePlayPauseCommand()
+            }
+            #endif
+    }
+
+    #if os(tvOS)
+    private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        switch direction {
+        case .up, .down, .left, .right:
+            // 方向键导航由 SwiftUI 焦点系统自动处理
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleExitCommand() {
+        if showControls {
+            showControls = false
+        } else {
+            // 触发退出确认
+            showExitConfirmation = true
+        }
+    }
+    #endif
+}
+```
+
+### 11.6 组合键检测设计（关联 AC-059）
+
+```swift
+/// 手柄组合键检测器
+@Observable
+final class ControllerShortcutDetector {
+    // MARK: - Configuration
+
+    /// 组合键防抖时间（毫秒）
+    private let debounceInterval: TimeInterval = 0.2
+
+    /// 组合键回调
+    var onMenuShortcut: (() -> Void)?        // PS + Options
+    var onDisconnectShortcut: (() -> Void)?  // L1 + R1 + PS
+
+    // MARK: - State
+
+    private var lastShortcutTime: Date = .distantPast
+    private var currentButtons: ControllerButtons = []
+
+    // MARK: - Detection
+
+    /// 更新按钮状态并检测组合键
+    func updateButtons(_ buttons: ControllerButtons) {
+        let previousButtons = currentButtons
+        currentButtons = buttons
+
+        // 检测新按下的组合键（防止持续触发）
+        let newlyPressed = buttons.subtracting(previousButtons)
+        guard !newlyPressed.isEmpty else { return }
+
+        // 防抖检查
+        let now = Date()
+        guard now.timeIntervalSince(lastShortcutTime) > debounceInterval else { return }
+
+        // PS + Options → 打开/关闭菜单
+        if buttons.contains([.ps, .options]) {
+            lastShortcutTime = now
+            onMenuShortcut?()
+            return
+        }
+
+        // L1 + R1 + PS → 断开连接
+        if buttons.contains([.l1, .r1, .ps]) {
+            lastShortcutTime = now
+            onDisconnectShortcut?()
+            return
+        }
+    }
+}
+```
+
+#### ControllerManager 集成
+
+```swift
+extension ControllerManager {
+    private let shortcutDetector = ControllerShortcutDetector()
+
+    func setupShortcuts(
+        onMenu: @escaping () -> Void,
+        onDisconnect: @escaping () -> Void
+    ) {
+        shortcutDetector.onMenuShortcut = onMenu
+        shortcutDetector.onDisconnectShortcut = onDisconnect
+    }
+
+    // 在按钮状态变化时调用
+    private func handleButtonChange(_ buttons: ControllerButtons) {
+        // 先检测组合键
+        shortcutDetector.updateButtons(buttons)
+
+        // 再更新常规状态
+        currentState.buttons = buttons
+        onStateChanged?(currentState)
+    }
+}
+```
+
+### 11.7 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-055: 焦点导航 | `StreamingControlsView` + `@FocusState` | 方向键在控件间移动焦点 |
+| AC-056: 焦点反馈 | `FocusableButtonStyle` | 缩放 + 边框 + 阴影 |
+| AC-057: 焦点陷阱 | `StreamingView.disabled()` + `focusSection()` | 菜单打开时禁用背景 |
+| AC-058: 方向键导航 | `onMoveCommand` / `onExitCommand` | tvOS 完整导航命令 |
+| AC-059: 组合键快捷 | `ControllerShortcutDetector` | PS+Options / L1+R1+PS |
+| AC-060: 焦点恢复 | `previousFocus` 状态 | 菜单关闭后恢复焦点 |
+
+---
+
+## 12. GameController 深度集成设计 [增量]
+
+> **变更来源**: F-021 GameController 深度集成 (INS-023 ~ INS-026)
+> **关联需求**: AC-061 ~ AC-064
+
+### 12.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| ControllerManager | 修改 | 自适应扳机、触控板追踪、电池信息 |
+| HapticsManager | 修改 | 统一 CHHapticEngine 实例 |
+| ChiakiSessionWrapper | 修改 | 暴露扳机效果事件回调 |
+| StreamingControlsView | 修改 | 显示电池电量指示器 |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| 自适应扳机 | ✅ 兼容 | 可选功能，需 iOS 16+ |
+| 触控板追踪 | ✅ 兼容 | 增量数据，不影响现有逻辑 |
+| Haptics 统一 | ✅ 兼容 | 内部重构，接口不变 |
+| 电池显示 | ✅ 兼容 | 纯 UI 增强 |
+
+### 12.2 自适应扳机设计（关联 AC-061）
+
+#### 扳机效果类型
+
+```swift
+/// DualSense 自适应扳机效果
+enum AdaptiveTriggerEffect {
+    case off                                    // 关闭
+    case feedback(startPosition: Float, strength: Float)  // 反馈模式
+    case weapon(startPosition: Float, endPosition: Float, strength: Float)  // 武器模式
+    case vibration(position: Float, amplitude: Float, frequency: Float)  // 振动模式
+}
+```
+
+#### ControllerManager 扩展
+
+```swift
+extension ControllerManager {
+    /// 应用自适应扳机效果（关联 AC-061）
+    /// - Parameters:
+    ///   - effect: 扳机效果
+    ///   - trigger: 目标扳机 (.left / .right)
+    func applyAdaptiveTrigger(effect: AdaptiveTriggerEffect, trigger: TriggerSide) {
+        guard let dualSense = activeController?.physicalInputProfile as? GCDualSenseGamepad else {
+            return
+        }
+
+        let triggerInput = trigger == .left ? dualSense.leftTrigger : dualSense.rightTrigger
+        guard let adaptiveTrigger = triggerInput.adaptiveTriggers else { return }
+
+        switch effect {
+        case .off:
+            adaptiveTrigger.setModeOff()
+        case .feedback(let start, let strength):
+            adaptiveTrigger.setModeFeedbackWithStartPosition(start, resistiveStrength: strength)
+        case .weapon(let start, let end, let strength):
+            adaptiveTrigger.setModeWeaponWithStartPosition(start, endPosition: end, resistiveStrength: strength)
+        case .vibration(let position, let amplitude, let frequency):
+            adaptiveTrigger.setModeVibrationWithAmplitude(amplitude, frequency: frequency, position: position)
+        }
+    }
+
+    enum TriggerSide {
+        case left, right
+    }
+}
+```
+
+#### 与 ChiakiSession 集成
+
+```swift
+// ChiakiSessionWrapper 扩展
+extension ChiakiSessionWrapper {
+    /// 扳机效果事件回调
+    var onTriggerEffects: ((TriggerEffectsEvent) -> Void)?
+
+    struct TriggerEffectsEvent {
+        let leftEffect: AdaptiveTriggerEffect
+        let rightEffect: AdaptiveTriggerEffect
+    }
+}
+
+// StreamingViewModel 集成
+func setupTriggerEffects() {
+    session.onTriggerEffects = { [weak self] event in
+        self?.controllerManager.applyAdaptiveTrigger(effect: event.leftEffect, trigger: .left)
+        self?.controllerManager.applyAdaptiveTrigger(effect: event.rightEffect, trigger: .right)
+    }
+}
+```
+
+### 12.3 触控板位置追踪（关联 AC-062）
+
+```swift
+extension ControllerManager {
+    /// 触控板触摸点
+    struct TouchPoint: Equatable {
+        let id: Int           // 触摸点 ID（支持多点）
+        let x: Float          // 归一化 X 坐标 (0.0 ~ 1.0)
+        let y: Float          // 归一化 Y 坐标 (0.0 ~ 1.0)
+        let isActive: Bool    // 是否正在触摸
+    }
+
+    /// 设置触控板输入处理（关联 AC-062）
+    private func setupTouchpadInput(_ dualSense: GCDualSenseGamepad) {
+        // 主触摸点
+        if let touchpad = dualSense.touchpadPrimary {
+            touchpad.touchSurface?.valueChangedHandler = { [weak self] _, x, y, touching, _ in
+                self?.updateTouchPoint(id: 0, x: x, y: y, isActive: touching)
+            }
+        }
+
+        // 次触摸点（如果支持）
+        if let touchpad2 = dualSense.touchpadSecondary {
+            touchpad2.touchSurface?.valueChangedHandler = { [weak self] _, x, y, touching, _ in
+                self?.updateTouchPoint(id: 1, x: x, y: y, isActive: touching)
+            }
+        }
+    }
+
+    private func updateTouchPoint(id: Int, x: Float, y: Float, isActive: Bool) {
+        let point = TouchPoint(id: id, x: x, y: y, isActive: isActive)
+
+        // 更新状态
+        if let index = currentState.touchpad.firstIndex(where: { $0.id == id }) {
+            if isActive {
+                currentState.touchpad[index] = point
+            } else {
+                currentState.touchpad.remove(at: index)
+            }
+        } else if isActive {
+            currentState.touchpad.append(point)
+        }
+
+        onStateChanged?(currentState)
+    }
+}
+```
+
+### 12.4 Haptics 引擎统一（关联 AC-063）
+
+```swift
+/// 触觉反馈管理器（统一引擎）
+@Observable
+final class HapticsManager {
+    static let shared = HapticsManager()
+
+    // MARK: - Private Properties
+
+    private var engine: CHHapticEngine?
+    private var isEngineRunning = false
+
+    // MARK: - Initialization
+
+    private init() {
+        setupEngine()
+    }
+
+    private func setupEngine() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+
+        do {
+            engine = try CHHapticEngine()
+            engine?.resetHandler = { [weak self] in
+                self?.restartEngine()
+            }
+            engine?.stoppedHandler = { [weak self] _ in
+                self?.isEngineRunning = false
+            }
+        } catch {
+            Logger.shared.error("Failed to create haptic engine: \(error)")
+        }
+    }
+
+    // MARK: - Public Interface
+
+    /// 启动引擎（由 ControllerManager 调用）
+    func startEngine() {
+        guard let engine = engine, !isEngineRunning else { return }
+
+        do {
+            try engine.start()
+            isEngineRunning = true
+        } catch {
+            Logger.shared.error("Failed to start haptic engine: \(error)")
+        }
+    }
+
+    /// 停止引擎
+    func stopEngine() {
+        engine?.stop()
+        isEngineRunning = false
+    }
+
+    /// 应用震动反馈（关联 AC-063）
+    /// - Parameters:
+    ///   - leftIntensity: 左马达强度 (0-255)
+    ///   - rightIntensity: 右马达强度 (0-255)
+    func applyRumble(left leftIntensity: UInt8, right rightIntensity: UInt8) {
+        guard isEngineRunning, let engine = engine else { return }
+
+        let leftNormalized = Float(leftIntensity) / 255.0
+        let rightNormalized = Float(rightIntensity) / 255.0
+
+        // 创建并播放震动事件
+        do {
+            let events = createRumbleEvents(left: leftNormalized, right: rightNormalized)
+            let pattern = try CHHapticPattern(events: events, parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            Logger.shared.debug("Rumble playback failed: \(error)")
+        }
+    }
+
+    private func createRumbleEvents(left: Float, right: Float) -> [CHHapticEvent] {
+        // 低频（左马达）+ 高频（右马达）组合
+        [
+            CHHapticEvent(
+                eventType: .hapticContinuous,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: left),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
+                ],
+                relativeTime: 0,
+                duration: 0.1
+            ),
+            CHHapticEvent(
+                eventType: .hapticContinuous,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: right),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.7)
+                ],
+                relativeTime: 0,
+                duration: 0.1
+            )
+        ]
+    }
+
+    private func restartEngine() {
+        do {
+            try engine?.start()
+            isEngineRunning = true
+        } catch {
+            Logger.shared.error("Failed to restart haptic engine: \(error)")
+        }
+    }
+}
+```
+
+#### ControllerManager 集成
+
+```swift
+extension ControllerManager {
+    /// 应用震动（委托给 HapticsManager）
+    func applyRumble(left: UInt8, right: UInt8) {
+        HapticsManager.shared.applyRumble(left: left, right: right)
+    }
+
+    /// 初始化时启动引擎
+    func startHaptics() {
+        HapticsManager.shared.startEngine()
+    }
+
+    /// 断开时停止引擎
+    func stopHaptics() {
+        HapticsManager.shared.stopEngine()
+    }
+}
+```
+
+### 12.5 控制器电池电量显示（关联 AC-064）
+
+#### 电池信息模型
+
+```swift
+extension ControllerManager {
+    /// 控制器电池信息
+    struct BatteryInfo: Equatable {
+        let level: Float           // 电量 (0.0 ~ 1.0)
+        let state: BatteryState    // 状态
+
+        enum BatteryState {
+            case unknown
+            case discharging
+            case charging
+            case full
+        }
+
+        var isLow: Bool { level < 0.2 }
+
+        var iconName: String {
+            switch state {
+            case .charging: return "battery.100.bolt"
+            case .full: return "battery.100"
+            default:
+                if level > 0.75 { return "battery.100" }
+                if level > 0.5 { return "battery.75" }
+                if level > 0.25 { return "battery.50" }
+                return "battery.25"
+            }
+        }
+
+        var color: Color {
+            if state == .charging { return .green }
+            if isLow { return .red }
+            return .primary
+        }
+    }
+
+    /// 当前控制器电池信息
+    var batteryInfo: BatteryInfo? {
+        guard let controller = activeController,
+              let battery = controller.battery else { return nil }
+
+        let state: BatteryInfo.BatteryState = switch battery.batteryState {
+        case .charging: .charging
+        case .discharging: .discharging
+        case .full: .full
+        default: .unknown
+        }
+
+        return BatteryInfo(level: battery.batteryLevel, state: state)
+    }
+}
+```
+
+#### UI 组件
+
+```swift
+/// 控制器电池指示器
+struct ControllerBatteryIndicator: View {
+    let batteryInfo: ControllerManager.BatteryInfo?
+
+    var body: some View {
+        if let info = batteryInfo {
+            HStack(spacing: 4) {
+                Image(systemName: info.iconName)
+                    .foregroundStyle(info.color)
+
+                if info.isLow {
+                    Text(String(format: "%.0f%%", info.level * 100))
+                        .font(.caption)
+                        .foregroundStyle(info.color)
+                }
+            }
+            .accessibilityLabel(L10n.Accessibility.batteryLevel(Int(info.level * 100)))
+        }
+    }
+}
+
+// 在 StreamingControlsView 中使用
+struct StreamingControlsView: View {
+    @Environment(ControllerManager.self) private var controllerManager
+
+    var body: some View {
+        HStack {
+            // 其他控件...
+
+            Spacer()
+
+            // 电池指示器
+            ControllerBatteryIndicator(batteryInfo: controllerManager.batteryInfo)
+        }
+    }
+}
+```
+
+### 12.6 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-061: 自适应扳机 | `ControllerManager.applyAdaptiveTrigger()` | iOS 16+ 扳机效果 |
+| AC-062: 触控板追踪 | `setupTouchpadInput()` + `TouchPoint` | 多点触控位置 |
+| AC-063: Haptics 统一 | `HapticsManager.shared` | 单例引擎管理 |
+| AC-064: 电池显示 | `BatteryInfo` + `ControllerBatteryIndicator` | 电量图标 + 低电量警告 |
