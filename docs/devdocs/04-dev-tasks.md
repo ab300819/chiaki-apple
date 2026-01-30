@@ -319,97 +319,154 @@
 
 ## F-020 手柄操作友好化任务 (T-125 ~ T-130)
 
-> **来源**: F-020 手柄操作友好化 (INS-011 ~ INS-016)
+> **来源**: F-020 手柄操作友好化 (INS-017 ~ INS-022)
 > **关联需求**: AC-055 ~ AC-060
+> **测试用例**: UT-010~012, IT-007, E2E-006 (03-test-cases.md §14)
 
 ### T-125: 流媒体控制菜单焦点管理
 
 - **目标**: 为 StreamingControlsView 添加完整的焦点状态管理。
 - **关联需求**: F-020, AC-055
+- **关联测试**: UT-010.1~5, E2E-006.3
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
   - `Chiaki/Features/Streaming/StreamingControlsView.swift`
+  - `Chiaki/Features/Streaming/StreamingControlFocus.swift` (新建)
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 添加 `@FocusState` 枚举跟踪当前焦点控件
-  - [ ] 所有按钮、滑块添加 `.focused()` 修饰符
-  - [ ] 手柄方向键可在控件间移动焦点
-  - [ ] 菜单打开时焦点初始化到第一个控件
+  - [ ] 创建 `StreamingControlFocus` 枚举（disconnectButton, micToggle, volumeSlider, qualityPicker, statsToggle, closeButton）
+  - [ ] 添加 `@FocusState private var focusedControl: StreamingControlFocus?`
+  - [ ] 所有按钮、滑块添加 `.focused($focusedControl, equals: .xxx)` 修饰符
+  - [ ] 菜单打开时焦点初始化到 `.disconnectButton`
+- **测试方法**:
+  - [ ] UT-010.1: 验证 StreamingControlFocus 枚举包含所有控件
+  - [ ] UT-010.2: 验证 FocusState Hashable 协议
+  - [ ] UT-010.3: 验证默认焦点位置
+- **Review 要点**:
+  - [ ] FocusState 枚举值与实际控件一一对应
+  - [ ] tvOS 和 iOS 条件编译正确
 
 ### T-126: tvOS 焦点视觉反馈
 
 - **目标**: 为 tvOS 控制菜单按钮添加明确的焦点状态视觉反馈。
 - **关联需求**: F-020, AC-056
+- **关联测试**: UT-011.1~4
 - **TDD 模式**: ⚪ 不适用（UI 样式）
 - **涉及文件**:
   - `Chiaki/Features/Streaming/StreamingControlsView.swift`
   - `Chiaki/Shared/Styles/FocusableButtonStyle.swift` (新建)
 - **依赖**: T-125
 - **验收标准**:
-  - [ ] 创建 `FocusableButtonStyle` 自定义按钮样式
-  - [ ] 焦点时按钮放大 1.05x
-  - [ ] 焦点时添加品牌色边框（与 TVHostCardView 一致）
-  - [ ] 焦点时添加微妙阴影/发光效果
+  - [ ] 创建 `FocusableButtonStyle: ButtonStyle` 自定义按钮样式
+  - [ ] 使用 `@Environment(\.isFocused)` 读取焦点状态
+  - [ ] 焦点时 `.scaleEffect(1.05)`
+  - [ ] 焦点时添加 `accentColor` 边框 (lineWidth: 3)
+  - [ ] 焦点时添加阴影 `.shadow(color: .accentColor.opacity(0.5), radius: 10)`
+  - [ ] 动画时长 0.15s，使用 `.easeInOut`
+- **测试方法**:
+  - [ ] UT-011.1~2: 验证缩放配置值
+  - [ ] (手动) tvOS 模拟器验证视觉效果
+- **Review 要点**:
+  - [ ] `#if os(tvOS)` 条件编译
+  - [ ] 动画曲线流畅、不卡顿
 
 ### T-127: 控制菜单焦点陷阱
 
 - **目标**: 控制菜单打开时防止焦点跳转到背景。
 - **关联需求**: F-020, AC-057
+- **关联测试**: IT-007.1~3
 - **TDD 模式**: 🟢 可选
 - **涉及文件**:
   - `Chiaki/Features/Streaming/StreamingView.swift`
   - `Chiaki/Features/Streaming/StreamingControlsView.swift`
 - **依赖**: T-125
 - **验收标准**:
-  - [ ] 使用 `focusSection()` 或条件 disabled 实现焦点隔离
-  - [ ] 菜单打开时视频层和虚拟控制器不可获取焦点
-  - [ ] 菜单关闭后恢复正常焦点行为
+  - [ ] `VideoPlayerView().disabled(showControls)` 菜单打开时禁用背景
+  - [ ] `StreamingControlsView().focusSection()` 创建焦点边界
+  - [ ] 菜单关闭后 `.disabled(false)` 恢复背景交互
+- **测试方法**:
+  - [ ] IT-007.1: 验证菜单打开时背景 disabled=true
+  - [ ] IT-007.2: 验证菜单关闭时背景 disabled=false
+  - [ ] (手动) tvOS 模拟器验证焦点不逃逸
+- **Review 要点**:
+  - [ ] 焦点陷阱不影响 iOS/macOS 平台
+  - [ ] showControls 状态同步正确
 
 ### T-128: tvOS 方向键导航完善
 
 - **目标**: 为 tvOS 流媒体界面添加完整方向键导航支持。
 - **关联需求**: F-020, AC-058
+- **关联测试**: E2E-006.1~6
 - **TDD 模式**: 🟢 可选
 - **涉及文件**:
   - `Chiaki/Features/Streaming/StreamingView.swift`
 - **依赖**: T-125, T-127
 - **验收标准**:
-  - [ ] 添加 `onMoveCommand` 处理方向键
-  - [ ] 方向键在控制菜单各区域间导航
-  - [ ] Select/Enter 键确认当前焦点操作
-  - [ ] 覆盖层隐藏时方向键不触发 UI 操作
+  - [ ] 添加 `#if os(tvOS) .onMoveCommand { direction in ... }` 处理方向键
+  - [ ] 添加 `.onExitCommand { ... }` 处理 Menu 键
+  - [ ] 添加 `.onPlayPauseCommand { ... }` 显示/隐藏菜单
+  - [ ] Menu 键：菜单打开时关闭菜单，否则显示退出确认
+  - [ ] Select 键由 SwiftUI 焦点系统自动处理
+- **测试方法**:
+  - [ ] E2E-006.1: Menu 键切换菜单
+  - [ ] E2E-006.2: Play/Pause 显示菜单
+  - [ ] E2E-006.3: 方向键移动焦点
+  - [ ] E2E-006.4: Select 激活控件
+  - [ ] E2E-006.5: 菜单中 Menu 键关闭菜单
+- **Review 要点**:
+  - [ ] 所有导航命令使用 `#if os(tvOS)` 包裹
+  - [ ] 退出确认不会意外触发
 
 ### T-129: 手柄组合键快捷操作
 
 - **目标**: 支持手柄组合键快速访问应用功能。
 - **关联需求**: F-020, AC-059
+- **关联测试**: UT-012.1~6
 - **TDD 模式**: 🔴 强制（核心逻辑）
 - **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerShortcutDetector.swift` (新建)
   - `Chiaki/Core/Controllers/ControllerManager.swift`
   - `Chiaki/Features/Streaming/StreamingViewModel.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] PS + Options 组合键打开/关闭控制菜单
-  - [ ] L1 + R1 + PS 组合键断开连接
-  - [ ] 组合键检测有适当的防抖（避免误触发）
-  - [ ] 快捷键可在设置中禁用
+  - [ ] 创建 `ControllerShortcutDetector` 类
+  - [ ] PS + Options 组合键触发 `onMenuShortcut` 回调
+  - [ ] L1 + R1 + PS 组合键触发 `onDisconnectShortcut` 回调
+  - [ ] 防抖时间 200ms (`debounceInterval: TimeInterval = 0.2`)
+  - [ ] 仅在新按键按下时检测，持续按住不重复触发
 - **测试方法**:
-  - [ ] UT-20.1: 测试组合键检测逻辑
-  - [ ] UT-20.2: 测试防抖机制
+  - [ ] UT-012.1: 测试 PS+Options 检测
+  - [ ] UT-012.2: 测试 L1+R1+PS 检测
+  - [ ] UT-012.3: 测试 200ms 防抖
+  - [ ] UT-012.4: 测试单键不触发
+  - [ ] UT-012.5: 测试按键顺序无关
+  - [ ] UT-012.6: 测试持续按住不重复触发
+- **Review 要点**:
+  - [ ] 防抖实现正确（时间戳比较）
+  - [ ] newlyPressed 计算正确 (`buttons.subtracting(previousButtons)`)
+  - [ ] 回调在主线程执行
 
 ### T-130: 焦点恢复逻辑
 
 - **目标**: 控制菜单关闭后正确恢复焦点位置。
 - **关联需求**: F-020, AC-060
+- **关联测试**: UT-010.4~5
 - **TDD 模式**: 🟢 可选
 - **涉及文件**:
   - `Chiaki/Features/Streaming/StreamingControlsView.swift`
   - `Chiaki/Features/Streaming/StreamingView.swift`
 - **依赖**: T-125, T-127
 - **验收标准**:
-  - [ ] 记录菜单打开前的焦点位置
-  - [ ] 菜单关闭后焦点恢复到触发按钮
-  - [ ] 如原焦点不可用，回退到合理默认位置
+  - [ ] 添加 `@State private var previousFocus: StreamingControlFocus?`
+  - [ ] `onDisappear` 时记录 `previousFocus = focusedControl`
+  - [ ] 提供 `restoreFocus()` 方法：`focusedControl = previousFocus ?? .disconnectButton`
+  - [ ] 菜单重新打开时调用 `restoreFocus()`
+- **测试方法**:
+  - [ ] UT-010.4: 测试焦点恢复到上次位置
+  - [ ] UT-010.5: 测试无历史时回退到默认位置
+- **Review 要点**:
+  - [ ] previousFocus 在 onDisappear 正确保存
+  - [ ] 回退逻辑使用 nil-coalescing
 
 ---
 
@@ -417,68 +474,127 @@
 
 > **来源**: F-021 GameController 深度集成 (INS-023 ~ INS-026)
 > **关联需求**: AC-061 ~ AC-064
+> **测试用例**: UT-013~016, IT-008, E2E-007 (03-test-cases.md §15)
 
 ### T-131: DualSense 自适应扳机支持
 
 - **目标**: 启用 DualSense 自适应扳机效果，增强游戏沉浸感。
 - **关联需求**: F-021, AC-061
+- **关联测试**: UT-013.1~5
 - **TDD 模式**: 🟢 可选（硬件依赖）
 - **涉及文件**:
+  - `Chiaki/Core/Controllers/AdaptiveTriggerEffect.swift` (新建)
   - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Core/Session/ChiakiSessionWrapper.swift`
+  - `Chiaki/Core/Bridge/ChiakiSessionWrapper.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 使用 `GCDualSenseAdaptiveTriggers` API
-  - [ ] 解码 ChiakiSessionEvent.triggerEffects 事件
-  - [ ] 映射 PS5 扳机效果到 GameController 格式
-  - [ ] 支持禁用自适应扳机的设置选项
+  - [ ] 创建 `AdaptiveTriggerEffect` 枚举 (off, feedback, weapon, vibration)
+  - [ ] 创建 `TriggerSide` 枚举 (left, right)
+  - [ ] 实现 `applyAdaptiveTrigger(effect:trigger:)` 方法
+  - [ ] 检测 `GCDualSenseGamepad` 类型并获取 `adaptiveTriggers`
+  - [ ] 调用 `setModeOff/setModeFeedback/setModeWeapon/setModeVibration`
+  - [ ] ChiakiSessionWrapper 添加 `onTriggerEffects` 回调
+- **测试方法**:
+  - [ ] UT-013.1: 验证 AdaptiveTriggerEffect 枚举完整性
+  - [ ] UT-013.2: 验证 feedback 模式参数
+  - [ ] UT-013.3: 验证 weapon 模式参数
+  - [ ] UT-013.4: 验证 vibration 模式参数
+  - [ ] UT-013.5: 验证 TriggerSide 枚举
+  - [ ] (手动) 使用 DualSense 测试效果
+- **Review 要点**:
+  - [ ] DualSense 检测使用 `as? GCDualSenseGamepad`
+  - [ ] 非 DualSense 控制器静默忽略
+  - [ ] 平台限制: iOS 16+ / macOS 13+
 
 ### T-132: 触控板位置追踪
 
 - **目标**: 支持 DualSense 触控板位置追踪，解锁需要触控板的 PS5 游戏。
 - **关联需求**: F-021, AC-062
+- **关联测试**: UT-014.1~4
 - **TDD 模式**: 🟢 可选（硬件依赖）
 - **涉及文件**:
   - `Chiaki/Core/Controllers/ControllerManager.swift`
+  - `Chiaki/Domain/Models/ControllerInput.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 使用 `GCDualSenseGamepadTouchpadInput` 获取位置数据
-  - [ ] 映射 X/Y 坐标到 `ChiakiControllerTouch` 结构
-  - [ ] 支持多点触控（如果 API 支持）
-  - [ ] 触控板按下与位置数据同时上报
+  - [ ] 创建 `TouchPoint` 结构体 (id, x, y, isActive)
+  - [ ] `setupTouchpadInput()` 配置 `touchpadPrimary/Secondary.touchSurface`
+  - [ ] 注册 `valueChangedHandler` 接收 (x, y, touching)
+  - [ ] 坐标归一化到 0.0~1.0 范围
+  - [ ] 更新 `currentState.touchpad: [TouchPoint]` 数组
+  - [ ] 支持双点触控 (id=0, id=1)
+- **测试方法**:
+  - [ ] UT-014.1: 验证 TouchPoint 初始化
+  - [ ] UT-014.2: 验证 TouchPoint Equatable
+  - [ ] UT-014.3: 验证坐标范围 0.0~1.0
+  - [ ] UT-014.4: 验证多点 ID 唯一性
+  - [ ] (手动) 使用 DualSense 测试触控板
+- **Review 要点**:
+  - [ ] 触摸结束时正确移除 TouchPoint
+  - [ ] 数组操作线程安全
+  - [ ] ControllerInput.touchpad 类型正确
 
 ### T-133: Haptics 引擎统一
 
 - **目标**: 统一 CHHapticEngine 实例管理，避免资源冲突。
 - **关联需求**: F-021, AC-063
+- **关联测试**: UT-015.1~6, IT-008.1~3
 - **TDD 模式**: 🟡 推荐
 - **涉及文件**:
+  - `Chiaki/Core/Controllers/HapticsManager.swift` (已存在，需重构)
   - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Core/Haptics/HapticsManager.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] HapticsManager 提供共享的 CHHapticEngine 实例
-  - [ ] ControllerManager 通过 HapticsManager 接口执行触觉反馈
-  - [ ] 移除 ControllerManager 中的重复引擎初始化代码
-  - [ ] 引擎生命周期由 HapticsManager 统一管理
+  - [ ] `HapticsManager.shared` 单例提供共享 `CHHapticEngine`
+  - [ ] 添加 `startEngine() / stopEngine()` 公开方法
+  - [ ] 添加 `applyRumble(left:right:)` 震动方法
+  - [ ] 强度归一化: `UInt8(0-255)` → `Float(0.0-1.0)`
+  - [ ] `ControllerManager.applyRumble()` 委托给 `HapticsManager.shared`
+  - [ ] `startHaptics() / stopHaptics()` 调用 HapticsManager 对应方法
+  - [ ] 移除 ControllerManager 中的重复 CHHapticEngine 代码
 - **测试方法**:
-  - [ ] UT-21.1: 验证引擎单例行为
-  - [ ] UT-21.2: 验证跨模块调用正确性
+  - [ ] UT-015.1: 验证 HapticsManager 单例一致性
+  - [ ] UT-015.4: 验证强度归一化 (0→0.0, 255→1.0)
+  - [ ] IT-008.1: 验证 ControllerManager 委托调用
+  - [ ] IT-008.2: 验证连接时启动引擎
+  - [ ] IT-008.3: 验证断开时停止引擎
+- **Review 要点**:
+  - [ ] 引擎 resetHandler/stoppedHandler 正确设置
+  - [ ] 引擎启动失败不阻塞功能
+  - [ ] 支持设备检测 `CHHapticEngine.capabilitiesForHardware().supportsHaptics`
 
 ### T-134: 控制器电池电量显示
 
 - **目标**: 在 UI 中显示连接手柄的电池电量。
 - **关联需求**: F-021, AC-064
+- **关联测试**: UT-016.1~6, E2E-007.1~3
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
   - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift`（或新建电池指示组件）
+  - `Chiaki/Features/Streaming/ControllerBatteryIndicator.swift` (新建)
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 使用 `GCController.battery` 获取电量信息
-  - [ ] 在控制器信息中暴露电量属性
-  - [ ] UI 显示电量图标或百分比
-  - [ ] 低电量时显示警告（<20%）
+  - [ ] 创建 `BatteryInfo` 结构体 (level: Float, state: BatteryState)
+  - [ ] `BatteryState` 枚举 (unknown, discharging, charging, full)
+  - [ ] 计算属性 `isLow: Bool { level < 0.2 }`
+  - [ ] 计算属性 `iconName: String` 返回 SF Symbol 名称
+  - [ ] 计算属性 `color: Color` (charging=green, low=red, normal=primary)
+  - [ ] `ControllerManager.batteryInfo` 计算属性读取 `GCController.battery`
+  - [ ] 创建 `ControllerBatteryIndicator` SwiftUI 视图
+  - [ ] 在 StreamingControlsView 中显示电池指示器
+- **测试方法**:
+  - [ ] UT-016.1: 验证 BatteryState 枚举完整性
+  - [ ] UT-016.2: 验证 isLow 阈值 (level < 0.2)
+  - [ ] UT-016.3: 验证各电量级别图标名称
+  - [ ] UT-016.4: 验证充电状态图标 (battery.100.bolt)
+  - [ ] UT-016.5: 验证各状态颜色
+  - [ ] E2E-007.1: 验证电池指示器显示
+  - [ ] E2E-007.2: 验证低电量警告样式
+- **Review 要点**:
+  - [ ] 控制器未连接时 batteryInfo 返回 nil
+  - [ ] 电量图标使用系统 SF Symbols
+  - [ ] 无障碍标签正确设置
 
 ### T-135: StreamingOverlay HDR 标志 ✅
 
