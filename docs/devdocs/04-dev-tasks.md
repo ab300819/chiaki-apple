@@ -616,6 +616,132 @@
 
 ---
 
+## F-022: 手柄操控 UI/UX 优化 (2026-01-30)
+
+> **来源需求**: F-022 手柄操控 UI/UX 优化 (INS-028~031)
+> **关联验收标准**: AC-065 ~ AC-068
+
+### T-136: 主机快速操作栏
+
+- **目标**: 为聚焦的主机卡片添加底部快速操作栏，替代长按上下文菜单。
+- **关联需求**: F-022 (AC-065)
+- **来源**: INS-028
+- **TDD 模式**: 🟢 可选（UI 层）
+- **关联测试**: UT-017.1~6, IT-009.1~5, E2E-008.1~4
+- **涉及文件**:
+  - `Chiaki/Features/HostList/HostQuickActionBar.swift` [新建]
+  - `Chiaki/Features/HostList/HostListView.swift` [修改]
+  - `ChiakiTV/Features/TVHostCardView.swift` [修改]
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 创建 `HostQuickAction` 枚举：wake/connect/pin/delete
+  - [ ] 创建 `HostQuickActionBar` 组件，包含焦点管理
+  - [ ] 主机卡片聚焦时显示操作栏，失焦时隐藏
+  - [ ] 待机主机显示"唤醒"，就绪主机显示"连接"
+  - [ ] tvOS 支持 Menu 键切换操作栏显示
+  - [ ] 操作栏内使用方向键导航
+- **测试方法**:
+  - 运行 `UT-017` 单元测试验证枚举和焦点逻辑
+  - 运行 `IT-009` 集成测试验证操作栏与 HostManager 交互
+  - 手动测试 tvOS 上的方向键导航
+- **Review 要点**:
+  - [ ] 焦点状态使用 `@FocusState` 而非手动管理
+  - [ ] 动画使用 `.snappy` 或 `.spring()`
+  - [ ] 长按菜单保留作为备选方案
+
+### T-137: 流媒体音量快捷调节
+
+- **目标**: 支持 PS+L2/R2 组合键在流媒体中直接调节音量。
+- **关联需求**: F-022 (AC-066)
+- **来源**: INS-029
+- **TDD 模式**: 🔴 强制（核心逻辑）
+- **关联测试**: UT-018.1~6, IT-010.1~4
+- **涉及文件**:
+  - `Chiaki/Core/Controllers/ControllerShortcutDetector.swift` [修改]
+  - `Chiaki/Features/Streaming/VolumeOSD.swift` [新建]
+  - `Chiaki/Features/Streaming/StreamingViewModel.swift` [修改]
+  - `Chiaki/Features/Streaming/StreamingView.swift` [修改]
+- **依赖**: T-129 (组合键检测基础)
+- **验收标准**:
+  - [ ] `ControllerShortcutDetector` 新增 `onVolumeUp`/`onVolumeDown` 回调
+  - [ ] 检测 PS+R2 (音量+) 和 PS+L2 (音量-)
+  - [ ] 实现 200ms 节流防止快速重复触发
+  - [ ] 同时按 L2+R2 时不触发（冲突保护）
+  - [ ] 音量调节步长为 5% (0.05)
+  - [ ] 音量限制在 0.0~1.0 范围
+  - [ ] 创建 `VolumeOSD` 浮层显示当前音量
+  - [ ] OSD 2 秒后自动隐藏
+- **测试方法**:
+  - **先写测试**: 运行 `UT-018` 验证快捷键检测和节流
+  - 运行 `IT-010` 验证 OSD 显示和音量应用
+  - 手动测试真实手柄操作
+- **Review 要点**:
+  - [ ] 节流使用 `Date` 比较而非 Timer
+  - [ ] 音量变更即时应用到 AudioPlayer
+  - [ ] OSD 动画流畅，不阻塞游戏输入
+
+### T-138: PIN 输入数字键盘
+
+- **目标**: 创建手柄友好的数字键盘，替代系统键盘输入 PIN。
+- **关联需求**: F-022 (AC-067)
+- **来源**: INS-030
+- **TDD 模式**: 🟡 推荐（UI + 逻辑）
+- **关联测试**: UT-019.1~8, E2E-009.1~5
+- **涉及文件**:
+  - `Chiaki/Features/Common/GamepadNumPad.swift` [新建]
+  - `Chiaki/Features/PSNLogin/ConsolePinView.swift` [修改]
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 创建 `NumPadKey` 枚举：0-9, backspace, empty
+  - [ ] 创建 `GamepadNumPad` 组件，3×4 网格布局
+  - [ ] 使用 `@FocusState` 管理键位焦点
+  - [ ] 默认聚焦到"5"键（中间位置）
+  - [ ] 数字键输入追加到 value
+  - [ ] 退格键删除最后一位
+  - [ ] 空键位不响应操作
+  - [ ] 达到 maxLength (4) 时自动触发 onComplete
+  - [ ] tvOS 强制使用数字键盘
+  - [ ] iOS/macOS 提供键盘/数字键盘切换选项
+- **测试方法**:
+  - 运行 `UT-019` 验证键盘逻辑
+  - 运行 `E2E-009` 验证完整输入流程
+  - 手动测试方向键导航
+- **Review 要点**:
+  - [ ] 键位大小适合 tvOS 10-foot UI
+  - [ ] PIN 显示使用占位符而非明文
+  - [ ] 无障碍标签正确设置
+
+### T-139: 流媒体快速设置面板
+
+- **目标**: 在流媒体控制菜单中添加快速设置入口。
+- **关联需求**: F-022 (AC-068)
+- **来源**: INS-031
+- **TDD 模式**: 🟢 可选（UI 层）
+- **关联测试**: UT-020.1~6
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/QuickSettingsSection.swift` [新建]
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+- **依赖**: T-125 (控制菜单焦点管理基础)
+- **验收标准**:
+  - [ ] 创建 `QuickSettingsSection` 组件，使用 `DisclosureGroup`
+  - [ ] 包含码率调节 Stepper (5000~50000, 步长 5000)
+  - [ ] 包含音量调节 Slider (0.0~1.0)
+  - [ ] 包含分辨率选择 Picker (720p/1080p)
+  - [ ] 码率和音量变更即时生效
+  - [ ] 分辨率变更需要重连，显示警告提示
+  - [ ] 点击"应用并重连"发送 `reconnectRequired` 通知
+  - [ ] 根据音量显示对应图标
+- **测试方法**:
+  - 运行 `UT-020` 验证配置逻辑
+  - 手动测试设置变更效果
+  - 验证重连通知正确发送
+- **Review 要点**:
+  - [ ] 使用 `@Environment(SettingsStore.self)` 获取设置
+  - [ ] 分辨率选择标注"需重连"提示
+  - [ ] 通知使用 `Notification.Name` 扩展定义
+
+---
+
 ## 依赖关系图
 
 ```mermaid
@@ -672,6 +798,15 @@ graph TD
     T134[T-134: 电池显示]
 
     %% T-131~T-134 无强依赖，可并行
+
+    %% F-022 手柄操控 UI/UX 优化任务
+    T136[T-136: 快速操作栏]
+    T137[T-137: 音量快捷键]
+    T138[T-138: PIN 数字键盘]
+    T139[T-139: 快速设置]
+
+    T129 --> T137
+    T125 --> T139
 ```
 
 ## 执行检查清单
