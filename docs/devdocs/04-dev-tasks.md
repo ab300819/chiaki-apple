@@ -31,7 +31,7 @@
 | **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
-| **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
 
 ## 任务详情
 
@@ -480,36 +480,23 @@
   - [ ] UI 显示电量图标或百分比
   - [ ] 低电量时显示警告（<20%）
 
-### T-135: StreamingOverlay HDR 标志
+### T-135: StreamingOverlay HDR 标志 ✅
 
 - **目标**: 在流媒体覆盖层显示当前流是否为 HDR。
 - **关联需求**: F-001 (核心流媒体)
 - **来源**: INS-027
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
+  - `Chiaki/Core/Bridge/ChiakiSession.swift`
   - `Chiaki/Core/Streaming/StreamStatsManager.swift`
   - `Chiaki/Features/Streaming/StreamingOverlay.swift`
 - **依赖**: 无
 - **验收标准**:
-  - [ ] StreamStatsManager 添加 `isHDR: Bool` 属性
-  - [ ] 从会话获取当前 codec，判断 `codec.isHDR`
-  - [ ] StreamingOverlay 分辨率旁显示 "HDR" 徽章（仅当 isHDR 为 true）
-  - [ ] HDR 徽章使用醒目但不突兀的样式（如渐变背景）
-- **实现参考**:
-  ```swift
-  // StreamStatsManager
-  var isHDR: Bool = false
-
-  // StreamingOverlay
-  if stats.isHDR {
-      Text("HDR")
-          .font(.system(size: 10, weight: .bold))
-          .padding(.horizontal, 6)
-          .padding(.vertical, 2)
-          .background(LinearGradient(...))
-          .clipShape(RoundedRectangle(cornerRadius: 4))
-  }
-  ```
+  - [x] StreamStatsManager 添加 `isHDR: Bool` 属性
+  - [x] 从会话获取当前 codec，判断 `codec.isHDR`
+  - [x] StreamingOverlay 分辨率旁显示 "HDR" 徽章（仅当 isHDR 为 true）
+  - [x] HDR 徽章使用醒目但不突兀的样式（紫粉渐变背景）
+- **完成提交**: `3241eae` feat(ui): add HDR badge to StreamingOverlay (T-135)
 
 ---
 
