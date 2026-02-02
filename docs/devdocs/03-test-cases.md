@@ -1506,7 +1506,7 @@ jobs:
 | AC-064 | UT-016.1~6, E2E-007.1~3 | 单元+E2E | - | - |
 | AC-065 | UT-017.1~6, IT-009.1~5, E2E-008.1~4 | 单元+集成+E2E | - | - |
 | AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 | ✅ 8+5 | VolumeShortcutTests, VolumeOSDIntegrationTests |
-| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E | - | - |
+| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E | ✅ 10 | GamepadNumPadTests |
 | AC-068 | UT-020.1~6 | 单元测试 | - | - |
 
 ### 10.3 测试覆盖状态
@@ -1550,6 +1550,7 @@ jobs:
 | `StartupIntegrationTests.swift` | 1 | AC-052 | `ChiakiTests/Utilities/StartupIntegrationTests.swift` |
 | `VolumeShortcutTests.swift` | 8 | UT-018.1~6, AC-066 | `ChiakiTests/VolumeShortcutTests.swift` |
 | `VolumeOSDIntegrationTests.swift` | 5 | IT-010.1~4, AC-066 | `ChiakiTests/VolumeOSDIntegrationTests.swift` |
+| `GamepadNumPadTests.swift` | 10 | UT-019.1~8, AC-067 | `ChiakiTests/GamepadNumPadTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 

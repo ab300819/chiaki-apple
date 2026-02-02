@@ -34,7 +34,7 @@
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ✅ 已完成 |
-| **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ⏳ 待处理 |
+| **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ✅ 已完成 |
 | **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | 📦 已归档 |
 | **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | 📦 已归档 |
@@ -708,8 +708,10 @@
   - [x] 音量变更即时应用到 AudioPlayer
   - [x] OSD 动画流畅，不阻塞游戏输入
 
-### T-138: PIN 输入数字键盘
+### T-138: PIN 输入数字键盘 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-02
 - **目标**: 创建手柄友好的数字键盘，替代系统键盘输入 PIN。
 - **关联需求**: F-022 (AC-067)
 - **来源**: INS-030
@@ -717,27 +719,26 @@
 - **关联测试**: UT-019.1~8, E2E-009.1~5
 - **涉及文件**:
   - `Chiaki/Features/Common/GamepadNumPad.swift` [新建]
-  - `Chiaki/Features/PSNLogin/ConsolePinView.swift` [修改]
+  - `Chiaki/Features/HostList/ConsolePinView.swift` [修改]
+  - `ChiakiTests/GamepadNumPadTests.swift` [新建]
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 创建 `NumPadKey` 枚举：0-9, backspace, empty
-  - [ ] 创建 `GamepadNumPad` 组件，3×4 网格布局
-  - [ ] 使用 `@FocusState` 管理键位焦点
-  - [ ] 默认聚焦到"5"键（中间位置）
-  - [ ] 数字键输入追加到 value
-  - [ ] 退格键删除最后一位
-  - [ ] 空键位不响应操作
-  - [ ] 达到 maxLength (4) 时自动触发 onComplete
-  - [ ] tvOS 强制使用数字键盘
-  - [ ] iOS/macOS 提供键盘/数字键盘切换选项
-- **测试方法**:
-  - 运行 `UT-019` 验证键盘逻辑
-  - 运行 `E2E-009` 验证完整输入流程
-  - 手动测试方向键导航
+  - [x] 创建 `NumPadKey` 枚举：0-9, backspace, empty
+  - [x] 创建 `GamepadNumPad` 组件，3×4 网格布局
+  - [x] 使用 `@FocusState` 管理键位焦点
+  - [x] 默认聚焦到"5"键（中间位置）
+  - [x] 数字键输入追加到 value
+  - [x] 退格键删除最后一位
+  - [x] 空键位不响应操作
+  - [x] 达到 maxLength (4) 时自动触发 onComplete
+  - [x] tvOS 强制使用数字键盘
+  - [x] iOS/macOS 提供键盘/数字键盘切换选项
+- **测试结果**:
+  - UT-019: 10 tests passed (GamepadNumPadTests)
 - **Review 要点**:
-  - [ ] 键位大小适合 tvOS 10-foot UI
-  - [ ] PIN 显示使用占位符而非明文
-  - [ ] 无障碍标签正确设置
+  - [x] 键位大小适合 tvOS 10-foot UI (80pt)
+  - [x] PIN 显示使用占位符而非明文 (PINDisplay 组件)
+  - [x] 无障碍标签正确设置
 
 ### T-139: 流媒体快速设置面板
 
