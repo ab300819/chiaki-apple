@@ -39,7 +39,7 @@
 | **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
 | **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
 | **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ✅ 已完成 |
-| **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
+| **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ✅ 已完成 |
 | **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
@@ -823,28 +823,26 @@
 - **完成提交**: `b06d9ad` feat(ui): implement TouchableSlider with expanded touch area (T-142)
 
 
-### T-143: 触觉反馈统一
-
+### T-143: 触觉反馈统一 ✅
 - **目标**: 为所有可交互控件提供一致的触觉反馈。
-- **关联需求**: F-023 (AC-072)
-- **来源**: INS-036
-- **TDD 模式**: 🟡 推荐
+- **关联需求**: F-023, AC-072
 - **涉及文件**:
-  - `Chiaki/Utilities/HapticFeedback.swift` [新建]
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
-  - `Chiaki/Features/HostList/HostListView.swift` [修改]
+  - `Chiaki/Utilities/HapticFeedback.swift` ✅
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
+  - `Chiaki/Features/HostList/HostListView.swift` ✅
+  - `Chiaki/Features/HostList/HostRowView.swift` ✅
+  - `Chiaki/Features/Settings/VideoSettingsView.swift` ✅
+  - `Chiaki/Features/Settings/AudioSettingsView.swift` ✅
 - **依赖**: T-133 (Haptics 引擎统一，可复用)
 - **验收标准**:
-  - [ ] 创建 `HapticFeedback` 静态工具类
-  - [ ] 提供 `button()`, `success()`, `warning()`, `selection()` 方法
-  - [ ] ActionButton 添加触觉反馈
-  - [ ] 主机列表唤醒按钮添加触觉反馈
-  - [ ] 设置页面开关添加触觉反馈
-- **测试方法**:
-  - 手动验证各按钮触觉反馈一致性
-- **Review 要点**:
-  - [ ] 与 HapticsManager 职责不重复（HapticFeedback 用于 UI，HapticsManager 用于游戏）
-  - [ ] 触觉反馈不阻塞 UI
+  - [x] 创建 `HapticFeedback` 静态工具类
+  - [x] 提供 `button()`, `success()`, `warning()`, `selection()` 方法
+  - [x] ActionButton 添加触觉反馈
+  - [x] 主机列表唤醒按钮添加触觉反馈
+  - [x] 设置页面开关添加触觉反馈
+- **测试方法**: UT-023.1~4
+- **完成提交**: `bc87252` feat(ui): unify haptic feedback across interactive controls (T-143)
+
 
 ### T-144: 虚拟控制器无障碍
 
