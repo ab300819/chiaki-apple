@@ -31,7 +31,10 @@ struct StreamingControlsView: View {
 
                 Spacer()
 
-                Button(action: { viewModel.toggleControlMenu() }) {
+                Button(action: { 
+                    HapticFeedback.button()
+                    viewModel.toggleControlMenu() 
+                }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
@@ -50,7 +53,12 @@ struct StreamingControlsView: View {
                     AudioControlSection(
                         volume: Binding(
                             get: { viewModel.volume },
-                            set: { viewModel.setVolume($0) }
+                            set: { 
+                                if $0 != viewModel.volume {
+                                    HapticFeedback.selection()
+                                }
+                                viewModel.setVolume($0) 
+                            }
                         ),
                         isMicEnabled: viewModel.isMicEnabled,
                         isMicMuted: viewModel.isMicMuted,
@@ -64,11 +72,19 @@ struct StreamingControlsView: View {
                     DisplayModeSection(
                         displayMode: Binding(
                             get: { viewModel.displayMode },
-                            set: { viewModel.setDisplayMode($0) }
+                            set: { 
+                                HapticFeedback.selection()
+                                viewModel.setDisplayMode($0) 
+                            }
                         ),
                         zoomFactor: Binding(
                             get: { viewModel.zoomFactor },
-                            set: { viewModel.setZoomFactor($0) }
+                            set: { 
+                                if $0 != viewModel.zoomFactor {
+                                    HapticFeedback.selection()
+                                }
+                                viewModel.setZoomFactor($0) 
+                            }
                         ),
                         focusedControl: $focusedControl
                     )
@@ -79,7 +95,10 @@ struct StreamingControlsView: View {
                     VideoPresetSection(
                         preset: Binding(
                             get: { viewModel.videoPreset },
-                            set: { viewModel.setVideoPreset($0) }
+                            set: { 
+                                HapticFeedback.selection()
+                                viewModel.setVideoPreset($0) 
+                            }
                         ),
                         focusedControl: $focusedControl
                     )
@@ -358,7 +377,10 @@ private struct QuickActionsSection: View {
 
             HStack(spacing: ChiakiTheme.Touch.minSpacing) {
                 // Show/Hide stats overlay
-                Button(action: { isOverlayVisible.toggle() }) {
+                Button(action: { 
+                    HapticFeedback.button()
+                    isOverlayVisible.toggle() 
+                }) {
                     VStack(spacing: 6) {
                         Image(systemName: isOverlayVisible ? "chart.bar.xaxis" : "chart.bar")
                             .font(.title2)
@@ -405,7 +427,10 @@ private struct ActionButton: View {
     var action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            HapticFeedback.button()
+            action()
+        }) {
             VStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.title2)

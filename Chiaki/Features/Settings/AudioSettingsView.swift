@@ -21,6 +21,9 @@ struct AudioSettingsView: View {
                 }
 
                 Toggle(L10n.Settings.Audio.microphone, isOn: $store.streamSettings.microphoneEnabled)
+                    .onChange(of: store.streamSettings.microphoneEnabled) { _, _ in
+                        HapticFeedback.selection()
+                    }
             } header: {
                 Text(L10n.Settings.Audio.outputInput)
             }

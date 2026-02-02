@@ -114,6 +114,9 @@ struct VideoSettingsView: View {
                 }
 
                 Toggle(L10n.Settings.Video.hdr, isOn: $store.streamSettings.hdrEnabled)
+                    .onChange(of: store.streamSettings.hdrEnabled) { _, _ in
+                        HapticFeedback.selection()
+                    }
             } header: {
                 Text(L10n.Settings.Video.quality)
             }
@@ -176,7 +179,13 @@ struct VideoSettingsView: View {
 
             Section {
                 Toggle(String(localized: "settings.video.hardwareDecoding"), isOn: $store.streamSettings.hardwareDecodingEnabled)
+                    .onChange(of: store.streamSettings.hardwareDecodingEnabled) { _, _ in
+                        HapticFeedback.selection()
+                    }
                 Toggle(String(localized: "settings.video.vrr"), isOn: $store.streamSettings.vrrEnabled)
+                    .onChange(of: store.streamSettings.vrrEnabled) { _, _ in
+                        HapticFeedback.selection()
+                    }
 
                 Picker(String(localized: "settings.video.colorSpace"), selection: $store.streamSettings.colorSpace) {
                     ForEach(StreamSettings.ColorSpace.allCases) { colorSpace in

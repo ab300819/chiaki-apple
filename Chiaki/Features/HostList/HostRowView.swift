@@ -84,7 +84,10 @@ struct HostRowView: View {
                             .foregroundStyle(.green)
                             .clipShape(Capsule())
                     case .standby:
-                        Button(action: onWakeUp) {
+                        Button(action: {
+                            HapticFeedback.button()
+                            onWakeUp()
+                        }) {
                             Text(L10n.HostList.wakeUp)
                                 .font(.caption)
                                 .padding(.horizontal, 8)

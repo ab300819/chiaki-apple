@@ -35,7 +35,10 @@ struct HostListView: View {
         .toolbar {
             #if !os(tvOS)
             ToolbarItem(placement: .navigation) {
-                Button(action: { viewModel.toggleDiscovery() }) {
+                Button(action: { 
+                    HapticFeedback.button()
+                    viewModel.toggleDiscovery() 
+                }) {
                     Label(
                         viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery,
                         systemImage: viewModel.isDiscovering ? "wifi" : "wifi.slash"
@@ -45,7 +48,10 @@ struct HostListView: View {
             }
             #endif
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { navigationManager.showAddHostSheet = true }) {
+                Button(action: { 
+                    HapticFeedback.button()
+                    navigationManager.showAddHostSheet = true 
+                }) {
                     Label(L10n.HostList.addHost, systemImage: "plus")
                 }
             }
@@ -97,6 +103,7 @@ struct HostListView: View {
                         if host.isRegistered {
                             NavigationLink(value: host) {
                                 TVHostCardView(host: host) {
+                                    HapticFeedback.button()
                                     viewModel.wakeUp(host)
                                 }
                             }
@@ -123,8 +130,12 @@ struct HostListView: View {
                                 }
                             }
                         } else {
-                            Button(action: { registeringHost = host }) {
+                            Button(action: { 
+                                HapticFeedback.button()
+                                registeringHost = host 
+                            }) {
                                 TVHostCardView(host: host) {
+                                    HapticFeedback.button()
                                     viewModel.wakeUp(host)
                                 }
                             }
@@ -201,7 +212,10 @@ struct HostListView: View {
                             }
                         }
                     } else {
-                        Button(action: { registeringHost = host }) {
+                        Button(action: { 
+                            HapticFeedback.button()
+                            registeringHost = host 
+                        }) {
                             HostRowView(host: host) {
                                 viewModel.wakeUp(host)
                             }
@@ -233,7 +247,10 @@ struct HostListView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button(action: { navigationManager.showAddHostSheet = true }) {
+            Button(action: { 
+                HapticFeedback.button()
+                navigationManager.showAddHostSheet = true 
+            }) {
                 Text(L10n.HostList.addHost)
                     .fontWeight(.semibold)
                     .padding(.horizontal, 24)
