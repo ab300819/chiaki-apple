@@ -6,6 +6,7 @@ import UIKit
 #if os(iOS)
 struct VirtualButtonView: View {
     let iconName: String
+    let buttonName: String
     var size: CGFloat = 60
     var color: Color = .white
     var hapticStyle: UIImpactFeedbackGenerator.FeedbackStyle = .light
@@ -53,6 +54,8 @@ struct VirtualButtonView: View {
         }
         .scaleEffect(isPressed ? 0.92 : 1.0)
         .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .accessibilityLabel(buttonName)
+        .accessibilityValue(isPressed ? String(localized: "virtualController.pressed") : String(localized: "virtualController.released"))
         .onAppear {
             prepareHaptics()
         }
@@ -88,10 +91,10 @@ struct VirtualButtonView: View {
     ZStack {
         Color.black
         HStack(spacing: 20) {
-            VirtualButtonView(iconName: "xmark", color: .blue) { pressed in
+            VirtualButtonView(iconName: "xmark", buttonName: "Cross", color: .blue) { pressed in
                 print("Cross: \(pressed)")
             }
-            VirtualButtonView(iconName: "circle", color: .red) { pressed in
+            VirtualButtonView(iconName: "circle", buttonName: "Circle", color: .red) { pressed in
                 print("Circle: \(pressed)")
             }
         }

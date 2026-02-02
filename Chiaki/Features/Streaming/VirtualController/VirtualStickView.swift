@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct VirtualStickView: View {
+    let accessibilityLabel: String
     var onValueChanged: (CGPoint) -> Void
     var size: CGFloat = 160
     var thumbSize: CGFloat = 70
@@ -61,13 +62,14 @@ struct VirtualStickView: View {
                 )
         }
         .frame(width: size, height: size)
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 
 #Preview {
     ZStack {
         Color.black
-        VirtualStickView { point in
+        VirtualStickView(accessibilityLabel: "Left Stick") { point in
             print("Stick: \(point)")
         }
     }

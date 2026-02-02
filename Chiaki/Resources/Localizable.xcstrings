@@ -4589,6 +4589,120 @@
           }
         }
       }
+    },
+    "virtualController.up" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "D-Pad Up" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上方向键" } }
+      }
+    },
+    "virtualController.down" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "D-Pad Down" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下方向键" } }
+      }
+    },
+    "virtualController.left" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "D-Pad Left" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "左方向键" } }
+      }
+    },
+    "virtualController.right" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "D-Pad Right" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "右方向键" } }
+      }
+    },
+    "virtualController.triangle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Triangle" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "三角" } }
+      }
+    },
+    "virtualController.square" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Square" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "方块" } }
+      }
+    },
+    "virtualController.circle" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Circle" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "圆圈" } }
+      }
+    },
+    "virtualController.cross" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cross" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "叉" } }
+      }
+    },
+    "virtualController.l1" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "L1" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "L1" } }
+      }
+    },
+    "virtualController.l2" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "L2" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "L2" } }
+      }
+    },
+    "virtualController.r1" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "R1" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "R1" } }
+      }
+    },
+    "virtualController.r2" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "R2" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "R2" } }
+      }
+    },
+    "virtualController.share" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享" } }
+      }
+    },
+    "virtualController.options" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Options" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选项" } }
+      }
+    },
+    "virtualController.ps" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "PS Button" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "PS 键" } }
+      }
+    },
+    "virtualController.leftStick" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Left Stick" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "左摇杆" } }
+      }
+    },
+    "virtualController.rightStick" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Right Stick" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "右摇杆" } }
+      }
+    },
+    "virtualController.pressed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pressed" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按下" } }
+      }
+    },
+    "virtualController.released" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Released" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "松开" } }
+      }
     }
   },
   "version" : "1.1"

@@ -16,10 +16,10 @@ struct VirtualControllerView: View {
                          * @satisfies AC-070 - 控件间距优化
                          */
                         HStack(spacing: 24) {
-                            VirtualButtonView(iconName: "l2.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .heavy) { pressed in
+                            VirtualButtonView(iconName: "l2.button.roundedtop.horizontal", buttonName: String(localized: "virtualController.l2"), size: 50, color: .white, hapticStyle: .heavy) { pressed in
                                 onInput(.button(.l2, pressed: pressed))
                             }
-                            VirtualButtonView(iconName: "l1.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "l1.button.roundedtop.horizontal", buttonName: String(localized: "virtualController.l1"), size: 50, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.l1, pressed: pressed))
                             }
                         }
@@ -32,15 +32,15 @@ struct VirtualControllerView: View {
                          * @satisfies AC-069 - 触摸目标尺寸
                          */
                         HStack(spacing: 30) {
-                            VirtualButtonView(iconName: "square.and.arrow.up", size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "square.and.arrow.up", buttonName: String(localized: "virtualController.share"), size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.share, pressed: pressed))
                             }
 
-                            VirtualButtonView(iconName: "playstation.logo", size: 50, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "playstation.logo", buttonName: String(localized: "virtualController.ps"), size: 50, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.ps, pressed: pressed))
                             }
 
-                            VirtualButtonView(iconName: "line.3.horizontal", size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "line.3.horizontal", buttonName: String(localized: "virtualController.options"), size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.options, pressed: pressed))
                             }
                         }
@@ -54,10 +54,10 @@ struct VirtualControllerView: View {
                          * @satisfies AC-070 - 控件间距优化
                          */
                         HStack(spacing: 24) {
-                            VirtualButtonView(iconName: "r1.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "r1.button.roundedtop.horizontal", buttonName: String(localized: "virtualController.r1"), size: 50, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.r1, pressed: pressed))
                             }
-                            VirtualButtonView(iconName: "r2.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .heavy) { pressed in
+                            VirtualButtonView(iconName: "r2.button.roundedtop.horizontal", buttonName: String(localized: "virtualController.r2"), size: 50, color: .white, hapticStyle: .heavy) { pressed in
                                 onInput(.button(.r2, pressed: pressed))
                             }
                         }
@@ -72,7 +72,7 @@ struct VirtualControllerView: View {
                     VStack(spacing: 40) {
                         dpadView
                         
-                        VirtualStickView { point in
+                        VirtualStickView(accessibilityLabel: String(localized: "virtualController.leftStick")) { point in
                             onInput(.leftStick(x: Float(point.x), y: Float(point.y)))
                         }
                     }
@@ -84,7 +84,7 @@ struct VirtualControllerView: View {
                     VStack(spacing: 40) {
                         faceButtonsView
                         
-                        VirtualStickView { point in
+                        VirtualStickView(accessibilityLabel: String(localized: "virtualController.rightStick")) { point in
                             onInput(.rightStick(x: Float(point.x), y: Float(point.y)))
                         }
                     }
@@ -105,23 +105,23 @@ struct VirtualControllerView: View {
         Grid(horizontalSpacing: ChiakiTheme.Touch.minSpacing, verticalSpacing: ChiakiTheme.Touch.minSpacing) {
             GridRow {
                 Color.clear.frame(width: 50, height: 50)
-                VirtualButtonView(iconName: "arrowtriangle.up.fill", size: 50, color: .gray, hapticStyle: .light) { pressed in
+                VirtualButtonView(iconName: "arrowtriangle.up.fill", buttonName: String(localized: "virtualController.up"), size: 50, color: .gray, hapticStyle: .light) { pressed in
                     onInput(.button(.up, pressed: pressed))
                 }
                 Color.clear.frame(width: 50, height: 50)
             }
             GridRow {
-                VirtualButtonView(iconName: "arrowtriangle.left.fill", size: 50, color: .gray, hapticStyle: .light) { pressed in
+                VirtualButtonView(iconName: "arrowtriangle.left.fill", buttonName: String(localized: "virtualController.left"), size: 50, color: .gray, hapticStyle: .light) { pressed in
                     onInput(.button(.left, pressed: pressed))
                 }
                 Color.clear.frame(width: 50, height: 50)
-                VirtualButtonView(iconName: "arrowtriangle.right.fill", size: 50, color: .gray, hapticStyle: .light) { pressed in
+                VirtualButtonView(iconName: "arrowtriangle.right.fill", buttonName: String(localized: "virtualController.right"), size: 50, color: .gray, hapticStyle: .light) { pressed in
                     onInput(.button(.right, pressed: pressed))
                 }
             }
             GridRow {
                 Color.clear.frame(width: 50, height: 50)
-                VirtualButtonView(iconName: "arrowtriangle.down.fill", size: 50, color: .gray, hapticStyle: .light) { pressed in
+                VirtualButtonView(iconName: "arrowtriangle.down.fill", buttonName: String(localized: "virtualController.down"), size: 50, color: .gray, hapticStyle: .light) { pressed in
                     onInput(.button(.down, pressed: pressed))
                 }
                 Color.clear.frame(width: 50, height: 50)
@@ -133,23 +133,23 @@ struct VirtualControllerView: View {
         Grid(horizontalSpacing: 15, verticalSpacing: 15) {
             GridRow {
                 Color.clear.frame(width: 55, height: 55)
-                VirtualButtonView(iconName: "triangle.fill", size: 55, color: .green, hapticStyle: .medium) { pressed in
+                VirtualButtonView(iconName: "triangle.fill", buttonName: String(localized: "virtualController.triangle"), size: 55, color: .green, hapticStyle: .medium) { pressed in
                     onInput(.button(.triangle, pressed: pressed))
                 }
                 Color.clear.frame(width: 55, height: 55)
             }
             GridRow {
-                VirtualButtonView(iconName: "square.fill", size: 55, color: .pink, hapticStyle: .medium) { pressed in
+                VirtualButtonView(iconName: "square.fill", buttonName: String(localized: "virtualController.square"), size: 55, color: .pink, hapticStyle: .medium) { pressed in
                     onInput(.button(.square, pressed: pressed))
                 }
                 Color.clear.frame(width: 55, height: 55)
-                VirtualButtonView(iconName: "circle.fill", size: 55, color: .red, hapticStyle: .medium) { pressed in
+                VirtualButtonView(iconName: "circle.fill", buttonName: String(localized: "virtualController.circle"), size: 55, color: .red, hapticStyle: .medium) { pressed in
                     onInput(.button(.circle, pressed: pressed))
                 }
             }
             GridRow {
                 Color.clear.frame(width: 55, height: 55)
-                VirtualButtonView(iconName: "multiply", size: 55, color: .blue, hapticStyle: .medium) { pressed in
+                VirtualButtonView(iconName: "multiply", buttonName: String(localized: "virtualController.cross"), size: 55, color: .blue, hapticStyle: .medium) { pressed in
                     onInput(.button(.cross, pressed: pressed))
                 }
                 Color.clear.frame(width: 55, height: 55)
