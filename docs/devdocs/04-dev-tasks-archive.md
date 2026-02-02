@@ -62,4 +62,91 @@
   - 优化 SwiftUI 动画曲线，提升原生交互体验
 
 ---
+
+## M11-Part1: 生产就绪基础 (T-111~T-116) ✅
+
+> **归档时间**: 2026-02-02
+> **关联功能**: F-015~F-018 (生产准备)
+
+| 编号 | 名称 | 关联需求 | 完成提交 |
+|------|------|----------|----------|
+| T-111 | i18n：深度本地化与 xcstrings 迁移 | F-015, AC-044 | `20024d5` |
+| T-112 | 稳定性：NetworkMonitor 与自动重连 | F-016, AC-045 | `d378546` |
+| T-113 | 性能：Metal 渲染器节能调优 (VRR) | F-017, AC-046 | `f491c92` |
+| T-114 | 分发：Info.plist 隐私说明与元数据补全 | F-018, AC-047 | `da63492` |
+| T-116 | 体验：语义化触觉反馈 (CoreHaptics) 精调 | F-007, AC-017 | `d9e98ac` |
+
+**成果**:
+- 100% i18n 本地化覆盖，移除所有硬编码文本
+- 网络切换自动重连（WiFi→5G 无缝恢复）
+- VRR 节能优化（静态画面 GPU 功耗降低 20%+）
+- App Store 隐私合规配置完成
+- 语义化触觉反馈系统（HapticsManager 单例）
+
+---
+
+## M11-Part2: 日志系统 (F-019, T-117~T-124) ✅
+
+> **归档时间**: 2026-02-02
+> **来源洞察**: INS-011 ~ INS-015
+
+| 编号 | 名称 | TDD 模式 | 完成提交 |
+|------|------|----------|----------|
+| T-117 | FileLogHandler 文件持久化 | 🔴 强制 | `f591f60` |
+| T-118 | Logger 集成 FileLogHandler | 🟡 推荐 | `409317a` |
+| T-119 | DiagnosticsExporter 诊断包导出 | 🔴 强制 | `5e9baa7` |
+| T-120 | CrashReporter 崩溃捕获 | 🔴 强制 | `0562dcb` |
+| T-121 | LogViewerView 增强与诊断包 UI | 🟢 可选 | `fec2b3c` |
+| T-122 | CrashReportView 崩溃报告 UI | 🟢 可选 | `f491c92` |
+| T-123 | App 启动集成与本地化 | ⚪ 不适用 | `3801818` |
+| T-124 | 核心流程日志覆盖增强 | ⚪ 不适用 | `19e9623` |
+
+**验收标准满足**: AC-049 ~ AC-054
+
+**成果**:
+- 日志文件持久化（5MB/文件，7 文件轮换）
+- 诊断包导出（ZIP 含日志、设备信息、配置快照）
+- 敏感信息自动脱敏（IP/Token/UserID/MAC）
+- 崩溃捕获与下次启动提示
+- 核心模块日志覆盖（Session/Video/Audio/Controller/Discovery/PSN/Network）
+
+**测试覆盖**:
+- FileLogHandler: 93.9%
+- DiagnosticsExporter: 87.7%
+- CrashReporter: 62.5%
+
+---
+
+## M11-Part3: 手柄操作友好化 (F-020, T-125~T-130) ✅
+
+> **归档时间**: 2026-02-02
+> **来源洞察**: INS-017 ~ INS-022
+
+| 编号 | 名称 | TDD 模式 | 完成提交 |
+|------|------|----------|----------|
+| T-125 | 控制菜单焦点管理 | 🟢 可选 | `e47d95c` |
+| T-126 | tvOS 焦点视觉反馈 | ⚪ 不适用 | `bc77fae` |
+| T-127 | 控制菜单焦点陷阱 | 🟢 可选 | `f9d3d1e` |
+| T-128 | tvOS 方向键导航 | 🟢 可选 | `6a98368` |
+| T-129 | 组合键快捷操作 | 🔴 强制 | `2257e97` |
+| T-130 | 焦点恢复逻辑 | 🟢 可选 | `e91cadd` |
+
+**验收标准满足**: AC-055 ~ AC-060
+
+**成果**:
+- `StreamingControlFocus` 枚举管理焦点状态
+- `FocusableButtonStyle` tvOS 焦点视觉反馈（缩放+边框+阴影）
+- 焦点陷阱防止跳转到背景视频
+- tvOS 完整方向键导航（Menu/PlayPause/方向键）
+- `ControllerShortcutDetector` 组合键检测（PS+Options/L1+R1+PS）
+- 焦点恢复逻辑（菜单关闭后恢复到上次位置）
+
+**关键文件**:
+- `StreamingControlsView.swift` - 焦点管理与恢复
+- `FocusableButtonStyle.swift` - tvOS 视觉反馈
+- `StreamingView.swift` - 焦点陷阱与导航命令
+- `ControllerShortcutDetector.swift` - 组合键检测
+
+---
+
 > 更多任务记录详见 [04-dev-tasks.md](04-dev-tasks.md)
