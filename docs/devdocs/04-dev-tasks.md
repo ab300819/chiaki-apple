@@ -40,7 +40,7 @@
 | **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
 | **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ✅ 已完成 |
 | **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ✅ 已完成 |
-| **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ✅ 已完成 |
 | **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
 
@@ -844,29 +844,30 @@
 - **完成提交**: `bc87252` feat(ui): unify haptic feedback across interactive controls (T-143)
 
 
-### T-144: 虚拟控制器无障碍
+### T-144: 虚拟控制器无障碍 ✅
 
 - **目标**: 为虚拟控制器添加完整的无障碍标签。
 - **关联需求**: F-023 (AC-073)
 - **来源**: INS-037
 - **TDD 模式**: ⚪ 不适用（a11y 增强）
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` [修改]
-  - `Chiaki/Features/Streaming/VirtualController/VirtualStickView.swift` [修改]
-  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
-- **依赖**: T-143
+  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` ✅
+  - `Chiaki/Features/Streaming/VirtualController/VirtualStickView.swift` ✅
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` ✅
+- **依赖**: T-143 ✅
 - **验收标准**:
-  - [ ] VirtualButtonView 添加 `buttonName` 参数
-  - [ ] 添加 `.accessibilityLabel(buttonName)`
-  - [ ] 添加 `.accessibilityValue(isPressed ? "Pressed" : "Released")`
-  - [ ] VirtualStickView 添加 `.accessibilityLabel("Left/Right Stick")`
-  - [ ] 所有按钮调用点传入正确的 buttonName
+  - [x] VirtualButtonView 添加 `buttonName` 参数
+  - [x] 添加 `.accessibilityLabel(buttonName)`
+  - [x] 添加 `.accessibilityValue(isPressed ? "Pressed" : "Released")`
+  - [x] VirtualStickView 添加 `.accessibilityLabel("Left/Right Stick")`
+  - [x] 所有按钮调用点传入正确的 buttonName（17 个按钮 + 2 个摇杆）
 - **测试方法**:
   - 使用 VoiceOver 测试虚拟控制器
   - 使用 Accessibility Inspector 验证标签
 - **Review 要点**:
-  - [ ] 标签文本本地化
-  - [ ] 状态值动态更新
+  - [x] 标签文本本地化（19 个本地化键值，中英文完整）
+  - [x] 状态值动态更新（pressed/released 状态）
+- **备注**: 此任务在 F-023 开发过程中已提前完成
 
 ### T-145: 长按手势支持
 
