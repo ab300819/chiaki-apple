@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// View for setting a 4-digit PIN code for console access
+/**
+ * View for setting a 4-digit PIN code for console access
+ * @requirement F-022 - 手柄操控 UI/UX 优化
+ * @satisfies AC-067 - PIN 输入数字键盘优化
+ */
 struct ConsolePinView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -105,7 +109,11 @@ struct ConsolePinView: View {
     }
 }
 
-/// View for entering PIN before connecting to a protected console
+/**
+ * View for entering PIN before connecting to a protected console
+ * @requirement F-022 - 手柄操控 UI/UX 优化
+ * @satisfies AC-067 - PIN 输入数字键盘优化
+ */
 struct ConsolePinEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -117,6 +125,7 @@ struct ConsolePinEntryView: View {
     @State private var showPin = false
     @State private var showError = false
     @State private var attempts = 0
+    @State private var useNumPad = false
     @FocusState private var isPinFieldFocused: Bool
 
     private let maxAttempts = 5
@@ -137,63 +146,38 @@ struct ConsolePinEntryView: View {
                 Text(String(localized: "consolePin.enterPin \(host.nickname)"))
                     .font(.headline)
 
-                VStack(spacing: 8) {
-                    HStack {
-                        if showPin {
-                            TextField("0000", text: $pin)
-                                .focused($isPinFieldFocused)
-                        } else {
-                            SecureField("0000", text: $pin)
-                                .focused($isPinFieldFocused)
-                        }
+                #if os(tvOS)
+                // tvOS: Always use gamepad-friendly numpad
+                numPadInputSection
+                #else
+                // iOS/macOS: Allow switching between keyboard and numpad
+                if useNumPad {
+                    numPadInputSection
+                } else {
+                    textFieldInputSection
+                }
+                #endif
 
-                        Button(action: { showPin.toggle() }) {
-                            Image(systemName: showPin ? "eye.slash" : "eye")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .font(.title2.monospaced())
-                    .multilineTextAlignment(.center)
-                    .padding()
-                    #if os(iOS) || os(tvOS)
-                    .background(Color(.secondarySystemBackground))
-                    #else
-                    .background(Color.gray.opacity(0.1))
-                    #endif
-                    .clipShape(.rect(cornerRadius: 12))
-                    .frame(maxWidth: 200)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .onChange(of: pin) { _, newValue in
-                        showError = false
-                        let filtered = newValue.filter { $0.isNumber }
-                        if filtered.count <= 4 {
-                            pin = filtered
-                        } else {
-                            pin = String(filtered.prefix(4))
-                        }
-                    }
-
-                    if showError {
-                        Text(String(localized: "consolePin.incorrectPin \(maxAttempts - attempts)"))
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
+                if showError {
+                    Text(String(localized: "consolePin.incorrectPin \(maxAttempts - attempts)"))
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
 
-                Button(action: verifyPin) {
-                    Text(String(localized: "consolePin.connect"))
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isValidFormat ? Color.accentColor : Color.gray)
-                        .foregroundStyle(.white)
-                        .clipShape(.rect(cornerRadius: 12))
+                #if !os(tvOS)
+                // Show input method toggle on non-tvOS platforms
+                Button(action: { useNumPad.toggle() }) {
+                    Label(
+                        useNumPad
+                            ? String(localized: "consolePin.useKeyboard")
+                            : String(localized: "consolePin.useNumPad"),
+                        systemImage: useNumPad ? "keyboard" : "number.square"
+                    )
+                    .font(.caption)
                 }
-                .disabled(!isValidFormat)
-                .frame(maxWidth: 200)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                #endif
 
                 Spacer()
             }
@@ -211,10 +195,101 @@ struct ConsolePinEntryView: View {
                 }
             }
             .onAppear {
+                #if os(tvOS)
+                useNumPad = true
+                #else
                 isPinFieldFocused = true
+                #endif
+            }
+            .onChange(of: pin) { _, _ in
+                showError = false
             }
         }
     }
+
+    // MARK: - Input Sections
+
+    @ViewBuilder
+    private var numPadInputSection: some View {
+        VStack(spacing: 20) {
+            // PIN display with show/hide toggle
+            HStack {
+                PINDisplay(value: pin, maxLength: 4, showValue: showPin)
+
+                Button(action: { showPin.toggle() }) {
+                    Image(systemName: showPin ? "eye.slash" : "eye")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Gamepad numpad
+            GamepadNumPad(value: $pin, maxLength: 4) { _ in
+                verifyPin()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var textFieldInputSection: some View {
+        VStack(spacing: 8) {
+            HStack {
+                if showPin {
+                    TextField("0000", text: $pin)
+                        .focused($isPinFieldFocused)
+                } else {
+                    SecureField("0000", text: $pin)
+                        .focused($isPinFieldFocused)
+                }
+
+                Button(action: { showPin.toggle() }) {
+                    Image(systemName: showPin ? "eye.slash" : "eye")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .font(.title2.monospaced())
+            .multilineTextAlignment(.center)
+            .padding()
+            #if os(iOS)
+            .background(Color(.secondarySystemBackground))
+            #else
+            .background(Color.gray.opacity(0.1))
+            #endif
+            .clipShape(.rect(cornerRadius: 12))
+            .frame(maxWidth: 200)
+            #if os(iOS)
+            .keyboardType(.numberPad)
+            #endif
+            .onChange(of: pin) { _, newValue in
+                let filtered = newValue.filter { $0.isNumber }
+                if filtered.count <= 4 {
+                    pin = filtered
+                } else {
+                    pin = String(filtered.prefix(4))
+                }
+            }
+            .onSubmit {
+                if isValidFormat {
+                    verifyPin()
+                }
+            }
+
+            Button(action: verifyPin) {
+                Text(String(localized: "consolePin.connect"))
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isValidFormat ? Color.accentColor : Color.gray)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 12))
+            }
+            .disabled(!isValidFormat)
+            .frame(maxWidth: 200)
+        }
+    }
+
+    // MARK: - Actions
 
     private func verifyPin() {
         if ConsolePinManager.shared.verifyPin(pin, for: host) {

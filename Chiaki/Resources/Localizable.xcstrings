@@ -166,6 +166,38 @@
         }
       }
     },
+    "numPad.backspace" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backspace"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退格"
+          }
+        }
+      }
+    },
+    "numPad.pressToEnter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press to enter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下输入"
+          }
+        }
+      }
+    },
     "addHost.address" : {
       "localizations" : {
         "en" : {
@@ -766,6 +798,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要 PIN"
+          }
+        }
+      }
+    },
+    "consolePin.useKeyboard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Keyboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用键盘"
+          }
+        }
+      }
+    },
+    "consolePin.useNumPad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Number Pad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用数字键盘"
           }
         }
       }
