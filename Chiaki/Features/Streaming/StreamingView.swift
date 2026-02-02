@@ -200,11 +200,29 @@ struct StreamingView: View {
             Text(L10n.Streaming.disconnectConfirmMessage)
         }
         #if os(tvOS)
+        /**
+         * tvOS Remote navigation commands
+         * @requirement F-020 - 手柄操作友好化
+         * @satisfies AC-058 - tvOS 方向键导航
+         */
         .onExitCommand {
-            handleDisconnectAction()
+            // AC-058: Menu button - close menu if open, otherwise show disconnect confirmation
+            if viewModel.isControlMenuVisible {
+                viewModel.toggleControlMenu()
+            } else {
+                handleDisconnectAction()
+            }
         }
         .onPlayPauseCommand {
-            viewModel.toggleOverlay()
+            // AC-058: Play/Pause button - toggle control menu
+            viewModel.toggleControlMenu()
+        }
+        .onMoveCommand { direction in
+            // AC-058: Direction keys - handled by SwiftUI focus system when menu is open
+            // When menu is closed, show overlay on any direction press
+            if !viewModel.isControlMenuVisible && !viewModel.isOverlayVisible {
+                viewModel.toggleOverlay()
+            }
         }
         #endif
         .onAppear {
