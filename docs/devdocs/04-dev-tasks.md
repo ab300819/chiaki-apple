@@ -36,11 +36,11 @@
 | **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ⏳ 待处理 |
 | **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ⏳ 待处理 |
 | **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
-| **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
-| **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
-| **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ✅ 已完成 |
-| **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ✅ 已完成 |
-| **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ✅ 已完成 |
+| **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | 📦 已归档 |
+| **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | 📦 已归档 |
+| **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | 📦 已归档 |
+| **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | 📦 已归档 |
+| **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | 📦 已归档 |
 | **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
 
@@ -765,109 +765,7 @@
 
 > **来源需求**: F-023 iPad 触摸操作友好化 (INS-032~039)
 > **关联验收标准**: AC-069 ~ AC-075
-
-### T-140: 触摸目标尺寸优化
-
-- **目标**: 确保所有可交互控件尺寸符合 Apple HIG 标准 (≥44×44pt)。
-- **关联需求**: F-023 (AC-069)
-- **来源**: INS-032
-- **TDD 模式**: ⚪ 不适用（UI 调整）
-- **涉及文件**:
-  - `Chiaki/Features/HostList/HostRowView.swift` [修改]
-- **依赖**: 无
-- **验收标准**:
-  - [ ] 主机列表图标 frame 从 40pt 增加到 44pt
-  - [ ] 添加 `.contentShape(Circle())` 扩大可点击区域
-  - [ ] 验证所有其他图标控件尺寸符合 44pt 标准
-- **测试方法**:
-  - 手动测试 iPad 触摸点击准确性
-  - 使用 Accessibility Inspector 验证触摸目标
-- **Review 要点**:
-  - [ ] 符合 Apple HIG 最小触摸目标 44pt
-  - [ ] 不影响视觉布局美观
-
-### T-141: 控件间距优化 ✅
-
-- **目标**: 优化相邻可交互控件间距，防止误触。
-- **关联需求**: F-023 (AC-070)
-- **来源**: INS-033, INS-034
-- **TDD 模式**: ⚪ 不适用（UI 调整）
-- **涉及文件**:
-  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` ✅
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
-- **依赖**: 无
-- **验收标准**:
-  - [x] D-Pad Grid spacing 从 10pt 增加到 16pt（使用 `ChiakiTheme.Touch.minSpacing`）
-  - [x] QuickActions HStack spacing 从 12pt 增加到 16pt（使用 `ChiakiTheme.Touch.minSpacing`）
-  - [x] 肩键 HStack spacing 从 20pt 增加到 24pt
-- **测试方法**:
-  - 手动测试 iPad 虚拟控制器操作
-  - 验证按钮误触率降低
-- **Review 要点**:
-  - [x] 间距调整不影响整体布局
-  - [x] tvOS 大屏布局仍然合适
-- **完成提交**: `e51a985`
-
-### T-142: Slider 交互区域优化 ✅
-- **目标**: 扩大 Slider 可触摸高度到 44pt。
-- **关联需求**: F-023, AC-071
-- **涉及文件**:
-  - `Chiaki/Features/Streaming/TouchableSlider.swift` ✅
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
-- **依赖**: 无
-- **验收标准**:
-  - [x] 音量 Slider 添加 `.frame(height: 44)` (via TouchableSlider)
-  - [x] 缩放 Slider 添加 `.frame(height: 44)` (via TouchableSlider)
-  - [x] 验证 Slider 拖动更容易
-- **测试方法**: UT-022.1, UT-022.2
-- **完成提交**: `b06d9ad` feat(ui): implement TouchableSlider with expanded touch area (T-142)
-
-
-### T-143: 触觉反馈统一 ✅
-- **目标**: 为所有可交互控件提供一致的触觉反馈。
-- **关联需求**: F-023, AC-072
-- **涉及文件**:
-  - `Chiaki/Utilities/HapticFeedback.swift` ✅
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
-  - `Chiaki/Features/HostList/HostListView.swift` ✅
-  - `Chiaki/Features/HostList/HostRowView.swift` ✅
-  - `Chiaki/Features/Settings/VideoSettingsView.swift` ✅
-  - `Chiaki/Features/Settings/AudioSettingsView.swift` ✅
-- **依赖**: T-133 (Haptics 引擎统一，可复用)
-- **验收标准**:
-  - [x] 创建 `HapticFeedback` 静态工具类
-  - [x] 提供 `button()`, `success()`, `warning()`, `selection()` 方法
-  - [x] ActionButton 添加触觉反馈
-  - [x] 主机列表唤醒按钮添加触觉反馈
-  - [x] 设置页面开关添加触觉反馈
-- **测试方法**: UT-023.1~4
-- **完成提交**: `bc87252` feat(ui): unify haptic feedback across interactive controls (T-143)
-
-
-### T-144: 虚拟控制器无障碍 ✅
-
-- **目标**: 为虚拟控制器添加完整的无障碍标签。
-- **关联需求**: F-023 (AC-073)
-- **来源**: INS-037
-- **TDD 模式**: ⚪ 不适用（a11y 增强）
-- **涉及文件**:
-  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` ✅
-  - `Chiaki/Features/Streaming/VirtualController/VirtualStickView.swift` ✅
-  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` ✅
-- **依赖**: T-143 ✅
-- **验收标准**:
-  - [x] VirtualButtonView 添加 `buttonName` 参数
-  - [x] 添加 `.accessibilityLabel(buttonName)`
-  - [x] 添加 `.accessibilityValue(isPressed ? "Pressed" : "Released")`
-  - [x] VirtualStickView 添加 `.accessibilityLabel("Left/Right Stick")`
-  - [x] 所有按钮调用点传入正确的 buttonName（17 个按钮 + 2 个摇杆）
-- **测试方法**:
-  - 使用 VoiceOver 测试虚拟控制器
-  - 使用 Accessibility Inspector 验证标签
-- **Review 要点**:
-  - [x] 标签文本本地化（19 个本地化键值，中英文完整）
-  - [x] 状态值动态更新（pressed/released 状态）
-- **备注**: 此任务在 F-023 开发过程中已提前完成
+> **已归档**: T-140~T-144 (5 个任务) → `04-dev-tasks-archive.md`
 
 ### T-145: 长按手势支持
 

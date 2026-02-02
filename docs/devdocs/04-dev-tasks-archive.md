@@ -149,4 +149,35 @@
 
 ---
 
+## M11-Part4: iPad 触摸优化 (F-023, T-140~T-144) ✅
+
+> **归档时间**: 2026-02-02
+> **来源洞察**: INS-032 ~ INS-037
+
+| 编号 | 名称 | TDD 模式 | 完成提交 |
+|------|------|----------|----------|
+| T-140 | 触摸目标尺寸优化 | ⚪ 不适用 | `30c917e` |
+| T-141 | 控件间距优化 | ⚪ 不适用 | `47dea8a` |
+| T-142 | Slider 交互区域 | ⚪ 不适用 | `b06d9ad` |
+| T-143 | 触觉反馈统一 | 🟡 推荐 | `bc87252` |
+| T-144 | 虚拟控制器无障碍 | ⚪ 不适用 | `a2d97f5` |
+
+**验收标准满足**: AC-069 ~ AC-073
+
+**成果**:
+- Apple HIG 触摸目标尺寸合规 (≥44×44pt)
+- 虚拟控制器 D-Pad/肩键间距优化（防误触）
+- `TouchableSlider` 组件（44pt 触摸高度）
+- `HapticFeedback` 静态工具类（统一触觉反馈）
+- VoiceOver 完整支持（19 个本地化标签）
+
+**关键文件**:
+- `ChiakiTheme.swift` - 触摸常量定义
+- `TouchableSlider.swift` - 扩展触摸区域的 Slider
+- `HapticFeedback.swift` - 触觉反馈工具类
+- `VirtualButtonView.swift` - 无障碍标签支持
+- `VirtualStickView.swift` - 摇杆无障碍标签
+
+---
+
 > 更多任务记录详见 [04-dev-tasks.md](04-dev-tasks.md)
