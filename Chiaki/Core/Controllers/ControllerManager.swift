@@ -311,6 +311,80 @@ final class ControllerManager {
         Logger.controller.debug("DualSense features configured, haptics delegated to HapticsManager")
     }
 
+    // MARK: - Adaptive Triggers
+
+    /// Current adaptive trigger state
+    private(set) var adaptiveTriggerState = AdaptiveTriggerState()
+
+    /// Apply adaptive trigger effect to the active DualSense controller
+    /// @requirement F-021 - GameController 深度集成
+    /// @satisfies AC-061 - DualSense 自适应扳机支持
+    /// - Parameters:
+    ///   - effect: The trigger effect to apply
+    ///   - side: Which trigger to apply the effect to
+    func applyAdaptiveTrigger(effect: AdaptiveTriggerEffect, side: TriggerSide) {
+        guard adaptiveTriggersEnabled else {
+            Logger.controller.debug("Adaptive triggers disabled, ignoring effect")
+            return
+        }
+
+        guard let controller = activeController?.controller,
+              let dualSense = controller.physicalInputProfile as? GCDualSenseGamepad else {
+            // Silently ignore for non-DualSense controllers
+            return
+        }
+
+        let trigger: GCDualSenseAdaptiveTrigger = side == .left
+            ? dualSense.leftTrigger
+            : dualSense.rightTrigger
+
+        applyEffectToTrigger(effect, trigger: trigger)
+
+        // Update state
+        switch side {
+        case .left:
+            adaptiveTriggerState.leftEffect = effect
+        case .right:
+            adaptiveTriggerState.rightEffect = effect
+        }
+
+        Logger.controller.debug("Applied adaptive trigger: \(side.rawValue) = \(effect.description)")
+    }
+
+    /// Apply effects to both triggers at once
+    /// @requirement F-021 - GameController 深度集成
+    /// @satisfies AC-061 - DualSense 自适应扳机支持
+    func applyAdaptiveTriggers(left: AdaptiveTriggerEffect, right: AdaptiveTriggerEffect) {
+        applyAdaptiveTrigger(effect: left, side: .left)
+        applyAdaptiveTrigger(effect: right, side: .right)
+    }
+
+    /// Reset both adaptive triggers to off
+    /// @satisfies AC-061 - DualSense 自适应扳机支持
+    func resetAdaptiveTriggers() {
+        applyAdaptiveTriggers(left: .off, right: .off)
+        adaptiveTriggerState.reset()
+        Logger.controller.debug("Adaptive triggers reset to off")
+    }
+
+    /// Apply the effect to a specific GCDualSenseAdaptiveTrigger
+    /// Uses the GCDualSenseAdaptiveTrigger API (iOS 14.5+ / macOS 11.3+)
+    private func applyEffectToTrigger(_ effect: AdaptiveTriggerEffect, trigger: GCDualSenseAdaptiveTrigger) {
+        switch effect {
+        case .off:
+            trigger.setModeOff()
+
+        case let .feedback(startPosition, strength):
+            trigger.setModeFeedbackWithStartPosition(startPosition, resistiveStrength: strength)
+
+        case let .weapon(startPosition, endPosition, strength):
+            trigger.setModeWeaponWithStartPosition(startPosition, endPosition: endPosition, resistiveStrength: strength)
+
+        case let .vibration(position, amplitude, frequency):
+            trigger.setModeVibrationWithStartPosition(position, amplitude: amplitude, frequency: frequency)
+        }
+    }
+
     // MARK: - Haptic Feedback
 
     /// Start haptic engine (delegates to HapticsManager)
