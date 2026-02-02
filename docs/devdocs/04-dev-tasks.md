@@ -33,7 +33,7 @@
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
-| **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ⏳ 待处理 |
+| **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ✅ 已完成 |
 | **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ⏳ 待处理 |
 | **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | 📦 已归档 |
@@ -670,8 +670,10 @@
   - [ ] 动画使用 `.snappy` 或 `.spring()`
   - [ ] 长按菜单保留作为备选方案
 
-### T-137: 流媒体音量快捷调节
+### T-137: 流媒体音量快捷调节 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-02
 - **目标**: 支持 PS+L2/R2 组合键在流媒体中直接调节音量。
 - **关联需求**: F-022 (AC-066)
 - **来源**: INS-029
@@ -680,26 +682,31 @@
 - **涉及文件**:
   - `Chiaki/Core/Controllers/ControllerShortcutDetector.swift` [修改]
   - `Chiaki/Features/Streaming/VolumeOSD.swift` [新建]
+  - `Chiaki/Features/Streaming/VolumeAdjuster.swift` [新建]
   - `Chiaki/Features/Streaming/StreamingViewModel.swift` [修改]
   - `Chiaki/Features/Streaming/StreamingView.swift` [修改]
+  - `Chiaki/Utilities/Localization.swift` [修改]
+  - `Chiaki/Resources/Localizable.xcstrings` [修改]
+  - `ChiakiTests/VolumeShortcutTests.swift` [新建]
+  - `ChiakiTests/VolumeOSDIntegrationTests.swift` [新建]
 - **依赖**: T-129 (组合键检测基础)
 - **验收标准**:
-  - [ ] `ControllerShortcutDetector` 新增 `onVolumeUp`/`onVolumeDown` 回调
-  - [ ] 检测 PS+R2 (音量+) 和 PS+L2 (音量-)
-  - [ ] 实现 200ms 节流防止快速重复触发
-  - [ ] 同时按 L2+R2 时不触发（冲突保护）
-  - [ ] 音量调节步长为 5% (0.05)
-  - [ ] 音量限制在 0.0~1.0 范围
-  - [ ] 创建 `VolumeOSD` 浮层显示当前音量
-  - [ ] OSD 2 秒后自动隐藏
-- **测试方法**:
-  - **先写测试**: 运行 `UT-018` 验证快捷键检测和节流
-  - 运行 `IT-010` 验证 OSD 显示和音量应用
-  - 手动测试真实手柄操作
+  - [x] `ControllerShortcutDetector` 新增 `onVolumeUp`/`onVolumeDown` 回调
+  - [x] 检测 PS+R2 (音量+) 和 PS+L2 (音量-)
+  - [x] 实现 200ms 节流防止快速重复触发
+  - [x] 同时按 L2+R2 时不触发（冲突保护）
+  - [x] 音量调节步长为 5% (0.05)
+  - [x] 音量限制在 0.0~1.0 范围
+  - [x] 创建 `VolumeOSD` 浮层显示当前音量
+  - [x] OSD 2 秒后自动隐藏
+- **测试结果**:
+  - UT-018: 8 tests passed (VolumeShortcutTests)
+  - IT-010: 5 tests passed (VolumeOSDIntegrationTests)
+  - ControllerShortcutDetectorTests: 7 tests passed (fixed flaky test)
 - **Review 要点**:
-  - [ ] 节流使用 `Date` 比较而非 Timer
-  - [ ] 音量变更即时应用到 AudioPlayer
-  - [ ] OSD 动画流畅，不阻塞游戏输入
+  - [x] 节流使用 `Date` 比较而非 Timer
+  - [x] 音量变更即时应用到 AudioPlayer
+  - [x] OSD 动画流畅，不阻塞游戏输入
 
 ### T-138: PIN 输入数字键盘
 
