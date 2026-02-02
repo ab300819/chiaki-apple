@@ -66,7 +66,7 @@
 | T-141 | 触摸：控件间距优化 | `47dea8a` | 保留 |
 | T-142 | 触摸：Slider 交互区域 | `b06d9ad` | 保留 |
 | T-143 | 触摸：触觉反馈统一 | `bc87252` | 保留 |
-| T-144 | 触摸：虚拟控制器无障碍 | (已内置) | 保留 |
+| T-144 | 触摸：虚拟控制器无障碍 | `a2d97f5` | 保留 |
 
 ### 进行中任务 (1)
 
@@ -173,31 +173,36 @@
 
 ## 📝 本次同步详情
 
-### 归档操作
+### 同步操作
 
-- **归档时间**: 2026-02-02
-- **归档模式**: `--archive`
-- **归档任务数**: 19 个
-- **归档功能组**: F-015~F-020
+- **同步时间**: 2026-02-02
+- **同步模式**: 常规同步
+- **追溯标注文件数**: 51 个（25 个源文件）
 
 ### 状态更新
 
 | 任务 | 更新 |
 |------|------|
-| T-140 | ⏳ 待处理 → ✅ 已完成 (`30c917e`) |
-| T-141 | ⏳ 待处理 → ✅ 已完成 (`47dea8a`) |
-| T-142 | ⏳ 待处理 → ✅ 已完成 (`b06d9ad`) |
-| T-143 | ⏳ 待处理 → ✅ 已完成 (`bc87252`) |
+| T-144 | 补充完成提交 (`a2d97f5`) |
 
-### 新增追溯标注
+### 代码追溯扫描
 
-| 验收标准 | 满足文件 |
-|----------|----------|
-| AC-069 | `HostRowView.swift`, `VirtualControllerView.swift`, `ChiakiTheme.swift` |
-| AC-070 | `VirtualControllerView.swift`, `StreamingControlsView.swift` |
-| AC-071 | `TouchableSlider.swift`, `StreamingControlsView.swift` |
-| AC-072 | `HapticFeedback.swift`, `StreamingControlsView.swift`, `HostListView.swift` |
+代码中发现 **51** 处 `@satisfies`/`@verifies` 标注，分布在 25 个文件中。
+
+**高标注密度文件**：
+| 文件 | 标注数 |
+|------|--------|
+| `DiagnosticsExporter.swift` | 8 |
+| `StreamingControlsView.swift` | 5 |
+| `VirtualControllerView.swift` | 4 |
+| `FileLogHandler.swift` | 4 |
+| `CrashReporter.swift` | 4 |
+
+### 测试状态
+
+- 单元测试：93/98 通过（5 个环境相关失败）
+- 失败的测试为模拟器启动问题，非代码问题
 
 ---
 
-*报告由 `/devdocs-sync --archive` 生成 (2026-02-02)*
+*报告由 `/devdocs-sync` 生成 (2026-02-02)*
