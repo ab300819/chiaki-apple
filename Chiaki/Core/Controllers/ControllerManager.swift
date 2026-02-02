@@ -8,7 +8,6 @@
 
 import Foundation
 import GameController
-import CoreHaptics
 import Combine
 
 // MARK: - Controller Info
@@ -82,7 +81,6 @@ final class ControllerManager {
     // MARK: - Private Properties
 
     private var notificationObservers: [NSObjectProtocol] = []
-    private var hapticEngine: CHHapticEngine?
 
     // MARK: - Singleton
 
@@ -308,62 +306,30 @@ final class ControllerManager {
     }
 
     private func setupDualSenseFeatures(_ controller: GCController) {
-        // Setup haptic engine if available
-        #if os(iOS)
-        if CHHapticEngine.capabilitiesForHardware().supportsHaptics {
-            do {
-                hapticEngine = try CHHapticEngine()
-                try hapticEngine?.start()
-                Logger.controller.debug("Haptic engine started")
-            } catch {
-                Logger.controller.warning("Failed to start haptic engine: \(error)")
-            }
-        }
-        #endif
+        // Start haptic engine via shared manager
+        startHaptics()
+        Logger.controller.debug("DualSense features configured, haptics delegated to HapticsManager")
     }
 
     // MARK: - Haptic Feedback
 
-    /// Apply rumble feedback to the active controller
-    func applyRumble(left: UInt8, right: UInt8) {
-        guard hapticsEnabled, let controller = activeController?.controller else { return }
-
-        // Use GCController's haptics API
-        if let haptics = controller.haptics {
-            // Create haptic pattern based on rumble values
-            let leftIntensity = Float(left) / 255.0
-            let rightIntensity = Float(right) / 255.0
-
-            // Apply to left and right motors
-            if let leftMotor = haptics.createEngine(withLocality: .leftHandle) {
-                applyHaptic(to: leftMotor, intensity: leftIntensity)
-            }
-            if let rightMotor = haptics.createEngine(withLocality: .rightHandle) {
-                applyHaptic(to: rightMotor, intensity: rightIntensity)
-            }
-        }
+    /// Start haptic engine (delegates to HapticsManager)
+    /// @satisfies AC-063 - Haptics 引擎统一
+    func startHaptics() {
+        HapticsManager.shared.startEngine()
     }
 
-    private func applyHaptic(to engine: CHHapticEngine, intensity: Float) {
-        guard intensity > 0 else { return }
+    /// Stop haptic engine (delegates to HapticsManager)
+    /// @satisfies AC-063 - Haptics 引擎统一
+    func stopHaptics() {
+        HapticsManager.shared.stopEngine()
+    }
 
-        do {
-            let event = CHHapticEvent(
-                eventType: .hapticContinuous,
-                parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
-                ],
-                relativeTime: 0,
-                duration: 0.1
-            )
-
-            let pattern = try CHHapticPattern(events: [event], parameters: [])
-            let player = try engine.makePlayer(with: pattern)
-            try player.start(atTime: 0)
-        } catch {
-            Logger.controller.debug("Haptic playback failed: \(error)")
-        }
+    /// Apply rumble feedback to the active controller (delegates to HapticsManager)
+    /// @satisfies AC-063 - Haptics 引擎统一
+    func applyRumble(left: UInt8, right: UInt8) {
+        guard hapticsEnabled else { return }
+        HapticsManager.shared.applyRumble(left: left, right: right)
     }
 
     // MARK: - LED Control

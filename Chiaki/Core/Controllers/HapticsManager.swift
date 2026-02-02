@@ -15,29 +15,151 @@ import AppKit
 import CoreHaptics
 
 /// Manager for semantic haptic feedback providing consistent physical response for app events
+/// @requirement F-021 - GameController 深度集成
+/// @satisfies AC-063 - Haptics 引擎统一
 @MainActor
 final class HapticsManager: Sendable {
     // MARK: - Properties
-    
+
     static let shared = HapticsManager()
-    
-    private let engine: CHHapticEngine?
-    
+
+    private var engine: CHHapticEngine?
+
+    /// Whether the haptic engine is currently running
+    private(set) var isEngineRunning: Bool = false
+
+    /// Whether the device supports haptics
+    let supportsHaptics: Bool
+
     // MARK: - Initialization
-    
+
     private init() {
-        if CHHapticEngine.capabilitiesForHardware().supportsHaptics {
+        self.supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
+
+        if supportsHaptics {
             do {
                 let hapticEngine = try CHHapticEngine()
-                try hapticEngine.start()
                 self.engine = hapticEngine
-                logDebug("HapticsManager: CoreHaptics engine started")
+                setupEngineHandlers(hapticEngine)
+                try hapticEngine.start()
+                self.isEngineRunning = true
+                logDebug("HapticsManager: CoreHaptics engine initialized and started")
             } catch {
-                logWarning("HapticsManager: Failed to start CoreHaptics engine: \(error)")
+                logWarning("HapticsManager: Failed to initialize CoreHaptics engine: \(error)")
                 self.engine = nil
             }
         } else {
             self.engine = nil
+        }
+    }
+
+    private func setupEngineHandlers(_ engine: CHHapticEngine) {
+        // Handle engine reset (e.g., after app returns from background)
+        engine.resetHandler = { [weak self] in
+            Task { @MainActor in
+                self?.handleEngineReset()
+            }
+        }
+
+        // Handle engine stopped unexpectedly
+        engine.stoppedHandler = { [weak self] reason in
+            Task { @MainActor in
+                self?.handleEngineStopped(reason: reason)
+            }
+        }
+    }
+
+    private func handleEngineReset() {
+        logDebug("HapticsManager: Engine reset, restarting...")
+        do {
+            try engine?.start()
+            isEngineRunning = true
+            logDebug("HapticsManager: Engine restarted successfully")
+        } catch {
+            logWarning("HapticsManager: Failed to restart engine: \(error)")
+            isEngineRunning = false
+        }
+    }
+
+    private func handleEngineStopped(reason: CHHapticEngine.StoppedReason) {
+        logDebug("HapticsManager: Engine stopped with reason: \(reason)")
+        isEngineRunning = false
+    }
+
+    // MARK: - Engine Lifecycle
+
+    /// Start the haptic engine (idempotent - safe to call multiple times)
+    func startEngine() {
+        guard supportsHaptics, !isEngineRunning else { return }
+
+        do {
+            try engine?.start()
+            isEngineRunning = true
+            logDebug("HapticsManager: Engine started")
+        } catch {
+            logWarning("HapticsManager: Failed to start engine: \(error)")
+        }
+    }
+
+    /// Stop the haptic engine
+    func stopEngine() {
+        guard isEngineRunning else { return }
+
+        engine?.stop(completionHandler: { [weak self] error in
+            Task { @MainActor in
+                if let error = error {
+                    logWarning("HapticsManager: Error stopping engine: \(error)")
+                } else {
+                    self?.isEngineRunning = false
+                    logDebug("HapticsManager: Engine stopped")
+                }
+            }
+        })
+    }
+
+    // MARK: - Controller Rumble
+
+    /// Apply rumble feedback with left and right motor intensities
+    /// - Parameters:
+    ///   - left: Left motor intensity (0-255)
+    ///   - right: Right motor intensity (0-255)
+    func applyRumble(left: UInt8, right: UInt8) {
+        guard supportsHaptics, isEngineRunning, let engine = engine else { return }
+
+        // Normalize UInt8 (0-255) to Float (0.0-1.0)
+        let leftIntensity = normalizeIntensity(left)
+        let rightIntensity = normalizeIntensity(right)
+
+        // Skip if both are zero
+        guard leftIntensity > 0 || rightIntensity > 0 else { return }
+
+        // Create combined rumble pattern
+        let combinedIntensity = max(leftIntensity, rightIntensity)
+        playRumblePattern(engine: engine, intensity: combinedIntensity)
+    }
+
+    /// Normalize UInt8 (0-255) to Float (0.0-1.0)
+    func normalizeIntensity(_ value: UInt8) -> Float {
+        Float(value) / 255.0
+    }
+
+    private func playRumblePattern(engine: CHHapticEngine, intensity: Float) {
+        do {
+            let event = CHHapticEvent(
+                eventType: .hapticContinuous,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+                ],
+                relativeTime: 0,
+                duration: 0.1
+            )
+
+            let pattern = try CHHapticPattern(events: [event], parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+        } catch {
+            logDebug("HapticsManager: Rumble playback failed: \(error)")
         }
     }
     
