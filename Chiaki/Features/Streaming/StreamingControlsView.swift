@@ -15,6 +15,12 @@ struct StreamingControlsView: View {
     var onGoToBed: () -> Void
     var onToggleMic: (() -> Void)?
 
+    /**
+     * Focus state management for controller navigation
+     * @satisfies AC-055 - 流媒体控制菜单焦点管理
+     */
+    @FocusState private var focusedControl: StreamingControlFocus?
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -31,6 +37,7 @@ struct StreamingControlsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .focused($focusedControl, equals: .closeButton)
             }
             .padding()
             .background(Color(white: 0.15))
@@ -47,7 +54,8 @@ struct StreamingControlsView: View {
                         ),
                         isMicEnabled: viewModel.isMicEnabled,
                         isMicMuted: viewModel.isMicMuted,
-                        onToggleMic: onToggleMic
+                        onToggleMic: onToggleMic,
+                        focusedControl: $focusedControl
                     )
 
                     Divider()
@@ -61,7 +69,8 @@ struct StreamingControlsView: View {
                         zoomFactor: Binding(
                             get: { viewModel.zoomFactor },
                             set: { viewModel.setZoomFactor($0) }
-                        )
+                        ),
+                        focusedControl: $focusedControl
                     )
 
                     Divider()
@@ -71,15 +80,21 @@ struct StreamingControlsView: View {
                         preset: Binding(
                             get: { viewModel.videoPreset },
                             set: { viewModel.setVideoPreset($0) }
-                        )
+                        ),
+                        focusedControl: $focusedControl
                     )
 
                     Divider()
 
                     // Quick Actions
                     QuickActionsSection(
+                        isOverlayVisible: Binding(
+                            get: { viewModel.isOverlayVisible },
+                            set: { _ in viewModel.toggleOverlay() }
+                        ),
                         onDisconnect: onDisconnect,
-                        onGoToBed: onGoToBed
+                        onGoToBed: onGoToBed,
+                        focusedControl: $focusedControl
                     )
                 }
                 .padding()
@@ -93,6 +108,10 @@ struct StreamingControlsView: View {
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+        .onAppear {
+            // Initialize focus to disconnect button as per T-125 requirement
+            focusedControl = .disconnectButton
+        }
         .onDisappear {
             // Save settings when menu closes
             onSaveSettings(viewModel.volume, viewModel.displayMode, viewModel.zoomFactor)
@@ -115,6 +134,7 @@ private struct AudioControlSection: View {
     let isMicEnabled: Bool
     let isMicMuted: Bool
     var onToggleMic: (() -> Void)?
+    var focusedControl: FocusState<StreamingControlFocus?>.Binding
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -129,6 +149,7 @@ private struct AudioControlSection: View {
 
                 Slider(value: $volume, in: 0...1)
                     .tint(Color.chiakiPurple)
+                    .focused(focusedControl, equals: .volumeSlider)
 
                 Image(systemName: "speaker.wave.3.fill")
                     .foregroundStyle(.secondary)
@@ -156,6 +177,7 @@ private struct AudioControlSection: View {
                         .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+                    .focused(focusedControl, equals: .micToggle)
 
                     Spacer()
                 }
@@ -181,6 +203,7 @@ private struct AudioControlSection: View {
 private struct DisplayModeSection: View {
     @Binding var displayMode: StreamSettings.DisplayMode
     @Binding var zoomFactor: Double
+    var focusedControl: FocusState<StreamingControlFocus?>.Binding
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -205,6 +228,7 @@ private struct DisplayModeSection: View {
                         .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+                    .focused(focusedControl, equals: .displayModePicker)
                 }
             }
             #else
@@ -216,6 +240,7 @@ private struct DisplayModeSection: View {
                 }
             }
             .pickerStyle(.segmented)
+            .focused(focusedControl, equals: .displayModePicker)
             #endif
 
             // Zoom factor slider (only shown in zoom mode)
@@ -232,6 +257,7 @@ private struct DisplayModeSection: View {
 
                         Slider(value: $zoomFactor, in: 1.0...2.0)
                             .tint(Color.chiakiPurple)
+                            .focused(focusedControl, equals: .zoomSlider) 
 
                         Image(systemName: "plus.magnifyingglass")
                             .foregroundStyle(.secondary)
@@ -255,6 +281,7 @@ private struct DisplayModeSection: View {
 
 private struct VideoPresetSection: View {
     @Binding var preset: StreamSettings.VideoPreset
+    var focusedControl: FocusState<StreamingControlFocus?>.Binding
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -279,6 +306,7 @@ private struct VideoPresetSection: View {
                         .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
+                    .focused(focusedControl, equals: .qualityPicker)
                 }
             }
             #else
@@ -290,6 +318,7 @@ private struct VideoPresetSection: View {
                 }
             }
             .pickerStyle(.segmented)
+            .focused(focusedControl, equals: .qualityPicker)
 
             // Description
             Text(preset.description)
@@ -303,8 +332,10 @@ private struct VideoPresetSection: View {
 // MARK: - Quick Actions Section
 
 private struct QuickActionsSection: View {
+    @Binding var isOverlayVisible: Bool
     var onDisconnect: () -> Void
     var onGoToBed: () -> Void
+    var focusedControl: FocusState<StreamingControlFocus?>.Binding
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -313,6 +344,25 @@ private struct QuickActionsSection: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
+                // Show/Hide stats overlay
+                Button(action: { isOverlayVisible.toggle() }) {
+                    VStack(spacing: 6) {
+                        Image(systemName: isOverlayVisible ? "chart.bar.xaxis" : "chart.bar")
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+
+                        Text(L10n.StreamingControls.toggleStats)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue.opacity(0.15))
+                    .clipShape(.rect(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .focused(focusedControl, equals: .statsToggle)
+
                 // Go to Bed (Rest Mode)
                 ActionButton(
                     title: L10n.Streaming.restMode,
@@ -320,6 +370,7 @@ private struct QuickActionsSection: View {
                     color: .orange,
                     action: onGoToBed
                 )
+                .focused(focusedControl, equals: .restModeButton)
 
                 // Disconnect
                 ActionButton(
@@ -328,6 +379,7 @@ private struct QuickActionsSection: View {
                     color: .red,
                     action: onDisconnect
                 )
+                .focused(focusedControl, equals: .disconnectButton)
             }
         }
     }
@@ -373,4 +425,38 @@ private struct ActionButton: View {
         )
     }
     .environment(SettingsStore())
+}
+
+/**
+ * Focusable controls in the streaming control menu
+ * @requirement F-020 - 手柄操作友好化
+ * @satisfies AC-055 - 流媒体控制菜单焦点管理
+ */
+enum StreamingControlFocus: String, Hashable, CaseIterable {
+    /// Button to disconnect from the host
+    case disconnectButton
+    
+    /// Toggle for microphone mute state
+    case micToggle
+    
+    /// Slider for audio volume
+    case volumeSlider
+    
+    /// Slider for zoom factor
+    case zoomSlider
+    
+    /// Picker for video quality/preset
+    case qualityPicker
+    
+    /// Picker for display mode (Fit/Stretch/Zoom)
+    case displayModePicker
+    
+    /// Toggle for streaming statistics overlay
+    case statsToggle
+    
+    /// Button to close the control menu
+    case closeButton
+    
+    /// Button for rest mode
+    case restModeButton
 }

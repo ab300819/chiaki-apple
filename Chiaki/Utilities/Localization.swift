@@ -88,6 +88,7 @@ enum L10n {
         static let zoomLevel = String(localized: "streamingControls.zoomLevel")
         static let micMuted = String(localized: "streamingControls.micMuted")
         static let micActive = String(localized: "streamingControls.micActive")
+        static let toggleStats = String(localized: "streamingControls.toggleStats")
     }
 
     // MARK: - Settings
