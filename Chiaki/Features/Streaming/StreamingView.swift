@@ -63,25 +63,34 @@ struct StreamingView: View {
             Color.black
                 .ignoresSafeArea()
             
-            if viewModel.state == .streaming {
-                VideoStreamView(
-                    renderer: rendererHolder.renderer,
-                    displayMode: viewModel.displayMode.toVideoDisplayMode,
-                    zoomFactor: Float(viewModel.zoomFactor)
-                ) { mtkView in
-                    #if os(iOS)
-                    viewModel.pipManager.setup(with: mtkView)
-                    #endif
-                }
-                .onTapGesture {
-                    viewModel.toggleOverlay()
-                }
-            } else {
-                VideoPlaceholderView(state: viewModel.state)
+            /**
+             * Video content layer with focus trap support
+             * @requirement F-020 - 手柄操作友好化
+             * @satisfies AC-057 - 控制菜单焦点陷阱
+             */
+            Group {
+                if viewModel.state == .streaming {
+                    VideoStreamView(
+                        renderer: rendererHolder.renderer,
+                        displayMode: viewModel.displayMode.toVideoDisplayMode,
+                        zoomFactor: Float(viewModel.zoomFactor)
+                    ) { mtkView in
+                        #if os(iOS)
+                        viewModel.pipManager.setup(with: mtkView)
+                        #endif
+                    }
                     .onTapGesture {
                         viewModel.toggleOverlay()
                     }
+                } else {
+                    VideoPlaceholderView(state: viewModel.state)
+                        .onTapGesture {
+                            viewModel.toggleOverlay()
+                        }
+                }
             }
+            // AC-057: Disable background when control menu is open to prevent focus escape
+            .disabled(viewModel.isControlMenuVisible)
             
             #if os(iOS)
             if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControllerEnabled {
@@ -153,6 +162,10 @@ struct StreamingView: View {
                     },
                     onToggleMic: viewModel.isMicEnabled ? { viewModel.toggleMic() } : nil
                 )
+                #if os(tvOS)
+                // AC-057: Create focus boundary to trap focus within control menu
+                .focusSection()
+                #endif
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
                 .zIndex(4)
             }
