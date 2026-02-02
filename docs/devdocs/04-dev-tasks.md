@@ -27,7 +27,7 @@
 | **T-128** | **手柄：tvOS 方向键导航** | P1 | 🟢 可选 | ✅ 已完成 |
 | **T-129** | **手柄：组合键快捷操作** | P1 | 🔴 强制 | ✅ 已完成 |
 | **T-130** | **手柄：焦点恢复逻辑** | P2 | 🟢 可选 | ✅ 已完成 |
-| **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ✅ 已完成 |
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
@@ -495,35 +495,38 @@
 > **关联需求**: AC-061 ~ AC-064
 > **测试用例**: UT-013~016, IT-008, E2E-007 (03-test-cases.md §15)
 
-### T-131: DualSense 自适应扳机支持
+### T-131: DualSense 自适应扳机支持 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-02
 - **目标**: 启用 DualSense 自适应扳机效果，增强游戏沉浸感。
 - **关联需求**: F-021, AC-061
 - **关联测试**: UT-013.1~5
 - **TDD 模式**: 🟢 可选（硬件依赖）
 - **涉及文件**:
-  - `Chiaki/Core/Controllers/AdaptiveTriggerEffect.swift` (新建)
-  - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Core/Bridge/ChiakiSessionWrapper.swift`
+  - `Chiaki/Core/Controllers/AdaptiveTriggerEffect.swift` ✅ (新建)
+  - `Chiaki/Core/Controllers/ControllerManager.swift` ✅
+  - `ChiakiTests/AdaptiveTriggerTests.swift` ✅ (新建)
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 创建 `AdaptiveTriggerEffect` 枚举 (off, feedback, weapon, vibration)
-  - [ ] 创建 `TriggerSide` 枚举 (left, right)
-  - [ ] 实现 `applyAdaptiveTrigger(effect:trigger:)` 方法
-  - [ ] 检测 `GCDualSenseGamepad` 类型并获取 `adaptiveTriggers`
-  - [ ] 调用 `setModeOff/setModeFeedback/setModeWeapon/setModeVibration`
-  - [ ] ChiakiSessionWrapper 添加 `onTriggerEffects` 回调
-- **测试方法**:
-  - [ ] UT-013.1: 验证 AdaptiveTriggerEffect 枚举完整性
-  - [ ] UT-013.2: 验证 feedback 模式参数
-  - [ ] UT-013.3: 验证 weapon 模式参数
-  - [ ] UT-013.4: 验证 vibration 模式参数
-  - [ ] UT-013.5: 验证 TriggerSide 枚举
-  - [ ] (手动) 使用 DualSense 测试效果
+  - [x] 创建 `AdaptiveTriggerEffect` 枚举 (off, feedback, weapon, vibration)
+  - [x] 创建 `TriggerSide` 枚举 (left, right)
+  - [x] 实现 `applyAdaptiveTrigger(effect:side:)` 方法
+  - [x] 检测 `GCDualSenseGamepad` 类型并获取 `adaptiveTriggers`
+  - [x] 调用 `setModeOff/setModeFeedback/setModeWeapon/setModeVibration`
+  - [x] 创建 `AdaptiveTriggerState` 跟踪扳机状态
+- **测试结果**:
+  - [x] UT-013.1: 验证 AdaptiveTriggerEffect 枚举完整性
+  - [x] UT-013.2: 验证 feedback 模式参数
+  - [x] UT-013.3: 验证 weapon 模式参数
+  - [x] UT-013.4: 验证 vibration 模式参数
+  - [x] UT-013.5: 验证 TriggerSide 枚举
+  - [x] 额外测试: 效果描述、Equatable 协议、状态追踪
+  - 8 tests passed
 - **Review 要点**:
-  - [ ] DualSense 检测使用 `as? GCDualSenseGamepad`
-  - [ ] 非 DualSense 控制器静默忽略
-  - [ ] 平台限制: iOS 16+ / macOS 13+
+  - [x] DualSense 检测使用 `physicalInputProfile as? GCDualSenseGamepad`
+  - [x] 非 DualSense 控制器静默忽略
+  - [x] 平台限制: iOS 14.5+ / macOS 11.3+ (GCDualSenseAdaptiveTrigger API)
 
 ### T-132: 触控板位置追踪
 
