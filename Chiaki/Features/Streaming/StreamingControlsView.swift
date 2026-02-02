@@ -36,7 +36,7 @@ struct StreamingControlsView: View {
                         .font(.title2)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(FocusableButtonStyle(cornerRadius: 20))
                 .focused($focusedControl, equals: .closeButton)
             }
             .padding()
@@ -176,7 +176,7 @@ private struct AudioControlSection: View {
                         .background(isMicMuted ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
                         .clipShape(.rect(cornerRadius: 8))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FocusableButtonStyle(cornerRadius: 8))
                     .focused(focusedControl, equals: .micToggle)
 
                     Spacer()
@@ -227,7 +227,7 @@ private struct DisplayModeSection: View {
                         .background(displayMode == mode ? Color.chiakiPurple.opacity(0.3) : Color.clear)
                         .clipShape(.rect(cornerRadius: 8))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FocusableButtonStyle(cornerRadius: 8))
                     .focused(focusedControl, equals: .displayModePicker)
                 }
             }
@@ -305,7 +305,7 @@ private struct VideoPresetSection: View {
                         .background(preset == presetOption ? Color.chiakiPurple.opacity(0.3) : Color.clear)
                         .clipShape(.rect(cornerRadius: 8))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FocusableButtonStyle(cornerRadius: 8))
                     .focused(focusedControl, equals: .qualityPicker)
                 }
             }
@@ -360,7 +360,7 @@ private struct QuickActionsSection: View {
                     .background(Color.blue.opacity(0.15))
                     .clipShape(.rect(cornerRadius: 10))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(FocusableButtonStyle(cornerRadius: 10))
                 .focused(focusedControl, equals: .statsToggle)
 
                 // Go to Bed (Rest Mode)
@@ -407,7 +407,7 @@ private struct ActionButton: View {
             .background(color.opacity(0.15))
             .clipShape(.rect(cornerRadius: 10))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FocusableButtonStyle(cornerRadius: 10))
     }
 }
 
