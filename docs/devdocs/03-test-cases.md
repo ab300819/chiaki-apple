@@ -1467,46 +1467,47 @@ jobs:
 | **F-021** | GameController 深度集成 | US-015 | UT-013~016 | IT-008 | E2E-007 |
 | **F-022** | 手柄操控 UI/UX 优化 | US-016 | UT-017~020 | IT-009~010 | E2E-008~009 |
 
-### 10.2 验收标准 → 测试用例追溯
+### 10.2 验收标准 → 测试用例 → 代码位置追溯
 
-| 验收标准 | 测试用例 | 测试类型 |
-|----------|----------|----------|
-| AC-001 | UT-002.1, UT-002.3 | 单元测试 |
-| AC-002 | UT-003, E2E-001 | 单元+E2E |
-| AC-003 | E2E-001 | E2E |
-| AC-004 | IT-001 | 集成测试 |
-| AC-005 | IT-002 | 集成测试 |
-| AC-006 | IT-001, E2E-002 | 集成+E2E |
-| AC-007 | UT-005.1 | 单元测试 |
-| AC-008 | UT-005.1 | 单元测试 |
-| AC-009 | UT-005.2 | 单元测试 |
-| AC-010 | IT-003.1 | 集成测试 |
-| AC-011 | IT-003.2 | 集成测试 |
-| AC-012 | IT-003.3, IT-003.4 | 集成测试 |
-| AC-013-034 | 手动测试清单 | 手动测试 |
-| AC-038 | AdvancedTests.swift | 单元测试 |
-| AC-039 | ControllerInputMapperTests, StreamStatsManagerTests | 单元测试 |
-| AC-045 | NetworkMonitorTests | 集成测试 |
-| AC-049 | FileLogHandlerTests, LoggerIntegrationTests | 单元测试 |
-| AC-050 | FileLogHandlerTests | 单元测试 |
-| AC-051 | DiagnosticsExporterTests | 单元测试 |
-| AC-052 | CrashReporterTests, StartupIntegrationTests | 单元+集成 |
-| AC-053 | DiagnosticsExporterTests | 单元测试 |
-| AC-054 | (Code Coverage - manual validation) | 日志覆盖 |
-| AC-055 | UT-010.1~5, E2E-006.3 | 单元+E2E |
-| AC-056 | UT-011.1~4 | 单元测试 |
-| AC-057 | IT-007.1~3 | 集成测试 |
-| AC-058 | E2E-006.1~6 | E2E |
-| AC-059 | UT-012.1~6 | 单元测试 |
-| AC-060 | UT-010.4~5 | 单元测试 |
-| AC-061 | UT-013.1~5 | 单元测试 |
-| AC-062 | UT-014.1~4 | 单元测试 |
-| AC-063 | UT-015.1~6, IT-008.1~3 | 单元+集成 |
-| AC-064 | UT-016.1~6, E2E-007.1~3 | 单元+E2E |
-| AC-065 | UT-017.1~6, IT-009.1~5, E2E-008.1~4 | 单元+集成+E2E |
-| AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 |
-| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E |
-| AC-068 | UT-020.1~6 | 单元测试 |
+| 验收标准 | 测试用例 | 测试类型 | 满足文件 (@satisfies) | 验证文件 (@verifies) |
+|----------|----------|----------|----------------------|---------------------|
+| AC-001 | UT-002.1, UT-002.3 | 单元测试 | - | - |
+| AC-002 | UT-003, E2E-001 | 单元+E2E | - | - |
+| AC-003 | E2E-001 | E2E | - | - |
+| AC-004 | IT-001 | 集成测试 | - | - |
+| AC-005 | IT-002 | 集成测试 | - | - |
+| AC-006 | IT-001, E2E-002 | 集成+E2E | - | - |
+| AC-007 | UT-005.1 | 单元测试 | - | - |
+| AC-008 | UT-005.1 | 单元测试 | - | - |
+| AC-009 | UT-005.2 | 单元测试 | - | - |
+| AC-010 | IT-003.1 | 集成测试 | - | - |
+| AC-011 | IT-003.2 | 集成测试 | - | - |
+| AC-012 | IT-003.3, IT-003.4 | 集成测试 | - | - |
+| AC-013-034 | 手动测试清单 | 手动测试 | - | - |
+| AC-038 | AdvancedTests.swift | 单元测试 | - | `ChiakiTests/AdvancedTests.swift` |
+| AC-039 | ControllerInputMapperTests, StreamStatsManagerTests | 单元测试 | `Chiaki/Core/Controllers/ControllerInputMapper.swift`<br>`Chiaki/Core/Streaming/StreamStatsManager.swift` | `ChiakiTests/ControllerInputMapperTests.swift`<br>`ChiakiTests/StreamStatsManagerTests.swift` |
+| AC-045 | NetworkMonitorTests | 集成测试 | `Chiaki/Core/Network/NetworkMonitor.swift` | `ChiakiTests/NetworkMonitorTests.swift` |
+| AC-046 | VRRTests | 单元测试 | `Chiaki/Core/Video/MetalVideoRenderer.swift` | `ChiakiTests/VRRTests.swift` |
+| AC-049 | FileLogHandlerTests, LoggerIntegrationTests | 单元测试 | `Chiaki/Utilities/FileLogHandler.swift`<br>`Chiaki/Utilities/Logger.swift` | `ChiakiTests/Utilities/FileLogHandlerTests.swift`<br>`ChiakiTests/Utilities/LoggerIntegrationTests.swift` |
+| AC-050 | FileLogHandlerTests | 单元测试 | `Chiaki/Utilities/FileLogHandler.swift` | `ChiakiTests/Utilities/FileLogHandlerTests.swift` |
+| AC-051 | DiagnosticsExporterTests | 单元测试 | `Chiaki/Utilities/DiagnosticsExporter.swift` | `ChiakiTests/Utilities/DiagnosticsExporterTests.swift` |
+| AC-052 | CrashReporterTests, StartupIntegrationTests | 单元+集成 | `Chiaki/Utilities/CrashReporter.swift`<br>`Chiaki/Features/Settings/CrashReportView.swift` | `ChiakiTests/Utilities/CrashReporterTests.swift`<br>`ChiakiTests/Utilities/StartupIntegrationTests.swift` |
+| AC-053 | DiagnosticsExporterTests | 单元测试 | `Chiaki/Utilities/DiagnosticsExporter.swift` | `ChiakiTests/Utilities/DiagnosticsExporterTests.swift` |
+| AC-054 | 日志覆盖验证 | 日志覆盖 | `Chiaki/Core/Bridge/ChiakiSession.swift`<br>`Chiaki/Core/Video/VideoToolboxDecoder.swift`<br>`Chiaki/Core/Audio/AudioPlayer.swift`<br>`Chiaki/Core/Controllers/ControllerManager.swift`<br>`Chiaki/Core/Bridge/ChiakiDiscovery.swift`<br>`Chiaki/Domain/Services/PSNService.swift`<br>`Chiaki/Core/Network/NetworkMonitor.swift` | (Manual validation) |
+| AC-055 | UT-010.1~5, E2E-006.3 | 单元+E2E | `Chiaki/Features/Streaming/StreamingControlsView.swift` | `ChiakiTests/StreamingFocusTests.swift` |
+| AC-056 | UT-011.1~4 | 单元测试 | `Chiaki/Shared/Styles/FocusableButtonStyle.swift` | `ChiakiTests/FocusableButtonStyleTests.swift` |
+| AC-057 | IT-007.1~3 | 集成测试 | - | - |
+| AC-058 | E2E-006.1~6 | E2E | - | - |
+| AC-059 | UT-012.1~6 | 单元测试 | - | - |
+| AC-060 | UT-010.4~5 | 单元测试 | - | - |
+| AC-061 | UT-013.1~5 | 单元测试 | - | - |
+| AC-062 | UT-014.1~4 | 单元测试 | - | - |
+| AC-063 | UT-015.1~6, IT-008.1~3 | 单元+集成 | - | - |
+| AC-064 | UT-016.1~6, E2E-007.1~3 | 单元+E2E | - | - |
+| AC-065 | UT-017.1~6, IT-009.1~5, E2E-008.1~4 | 单元+集成+E2E | - | - |
+| AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 | - | - |
+| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E | - | - |
+| AC-068 | UT-020.1~6 | 单元测试 | - | - |
 
 ### 10.3 测试覆盖状态
 
@@ -1540,6 +1541,7 @@ jobs:
 | `ControllerInputMapperTests.swift` | - | AC-039 | `ChiakiTests/ControllerInputMapperTests.swift` |
 | `NetworkMonitorTests.swift` | - | AC-045 | `ChiakiTests/NetworkMonitorTests.swift` |
 | `StreamStatsManagerTests.swift` | - | AC-039 | `ChiakiTests/StreamStatsManagerTests.swift` |
+| `StreamingFocusTests.swift` | 3 | UT-010.1~3, AC-055 | `ChiakiTests/StreamingFocusTests.swift` |
 | `FileLogHandlerTests.swift` | - | AC-049, AC-050 | `ChiakiTests/Utilities/FileLogHandlerTests.swift` |
 | `LoggerIntegrationTests.swift` | - | AC-049 | `ChiakiTests/Utilities/LoggerIntegrationTests.swift` |
 | `DiagnosticsExporterTests.swift` | 5 | AC-051, AC-053 | `ChiakiTests/Utilities/DiagnosticsExporterTests.swift` |
@@ -3508,3 +3510,82 @@ struct PINNumPadE2ETests {
 | P1 | 11 | 重要功能 |
 | P2 | 0 | - |
 | **总计** | **37** | |
+
+---
+
+## 18. F-023 iPad 触摸操作友好化测试用例 (2026-02-02)
+
+> **来源需求**: F-023 iPad 触摸操作友好化 (INS-032~039)
+> **关联验收标准**: AC-069 ~ AC-075
+
+### 18.1 触摸目标与间距测试 (AC-069, AC-070)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-021.1 | testHostIconMinimumSize | 主机图标尺寸验证 | frame ≥ 44pt | P0 |
+| UT-021.2 | testDPadButtonSpacing | D-Pad 按钮间距 | spacing = 16pt | P0 |
+| UT-021.3 | testQuickActionSpacing | 快速菜单间距 | spacing = 16pt | P0 |
+| UT-021.4 | testShoulderButtonSpacing | 肩键间距 | spacing = 24pt | P1 |
+
+### 18.2 Slider 交互测试 (AC-071)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-022.1 | testVolumeSliderHeight | 音量 Slider 高度 | frame.height = 44pt | P1 |
+| UT-022.2 | testZoomSliderHeight | 缩放 Slider 高度 | frame.height = 44pt | P1 |
+
+### 18.3 触觉反馈统一测试 (AC-072)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-023.1 | testHapticFeedbackButtonMethod | button() 方法存在 | 可调用 | P1 |
+| UT-023.2 | testHapticFeedbackSuccessMethod | success() 方法存在 | 可调用 | P1 |
+| UT-023.3 | testHapticFeedbackWarningMethod | warning() 方法存在 | 可调用 | P1 |
+| UT-023.4 | testHapticFeedbackSelectionMethod | selection() 方法存在 | 可调用 | P1 |
+
+### 18.4 虚拟控制器无障碍测试 (AC-073)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-024.1 | testVirtualButtonAccessibilityLabel | 按钮有无障碍标签 | label 非空 | P1 |
+| UT-024.2 | testVirtualButtonAccessibilityValue | 按钮有状态值 | value = "Pressed"/"Released" | P1 |
+| UT-024.3 | testVirtualStickAccessibilityLabel | 摇杆有无障碍标签 | label 包含 "Stick" | P1 |
+
+### 18.5 手势支持测试 (AC-074, AC-075)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-025.1 | testLongPressGestureCallback | 长按回调触发 | onLongPress 被调用 | P2 |
+| UT-025.2 | testLongPressDuration | 长按时间阈值 | minimumDuration = 0.5s | P2 |
+| UT-026.1 | testEdgeSwipeVolumeUp | 边缘上滑增加音量 | volume += 0.05 | P2 |
+| UT-026.2 | testEdgeSwipeVolumeDown | 边缘下滑减少音量 | volume -= 0.05 | P2 |
+| UT-026.3 | testEdgeSwipeZoneWidth | 边缘检测区域宽度 | width = 44pt | P2 |
+
+### 18.6 E2E 测试用例
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| E2E-010.1 | testIPadTouchTargetAccessibility | iPad 触摸准确性 | 所有按钮可点击 | P0 |
+| E2E-010.2 | testVoiceOverVirtualController | VoiceOver 虚拟控制器 | 所有按钮可朗读 | P1 |
+| E2E-010.3 | testEdgeSwipeVolume | 边缘滑动调音量 | OSD 显示新音量 | P2 |
+
+### 18.7 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-069: 触摸目标尺寸 | UT-021.1 | - | E2E-010.1 |
+| AC-070: 控件间距 | UT-021.2~4 | - | E2E-010.1 |
+| AC-071: Slider 交互 | UT-022.1~2 | - | - |
+| AC-072: 触觉反馈 | UT-023.1~4 | - | - |
+| AC-073: 虚拟控制器无障碍 | UT-024.1~3 | - | E2E-010.2 |
+| AC-074: 长按手势 | UT-025.1~2 | - | - |
+| AC-075: 滑动调节 | UT-026.1~3 | - | E2E-010.3 |
+
+### 18.8 测试实现优先级
+
+| 优先级 | 测试数 | 说明 |
+|--------|--------|------|
+| P0 | 4 | 触摸基础必测 |
+| P1 | 12 | 无障碍与反馈 |
+| P2 | 5 | 手势扩展 |
+| **总计** | **21** | |

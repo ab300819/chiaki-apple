@@ -32,8 +32,19 @@
 | **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
+| **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ⏳ 待处理 |
+| **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ⏳ 待处理 |
+| **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
+| **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
 
-> **最新更新**: 2026-02-02 - T-126 完成，追溯矩阵已更新
+> **最新更新**: 2026-02-02 - T-130 完成，追加 F-023 iPad 触摸优化任务 (T-140~T-146)
 
 ## 任务详情
 
@@ -474,7 +485,7 @@
 - **Review 要点**:
   - [x] lastControlMenuFocus 在 onDisappear 正确保存
   - [x] 回退逻辑使用 nil-coalescing
-- **完成提交**: (待提交)
+- **完成提交**: `e91cadd` feat(ui): implement focus restoration for control menu (T-130)
 
 ---
 
@@ -750,6 +761,164 @@
 
 ---
 
+## F-023: iPad 触摸操作友好化 (2026-02-02)
+
+> **来源需求**: F-023 iPad 触摸操作友好化 (INS-032~039)
+> **关联验收标准**: AC-069 ~ AC-075
+
+### T-140: 触摸目标尺寸优化
+
+- **目标**: 确保所有可交互控件尺寸符合 Apple HIG 标准 (≥44×44pt)。
+- **关联需求**: F-023 (AC-069)
+- **来源**: INS-032
+- **TDD 模式**: ⚪ 不适用（UI 调整）
+- **涉及文件**:
+  - `Chiaki/Features/HostList/HostRowView.swift` [修改]
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 主机列表图标 frame 从 40pt 增加到 44pt
+  - [ ] 添加 `.contentShape(Circle())` 扩大可点击区域
+  - [ ] 验证所有其他图标控件尺寸符合 44pt 标准
+- **测试方法**:
+  - 手动测试 iPad 触摸点击准确性
+  - 使用 Accessibility Inspector 验证触摸目标
+- **Review 要点**:
+  - [ ] 符合 Apple HIG 最小触摸目标 44pt
+  - [ ] 不影响视觉布局美观
+
+### T-141: 控件间距优化
+
+- **目标**: 优化相邻可交互控件间距，防止误触。
+- **关联需求**: F-023 (AC-070)
+- **来源**: INS-033, INS-034
+- **TDD 模式**: ⚪ 不适用（UI 调整）
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+- **依赖**: 无
+- **验收标准**:
+  - [ ] D-Pad Grid spacing 从 10pt 增加到 16pt
+  - [ ] QuickActions HStack spacing 从 12pt 增加到 16pt
+  - [ ] 肩键 HStack spacing 从 20pt 增加到 24pt
+- **测试方法**:
+  - 手动测试 iPad 虚拟控制器操作
+  - 验证按钮误触率降低
+- **Review 要点**:
+  - [ ] 间距调整不影响整体布局
+  - [ ] tvOS 大屏布局仍然合适
+
+### T-142: Slider 交互区域优化
+
+- **目标**: 扩大 Slider 可触摸高度到 44pt。
+- **关联需求**: F-023 (AC-071)
+- **来源**: INS-035
+- **TDD 模式**: ⚪ 不适用（UI 调整）
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+- **依赖**: 无
+- **验收标准**:
+  - [ ] 音量 Slider 添加 `.frame(height: 44)`
+  - [ ] 缩放 Slider 添加 `.frame(height: 44)`
+  - [ ] 验证 Slider 拖动更容易
+- **测试方法**:
+  - 手动测试 iPad 上 Slider 拖动体验
+- **Review 要点**:
+  - [ ] Slider 轨道视觉高度不变，仅扩大触摸区域
+  - [ ] 不影响其他 UI 元素对齐
+
+### T-143: 触觉反馈统一
+
+- **目标**: 为所有可交互控件提供一致的触觉反馈。
+- **关联需求**: F-023 (AC-072)
+- **来源**: INS-036
+- **TDD 模式**: 🟡 推荐
+- **涉及文件**:
+  - `Chiaki/Utilities/HapticFeedback.swift` [新建]
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+  - `Chiaki/Features/HostList/HostListView.swift` [修改]
+- **依赖**: T-133 (Haptics 引擎统一，可复用)
+- **验收标准**:
+  - [ ] 创建 `HapticFeedback` 静态工具类
+  - [ ] 提供 `button()`, `success()`, `warning()`, `selection()` 方法
+  - [ ] ActionButton 添加触觉反馈
+  - [ ] 主机列表唤醒按钮添加触觉反馈
+  - [ ] 设置页面开关添加触觉反馈
+- **测试方法**:
+  - 手动验证各按钮触觉反馈一致性
+- **Review 要点**:
+  - [ ] 与 HapticsManager 职责不重复（HapticFeedback 用于 UI，HapticsManager 用于游戏）
+  - [ ] 触觉反馈不阻塞 UI
+
+### T-144: 虚拟控制器无障碍
+
+- **目标**: 为虚拟控制器添加完整的无障碍标签。
+- **关联需求**: F-023 (AC-073)
+- **来源**: INS-037
+- **TDD 模式**: ⚪ 不适用（a11y 增强）
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` [修改]
+  - `Chiaki/Features/Streaming/VirtualController/VirtualStickView.swift` [修改]
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
+- **依赖**: T-143
+- **验收标准**:
+  - [ ] VirtualButtonView 添加 `buttonName` 参数
+  - [ ] 添加 `.accessibilityLabel(buttonName)`
+  - [ ] 添加 `.accessibilityValue(isPressed ? "Pressed" : "Released")`
+  - [ ] VirtualStickView 添加 `.accessibilityLabel("Left/Right Stick")`
+  - [ ] 所有按钮调用点传入正确的 buttonName
+- **测试方法**:
+  - 使用 VoiceOver 测试虚拟控制器
+  - 使用 Accessibility Inspector 验证标签
+- **Review 要点**:
+  - [ ] 标签文本本地化
+  - [ ] 状态值动态更新
+
+### T-145: 长按手势支持
+
+- **目标**: 为虚拟按钮添加长按手势支持。
+- **关联需求**: F-023 (AC-074)
+- **来源**: INS-038
+- **TDD 模式**: 🟢 可选
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` [修改]
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
+- **依赖**: T-144
+- **验收标准**:
+  - [ ] VirtualButtonView 添加 `onLongPress: (() -> Void)?` 回调
+  - [ ] 使用 `SimultaneousGesture` 组合 DragGesture 和 LongPressGesture
+  - [ ] 长按时间阈值 0.5 秒
+  - [ ] 长按 Square 触发截图功能（示例）
+- **测试方法**:
+  - 手动测试长按虚拟按钮
+- **Review 要点**:
+  - [ ] 长按不干扰普通点击
+  - [ ] 长按有视觉/触觉反馈
+
+### T-146: 滑动快捷调节
+
+- **目标**: 在流媒体界面添加滑动手势快速调节音量。
+- **关联需求**: F-023 (AC-075)
+- **来源**: INS-039
+- **TDD 模式**: 🟢 可选
+- **涉及文件**:
+  - `Chiaki/Features/Streaming/StreamingView.swift` [修改]
+  - `Chiaki/Features/Streaming/VolumeOSD.swift` [新建，可复用 T-137]
+- **依赖**: T-137 (音量 OSD 可复用)
+- **验收标准**:
+  - [ ] 在 StreamingView 右边缘添加垂直滑动手势
+  - [ ] 向上滑动增加音量，向下滑动减少音量
+  - [ ] 滑动时显示 VolumeOSD
+  - [ ] 音量调节步长 5%
+  - [ ] 边缘检测区域宽度 44pt
+- **测试方法**:
+  - 手动测试 iPad 边缘滑动
+  - 验证手势不干扰游戏操作
+- **Review 要点**:
+  - [ ] 仅在非游戏区域响应手势
+  - [ ] 与虚拟控制器手势不冲突
+
+---
+
 ## 依赖关系图
 
 ```mermaid
@@ -815,6 +984,19 @@ graph TD
 
     T129 --> T137
     T125 --> T139
+
+    %% F-023 iPad 触摸操作友好化任务
+    T140[T-140: 触摸目标尺寸]
+    T141[T-141: 控件间距优化]
+    T142[T-142: Slider 交互区域]
+    T143[T-143: 触觉反馈统一]
+    T144[T-144: 虚拟控制器无障碍]
+    T145[T-145: 长按手势支持]
+    T146[T-146: 滑动快捷调节]
+
+    T133 --> T143
+    T143 --> T144
+    T144 --> T145
 ```
 
 ## 执行检查清单
