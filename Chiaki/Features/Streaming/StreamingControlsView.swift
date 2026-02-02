@@ -109,10 +109,20 @@ struct StreamingControlsView: View {
         )
         .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
         .onAppear {
-            // Initialize focus to disconnect button as per T-125 requirement
-            focusedControl = .disconnectButton
+            /**
+             * Focus restoration on menu appear
+             * @requirement F-020 - 手柄操作友好化
+             * @satisfies AC-060 - 焦点恢复逻辑
+             */
+            // Restore previous focus if available, otherwise default to disconnectButton
+            focusedControl = viewModel.lastControlMenuFocus ?? .disconnectButton
         }
         .onDisappear {
+            /**
+             * Save focus state before menu closes
+             * @satisfies AC-060 - 焦点恢复逻辑
+             */
+            viewModel.lastControlMenuFocus = focusedControl
             // Save settings when menu closes
             onSaveSettings(viewModel.volume, viewModel.displayMode, viewModel.zoomFactor)
         }

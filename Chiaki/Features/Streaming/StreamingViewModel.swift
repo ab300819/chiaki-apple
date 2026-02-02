@@ -45,6 +45,13 @@ final class StreamingViewModel {
     var isControlMenuVisible: Bool = false
     var videoPreset: StreamSettings.VideoPreset = .default
 
+    /**
+     * Last focused control in the streaming control menu
+     * @requirement F-020 - 手柄操作友好化
+     * @satisfies AC-060 - 焦点恢复逻辑
+     */
+    var lastControlMenuFocus: StreamingControlFocus?
+
     // Microphone controls
     var isMicEnabled: Bool = false
     var isMicMuted: Bool = true
