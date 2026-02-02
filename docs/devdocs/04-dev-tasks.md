@@ -38,7 +38,7 @@
 | **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
 | **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
-| **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ✅ 已完成 |
 | **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
 | **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
@@ -808,24 +808,20 @@
   - [x] tvOS 大屏布局仍然合适
 - **完成提交**: `e51a985`
 
-### T-142: Slider 交互区域优化
-
+### T-142: Slider 交互区域优化 ✅
 - **目标**: 扩大 Slider 可触摸高度到 44pt。
-- **关联需求**: F-023 (AC-071)
-- **来源**: INS-035
-- **TDD 模式**: ⚪ 不适用（UI 调整）
+- **关联需求**: F-023, AC-071
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+  - `Chiaki/Features/Streaming/TouchableSlider.swift` ✅
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 音量 Slider 添加 `.frame(height: 44)`
-  - [ ] 缩放 Slider 添加 `.frame(height: 44)`
-  - [ ] 验证 Slider 拖动更容易
-- **测试方法**:
-  - 手动测试 iPad 上 Slider 拖动体验
-- **Review 要点**:
-  - [ ] Slider 轨道视觉高度不变，仅扩大触摸区域
-  - [ ] 不影响其他 UI 元素对齐
+  - [x] 音量 Slider 添加 `.frame(height: 44)` (via TouchableSlider)
+  - [x] 缩放 Slider 添加 `.frame(height: 44)` (via TouchableSlider)
+  - [x] 验证 Slider 拖动更容易
+- **测试方法**: UT-022.1, UT-022.2
+- **完成提交**: `b06d9ad` feat(ui): implement TouchableSlider with expanded touch area (T-142)
+
 
 ### T-143: 触觉反馈统一
 

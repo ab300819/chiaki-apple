@@ -11,10 +11,10 @@
 | 指标 | 数值 |
 |------|------|
 | 总任务数 | 36 |
-| 已完成 | 22 |
+| 已完成 | 23 |
 | 进行中 | 1 |
-| 待处理 | 13 |
-| **完成率** | **61%** |
+| 待处理 | 12 |
+| **完成率** | **64%** |
 
 ---
 
@@ -64,6 +64,7 @@
 | T-135 | UI：StreamingOverlay HDR 标志 | `3241eae` | 保留 |
 | T-140 | 触摸：触摸目标尺寸优化 | `30c917e` | 保留 |
 | T-141 | 触摸：控件间距优化 | `47dea8a` | 保留 |
+| T-142 | 触摸：Slider 交互区域 | `b06d9ad` | 保留 |
 
 ### 进行中任务 (1)
 
@@ -77,7 +78,6 @@
 |------|------|--------|----------|
 | T-133 | GC：Haptics 引擎统一 | P1 | F-021 |
 | T-137 | UI：流媒体音量快捷调节 | P1 | F-022 |
-| T-142 | 触摸：Slider 交互区域 | P1 | F-023 |
 | T-143 | 触摸：触觉反馈统一 | P1 | F-023 |
 | T-144 | 触摸：虚拟控制器无障碍 | P1 | F-023 |
 | T-131 | GC：DualSense 自适应扳机 | P2 | F-021 |
@@ -116,9 +116,10 @@
 | AC-060 | 焦点恢复逻辑 | `StreamingControlsView.swift`, `StreamingViewModel.swift` | `StreamingFocusTests.swift` | ✅ |
 | AC-069 | 触摸目标尺寸 | `HostRowView.swift`, `VirtualControllerView.swift` | (Manual) | ✅ |
 | AC-070 | 控件间距优化 | `VirtualControllerView.swift`, `StreamingControlsView.swift` | (Manual) | ✅ |
+| AC-071 | Slider 交互区域 | `TouchableSlider.swift`, `StreamingControlsView.swift` | `TouchableSliderTests.swift` | ✅ |
 
-**追溯标注文件数**: 34 个
-**新增标注**: AC-069, AC-070 (T-140, T-141 完成)
+**追溯标注文件数**: 36 个
+**新增标注**: AC-069, AC-070, AC-071 (T-140, T-141, T-142 完成)
 
 ---
 
@@ -184,6 +185,7 @@
 |------|------|
 | T-140 | ⏳ 待处理 → ✅ 已完成 (`30c917e`) |
 | T-141 | ⏳ 待处理 → ✅ 已完成 (`47dea8a`) |
+| T-142 | ⏳ 待处理 → ✅ 已完成 (`b06d9ad`) |
 
 ### 新增追溯标注
 
@@ -191,6 +193,7 @@
 |----------|----------|
 | AC-069 | `HostRowView.swift`, `VirtualControllerView.swift`, `ChiakiTheme.swift` |
 | AC-070 | `VirtualControllerView.swift`, `StreamingControlsView.swift` |
+| AC-071 | `TouchableSlider.swift`, `StreamingControlsView.swift` |
 
 ---
 
