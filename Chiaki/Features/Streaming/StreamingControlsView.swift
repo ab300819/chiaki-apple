@@ -341,6 +341,11 @@ private struct VideoPresetSection: View {
 
 // MARK: - Quick Actions Section
 
+/**
+ * Quick action buttons with Apple HIG compliant touch spacing
+ * @requirement F-023 - iPad 触摸操作友好化
+ * @satisfies AC-070 - 控件间距优化
+ */
 private struct QuickActionsSection: View {
     @Binding var isOverlayVisible: Bool
     var onDisconnect: () -> Void
@@ -353,7 +358,7 @@ private struct QuickActionsSection: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 12) {
+            HStack(spacing: ChiakiTheme.Touch.minSpacing) {
                 // Show/Hide stats overlay
                 Button(action: { isOverlayVisible.toggle() }) {
                     VStack(spacing: 6) {

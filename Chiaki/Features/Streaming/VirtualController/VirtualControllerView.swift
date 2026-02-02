@@ -10,7 +10,12 @@ struct VirtualControllerView: View {
             ZStack {
                 VStack {
                     HStack(alignment: .top) {
-                        HStack(spacing: 20) {
+                        /**
+                         * Shoulder buttons (L1/L2) with Apple HIG compliant spacing
+                         * @requirement F-023 - iPad 触摸操作友好化
+                         * @satisfies AC-070 - 控件间距优化
+                         */
+                        HStack(spacing: 24) {
                             VirtualButtonView(iconName: "l2.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .heavy) { pressed in
                                 onInput(.button(.l2, pressed: pressed))
                             }
@@ -43,7 +48,12 @@ struct VirtualControllerView: View {
                         
                         Spacer()
                         
-                        HStack(spacing: 20) {
+                        /**
+                         * Shoulder buttons (R1/R2) with Apple HIG compliant spacing
+                         * @requirement F-023 - iPad 触摸操作友好化
+                         * @satisfies AC-070 - 控件间距优化
+                         */
+                        HStack(spacing: 24) {
                             VirtualButtonView(iconName: "r1.button.roundedtop.horizontal", size: 50, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.r1, pressed: pressed))
                             }
@@ -86,8 +96,13 @@ struct VirtualControllerView: View {
         }
     }
     
+    /**
+     * D-Pad with Apple HIG compliant control spacing
+     * @requirement F-023 - iPad 触摸操作友好化
+     * @satisfies AC-070 - 控件间距优化
+     */
     private var dpadView: some View {
-        Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+        Grid(horizontalSpacing: ChiakiTheme.Touch.minSpacing, verticalSpacing: ChiakiTheme.Touch.minSpacing) {
             GridRow {
                 Color.clear.frame(width: 50, height: 50)
                 VirtualButtonView(iconName: "arrowtriangle.up.fill", size: 50, color: .gray, hapticStyle: .light) { pressed in

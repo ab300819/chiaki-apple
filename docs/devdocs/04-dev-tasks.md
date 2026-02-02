@@ -36,8 +36,8 @@
 | **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ⏳ 待处理 |
 | **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ⏳ 待处理 |
 | **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
-| **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ⏳ 待处理 |
-| **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ⏳ 待处理 |
+| **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
+| **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | ✅ 已完成 |
 | **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | ⏳ 待处理 |
 | **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
 | **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | ⏳ 待处理 |
@@ -786,26 +786,27 @@
   - [ ] 符合 Apple HIG 最小触摸目标 44pt
   - [ ] 不影响视觉布局美观
 
-### T-141: 控件间距优化
+### T-141: 控件间距优化 ✅
 
 - **目标**: 优化相邻可交互控件间距，防止误触。
 - **关联需求**: F-023 (AC-070)
 - **来源**: INS-033, INS-034
 - **TDD 模式**: ⚪ 不适用（UI 调整）
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` ✅
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
 - **依赖**: 无
 - **验收标准**:
-  - [ ] D-Pad Grid spacing 从 10pt 增加到 16pt
-  - [ ] QuickActions HStack spacing 从 12pt 增加到 16pt
-  - [ ] 肩键 HStack spacing 从 20pt 增加到 24pt
+  - [x] D-Pad Grid spacing 从 10pt 增加到 16pt（使用 `ChiakiTheme.Touch.minSpacing`）
+  - [x] QuickActions HStack spacing 从 12pt 增加到 16pt（使用 `ChiakiTheme.Touch.minSpacing`）
+  - [x] 肩键 HStack spacing 从 20pt 增加到 24pt
 - **测试方法**:
   - 手动测试 iPad 虚拟控制器操作
   - 验证按钮误触率降低
 - **Review 要点**:
-  - [ ] 间距调整不影响整体布局
-  - [ ] tvOS 大屏布局仍然合适
+  - [x] 间距调整不影响整体布局
+  - [x] tvOS 大屏布局仍然合适
+- **完成提交**: `e51a985`
 
 ### T-142: Slider 交互区域优化
 

@@ -173,7 +173,7 @@ final class MetalVideoRenderer: NSObject {
             
             view.preferredFramesPerSecond = currentTarget
             
-            #if os(iOS) || os(tvOS)
+            #if (os(iOS) || os(tvOS)) && !targetEnvironment(simulator)
             if #available(iOS 15.0, tvOS 15.0, *) {
                 if let metalLayer = view.layer as? CAMetalLayer {
                     let range = CAFrameRateRange(minimum: 10, maximum: Float(currentTarget), preferred: Float(currentTarget))
