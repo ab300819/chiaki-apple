@@ -4251,3 +4251,568 @@ Chiaki/Core/Controllers/
 **破坏性变更**: 无
 
 **迁移说明**: 无需迁移，纯增量功能
+
+---
+
+## 14. F-023 iPad 触摸操作友好化
+
+> **变更来源**: F-023 iPad 触摸操作友好化 (INS-032 ~ INS-039)
+> **变更日期**: 2026-02-02
+> **关联需求**: US-017, AC-069 ~ AC-075
+
+### 14.1 变更概述
+
+本次变更针对 iPad 触摸操作体验进行全面优化，确保所有可交互控件符合 Apple Human Interface Guidelines (HIG) 的触摸目标标准，并增强无障碍支持。
+
+**核心目标**：
+1. 所有触摸目标 ≥ 44×44pt（Apple HIG 最小标准）
+2. 相邻控件间距 ≥ 16pt（防止误触）
+3. 统一触觉反馈体验
+4. 完善 VoiceOver 支持
+5. 扩展手势交互能力
+
+### 14.2 影响分析
+
+#### 14.2.1 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `VirtualButtonView` | 修改 | 尺寸标准化、无障碍标签、长按手势 |
+| `VirtualControllerView` | 修改 | 控件间距优化、布局调整 |
+| `VirtualStickView` | 修改 | 触摸区域优化、无障碍标签 |
+| `StreamingControlsView` | 修改 | Slider 交互区域、控件间距 |
+| `StreamingView` | 修改 | 边缘滑动手势 |
+| `ChiakiTheme` | 修改 | 新增触摸尺寸常量 |
+| `Localization` | 修改 | 新增虚拟控制器无障碍文案 |
+
+#### 14.2.2 兼容性评估
+
+| 变更类型 | 向后兼容 | 处理方式 |
+|----------|----------|----------|
+| 尺寸常量新增 | ✅ | 现有代码逐步迁移 |
+| 接口参数新增（可选） | ✅ | 提供默认值 |
+| 手势回调新增 | ✅ | 可选回调，默认 nil |
+| 本地化字符串新增 | ✅ | 直接添加 |
+
+**破坏性变更**：无
+
+### 14.3 触摸目标尺寸标准化
+
+#### 14.3.1 新增主题常量
+
+```swift
+// ChiakiTheme.swift
+enum ChiakiTheme {
+    enum Touch {
+        /// Apple HIG 最小触摸目标尺寸
+        static let minTargetSize: CGFloat = 44
+
+        /// 相邻控件最小间距（防止误触）
+        static let minSpacing: CGFloat = 16
+
+        /// Slider 触摸区域高度
+        static let sliderHeight: CGFloat = 44
+
+        /// 推荐触摸目标尺寸（舒适操作）
+        static let recommendedTargetSize: CGFloat = 48
+    }
+}
+```
+
+#### 14.3.2 VirtualButtonView 尺寸调整
+
+**当前尺寸** → **优化后尺寸**
+
+| 按钮类型 | 当前 | 优化后 | 说明 |
+|----------|------|--------|------|
+| 肩键 L1/R1/L2/R2 | 50pt | 50pt | ✅ 已符合 |
+| 方向键 | 50pt | 50pt | ✅ 已符合 |
+| 面板按钮 | 55pt | 55pt | ✅ 已符合 |
+| 菜单按钮 (Share/PS/Options) | 40pt | **44pt** | ⚠️ 需调整 |
+
+```swift
+// VirtualButtonView.swift - 修改
+struct VirtualButtonView: View {
+    // 菜单按钮尺寸调整
+    var size: CGFloat = ChiakiTheme.Touch.minTargetSize  // 40 → 44
+
+    // ...
+}
+```
+
+### 14.4 控件间距优化
+
+#### 14.4.1 VirtualControllerView 间距调整
+
+**当前间距** → **优化后间距**
+
+| 区域 | 当前 | 优化后 | 说明 |
+|------|------|--------|------|
+| D-Pad 网格 | 10pt | **16pt** | ⚠️ 需调整 |
+| 面板按钮网格 | 15pt | 16pt | 微调 |
+| 中心菜单按钮 | 30pt | 30pt | ✅ 已符合 |
+| 肩键间距 | 20pt | 20pt | ✅ 已符合 |
+
+```swift
+// VirtualControllerView.swift - 修改
+private var dpadView: some View {
+    Grid(horizontalSpacing: ChiakiTheme.Touch.minSpacing,  // 10 → 16
+         verticalSpacing: ChiakiTheme.Touch.minSpacing) {  // 10 → 16
+        // ...
+    }
+}
+
+private var faceButtonsView: some View {
+    Grid(horizontalSpacing: ChiakiTheme.Touch.minSpacing,  // 15 → 16
+         verticalSpacing: ChiakiTheme.Touch.minSpacing) {  // 15 → 16
+        // ...
+    }
+}
+```
+
+### 14.5 Slider 交互区域优化
+
+#### 14.5.1 TouchableSlider 组件
+
+创建自定义 Slider 包装器，扩大可触摸区域：
+
+```swift
+// TouchableSlider.swift - 新增
+/// 触摸友好的 Slider 组件，扩大交互区域到 44pt
+/// @requirement F-023 - iPad 触摸操作友好化
+/// @satisfies AC-071 - Slider 交互区域
+struct TouchableSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    var tint: Color = .accentColor
+    var onEditingChanged: ((Bool) -> Void)?
+
+    var body: some View {
+        Slider(value: $value, in: range, onEditingChanged: onEditingChanged)
+            .tint(tint)
+            .frame(height: ChiakiTheme.Touch.sliderHeight)
+            .contentShape(Rectangle())  // 扩大触摸区域
+    }
+}
+```
+
+#### 14.5.2 StreamingControlsView 集成
+
+```swift
+// StreamingControlsView.swift - 修改
+HStack(spacing: 12) {
+    Image(systemName: "speaker.fill")
+
+    // 替换为 TouchableSlider
+    TouchableSlider(value: $volume, range: 0...1, tint: .chiakiPurple)
+        .focused(focusedControl, equals: .volumeSlider)
+
+    Image(systemName: "speaker.wave.3.fill")
+    // ...
+}
+```
+
+### 14.6 触觉反馈统一
+
+#### 14.6.1 设计原则
+
+所有可交互控件应通过 `HapticsManager` 提供统一的触觉反馈：
+
+| 交互类型 | 反馈方法 | 说明 |
+|----------|----------|------|
+| 按钮点击 | `playSelection()` | 轻量选择反馈 |
+| 按钮长按 | `playImpact(.medium)` | 中等冲击反馈 |
+| Slider 调节 | `playSelection()` | 值变化反馈 |
+| 手势完成 | `playSuccess()` | 成功反馈 |
+| 操作失败 | `playError()` | 错误反馈 |
+
+#### 14.6.2 VirtualButtonView 触觉集成
+
+```swift
+// VirtualButtonView.swift - 修改
+struct VirtualButtonView: View {
+    // 使用 HapticsManager 替代 UIImpactFeedbackGenerator
+    private func triggerHaptic() {
+        HapticsManager.shared.playSelection()
+    }
+
+    private func triggerLongPressHaptic() {
+        HapticsManager.shared.playImpact(.medium)
+    }
+}
+```
+
+### 14.7 虚拟控制器无障碍支持
+
+#### 14.7.1 无障碍标签定义
+
+```swift
+// Localization.swift - 新增
+enum L10n {
+    enum Accessibility {
+        // 虚拟控制器按钮
+        static let buttonCross = String(localized: "accessibility.button.cross")
+        static let buttonCircle = String(localized: "accessibility.button.circle")
+        static let buttonTriangle = String(localized: "accessibility.button.triangle")
+        static let buttonSquare = String(localized: "accessibility.button.square")
+        static let buttonL1 = String(localized: "accessibility.button.l1")
+        static let buttonL2 = String(localized: "accessibility.button.l2")
+        static let buttonR1 = String(localized: "accessibility.button.r1")
+        static let buttonR2 = String(localized: "accessibility.button.r2")
+        static let buttonDpadUp = String(localized: "accessibility.button.dpad.up")
+        static let buttonDpadDown = String(localized: "accessibility.button.dpad.down")
+        static let buttonDpadLeft = String(localized: "accessibility.button.dpad.left")
+        static let buttonDpadRight = String(localized: "accessibility.button.dpad.right")
+        static let buttonShare = String(localized: "accessibility.button.share")
+        static let buttonOptions = String(localized: "accessibility.button.options")
+        static let buttonPS = String(localized: "accessibility.button.ps")
+        static let stickLeft = String(localized: "accessibility.stick.left")
+        static let stickRight = String(localized: "accessibility.stick.right")
+
+        // 状态
+        static func buttonPressed(_ name: String) -> String {
+            String(localized: "accessibility.button.pressed \(name)")
+        }
+        static func buttonReleased(_ name: String) -> String {
+            String(localized: "accessibility.button.released \(name)")
+        }
+    }
+}
+```
+
+#### 14.7.2 本地化字符串
+
+```json
+// Localizable.xcstrings - 新增
+{
+  "accessibility.button.cross": {
+    "en": "Cross button",
+    "zh-Hans": "叉号按钮"
+  },
+  "accessibility.button.circle": {
+    "en": "Circle button",
+    "zh-Hans": "圆圈按钮"
+  },
+  "accessibility.button.triangle": {
+    "en": "Triangle button",
+    "zh-Hans": "三角按钮"
+  },
+  "accessibility.button.square": {
+    "en": "Square button",
+    "zh-Hans": "方块按钮"
+  },
+  "accessibility.button.l1": {
+    "en": "L1 button",
+    "zh-Hans": "L1 按钮"
+  },
+  "accessibility.button.l2": {
+    "en": "L2 trigger",
+    "zh-Hans": "L2 扳机"
+  },
+  "accessibility.button.r1": {
+    "en": "R1 button",
+    "zh-Hans": "R1 按钮"
+  },
+  "accessibility.button.r2": {
+    "en": "R2 trigger",
+    "zh-Hans": "R2 扳机"
+  },
+  "accessibility.button.dpad.up": {
+    "en": "D-pad up",
+    "zh-Hans": "方向键上"
+  },
+  "accessibility.button.dpad.down": {
+    "en": "D-pad down",
+    "zh-Hans": "方向键下"
+  },
+  "accessibility.button.dpad.left": {
+    "en": "D-pad left",
+    "zh-Hans": "方向键左"
+  },
+  "accessibility.button.dpad.right": {
+    "en": "D-pad right",
+    "zh-Hans": "方向键右"
+  },
+  "accessibility.button.share": {
+    "en": "Share button",
+    "zh-Hans": "分享按钮"
+  },
+  "accessibility.button.options": {
+    "en": "Options button",
+    "zh-Hans": "选项按钮"
+  },
+  "accessibility.button.ps": {
+    "en": "PlayStation button",
+    "zh-Hans": "PlayStation 按钮"
+  },
+  "accessibility.stick.left": {
+    "en": "Left analog stick",
+    "zh-Hans": "左摇杆"
+  },
+  "accessibility.stick.right": {
+    "en": "Right analog stick",
+    "zh-Hans": "右摇杆"
+  },
+  "accessibility.button.pressed": {
+    "en": "%@ pressed",
+    "zh-Hans": "%@ 已按下"
+  },
+  "accessibility.button.released": {
+    "en": "%@ released",
+    "zh-Hans": "%@ 已松开"
+  }
+}
+```
+
+#### 14.7.3 VirtualButtonView 无障碍集成
+
+```swift
+// VirtualButtonView.swift - 修改
+struct VirtualButtonView: View {
+    let button: VirtualControllerButton
+    var accessibilityLabel: String?
+
+    var body: some View {
+        // ...existing view code...
+            .accessibilityLabel(accessibilityLabel ?? defaultAccessibilityLabel)
+            .accessibilityValue(isPressed ? L10n.Accessibility.buttonPressed(buttonName) : "")
+            .accessibilityAddTraits(.isButton)
+    }
+
+    private var defaultAccessibilityLabel: String {
+        switch button {
+        case .cross: return L10n.Accessibility.buttonCross
+        case .circle: return L10n.Accessibility.buttonCircle
+        case .triangle: return L10n.Accessibility.buttonTriangle
+        case .square: return L10n.Accessibility.buttonSquare
+        case .l1: return L10n.Accessibility.buttonL1
+        case .l2: return L10n.Accessibility.buttonL2
+        case .r1: return L10n.Accessibility.buttonR1
+        case .r2: return L10n.Accessibility.buttonR2
+        case .up: return L10n.Accessibility.buttonDpadUp
+        case .down: return L10n.Accessibility.buttonDpadDown
+        case .left: return L10n.Accessibility.buttonDpadLeft
+        case .right: return L10n.Accessibility.buttonDpadRight
+        case .share: return L10n.Accessibility.buttonShare
+        case .options: return L10n.Accessibility.buttonOptions
+        case .ps: return L10n.Accessibility.buttonPS
+        }
+    }
+}
+```
+
+### 14.8 长按手势支持
+
+#### 14.8.1 VirtualButtonView 长按扩展
+
+```swift
+// VirtualButtonView.swift - 修改
+struct VirtualButtonView: View {
+    var onStateChanged: (Bool) -> Void
+    var onLongPress: (() -> Void)?  // 新增：长按回调
+
+    @State private var isLongPressing = false
+
+    var body: some View {
+        Circle()
+            // ...existing styling...
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .onEnded { _ in
+                        guard let handler = onLongPress else { return }
+                        isLongPressing = true
+                        HapticsManager.shared.playImpact(.medium)
+                        handler()
+                    }
+            )
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !isPressed && !isLongPressing {
+                            isPressed = true
+                            onStateChanged(true)
+                            HapticsManager.shared.playSelection()
+                        }
+                    }
+                    .onEnded { _ in
+                        isPressed = false
+                        isLongPressing = false
+                        onStateChanged(false)
+                    }
+            )
+    }
+}
+```
+
+#### 14.8.2 长按功能映射
+
+| 按钮 | 长按功能 | 说明 |
+|------|----------|------|
+| PS 按钮 | 打开控制菜单 | 替代双击 |
+| Options | 截图/录屏 | 快捷操作 |
+| Share | 广播模式切换 | 快捷操作 |
+
+### 14.9 滑动快捷调节
+
+#### 14.9.1 EdgeSwipeGesture 组件
+
+```swift
+// EdgeSwipeGesture.swift - 新增
+/// 边缘滑动手势识别器
+/// @requirement F-023 - iPad 触摸操作友好化
+/// @satisfies AC-075 - 滑动快捷调节
+struct EdgeSwipeGesture: ViewModifier {
+    enum Edge { case left, right }
+
+    let edge: Edge
+    let threshold: CGFloat = 20  // 边缘触发区域宽度
+    var onSwipe: (CGFloat) -> Void  // 滑动增量回调
+
+    @State private var isDragging = false
+    @State private var startY: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .gesture(
+                DragGesture(minimumDistance: 10)
+                    .onChanged { value in
+                        // 检测是否从边缘开始
+                        let screenWidth = UIScreen.main.bounds.width
+                        let isInEdgeZone = edge == .left
+                            ? value.startLocation.x < threshold
+                            : value.startLocation.x > screenWidth - threshold
+
+                        guard isInEdgeZone else { return }
+
+                        if !isDragging {
+                            isDragging = true
+                            startY = value.startLocation.y
+                            HapticsManager.shared.playSelection()
+                        }
+
+                        let delta = (startY - value.location.y) / 200  // 归一化
+                        onSwipe(delta)
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                        HapticsManager.shared.playImpact(.light)
+                    }
+            )
+    }
+}
+
+extension View {
+    func edgeSwipe(edge: EdgeSwipeGesture.Edge, onSwipe: @escaping (CGFloat) -> Void) -> some View {
+        modifier(EdgeSwipeGesture(edge: edge, onSwipe: onSwipe))
+    }
+}
+```
+
+#### 14.9.2 StreamingView 集成
+
+```swift
+// StreamingView.swift - 修改
+var body: some View {
+    ZStack {
+        // ...existing content...
+    }
+    #if os(iOS)
+    .edgeSwipe(edge: .right) { delta in
+        // 右边缘滑动调节音量
+        let newVolume = viewModel.volume + Double(delta)
+        viewModel.setVolume(max(0, min(1, newVolume)))
+    }
+    .edgeSwipe(edge: .left) { delta in
+        // 左边缘滑动调节亮度（可选）
+        let newBrightness = UIScreen.main.brightness + CGFloat(delta)
+        UIScreen.main.brightness = max(0, min(1, newBrightness))
+    }
+    #endif
+}
+```
+
+### 14.10 核心接口设计
+
+#### 14.10.1 VirtualButtonView（修改）
+
+| 属性/方法 | 类型 | 关联 | 说明 |
+|-----------|------|------|------|
+| `size` | `CGFloat` | AC-069 | 默认值调整为 44pt |
+| `accessibilityLabel` | `String?` | AC-073 | 可选无障碍标签 |
+| `onLongPress` | `(() -> Void)?` | AC-074 | 可选长按回调 |
+
+#### 14.10.2 TouchableSlider（新增）
+
+| 属性/方法 | 类型 | 关联 | 说明 |
+|-----------|------|------|------|
+| `value` | `Binding<Double>` | AC-071 | 绑定值 |
+| `range` | `ClosedRange<Double>` | AC-071 | 值范围 |
+| `tint` | `Color` | - | 滑块颜色 |
+| `onEditingChanged` | `((Bool) -> Void)?` | AC-072 | 编辑状态变化回调 |
+
+#### 14.10.3 EdgeSwipeGesture（新增）
+
+| 属性/方法 | 类型 | 关联 | 说明 |
+|-----------|------|------|------|
+| `edge` | `Edge` | AC-075 | 触发边缘（左/右） |
+| `threshold` | `CGFloat` | AC-075 | 边缘区域宽度 |
+| `onSwipe` | `(CGFloat) -> Void` | AC-075 | 滑动增量回调 |
+
+### 14.11 目录结构更新
+
+```
+Chiaki/Features/Streaming/
+├── VirtualController/
+│   ├── VirtualButtonView.swift      # [修改] AC-069, AC-073, AC-074
+│   ├── VirtualControllerView.swift  # [修改] AC-070
+│   └── VirtualStickView.swift       # [修改] AC-073
+├── StreamingView.swift              # [修改] AC-075
+├── StreamingControlsView.swift      # [修改] AC-070, AC-071
+└── ...
+
+Chiaki/Shared/
+├── Components/
+│   └── TouchableSlider.swift        # [新增] AC-071
+├── Gestures/
+│   └── EdgeSwipeGesture.swift       # [新增] AC-075
+└── ...
+
+Chiaki/Utilities/
+├── ChiakiTheme.swift                # [修改] AC-069, AC-070
+└── Localization.swift               # [修改] AC-073
+```
+
+### 14.12 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-069: 触摸目标尺寸 | `ChiakiTheme.Touch` + `VirtualButtonView` | 标准化 ≥44pt |
+| AC-070: 控件间距 | `VirtualControllerView` + `StreamingControlsView` | 标准化 ≥16pt |
+| AC-071: Slider 区域 | `TouchableSlider` | 可触摸高度 44pt |
+| AC-072: 触觉反馈 | `HapticsManager` 集成 | 统一反馈调用 |
+| AC-073: 虚拟控制器无障碍 | `VirtualButtonView` + `Localization` | VoiceOver 支持 |
+| AC-074: 长按手势 | `VirtualButtonView.onLongPress` | LongPressGesture |
+| AC-075: 滑动调节 | `EdgeSwipeGesture` + `StreamingView` | 边缘滑动音量 |
+
+---
+
+### v1.6.0 (2026-02-02)
+
+**变更来源**: F-023 iPad 触摸操作友好化 (INS-032 ~ INS-039)
+
+**新增模块**:
+- `TouchableSlider` - 触摸友好滑块组件（关联 AC-071）
+- `EdgeSwipeGesture` - 边缘滑动手势修饰器（关联 AC-075）
+- `ChiakiTheme.Touch` - 触摸目标尺寸常量（关联 AC-069, AC-070）
+
+**修改模块**:
+- `VirtualButtonView` - 尺寸标准化、无障碍标签、长按手势（关联 AC-069, AC-073, AC-074）
+- `VirtualControllerView` - 控件间距优化（关联 AC-070）
+- `VirtualStickView` - 无障碍标签（关联 AC-073）
+- `StreamingControlsView` - Slider 替换、间距优化（关联 AC-070, AC-071）
+- `StreamingView` - 边缘滑动手势集成（关联 AC-075）
+- `Localization` - 虚拟控制器无障碍文案（关联 AC-073）
+
+**破坏性变更**: 无
+
+**迁移说明**: 无需迁移，纯增量功能。所有变更向后兼容，现有代码可逐步迁移至新的尺寸常量。

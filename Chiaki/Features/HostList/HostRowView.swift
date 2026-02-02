@@ -6,12 +6,17 @@ struct HostRowView: View {
     
     var body: some View {
         HStack {
-            // Icon
-            Image(systemName: host.isPS5 ? "gamecontroller" : "gamecontroller.fill") // Placeholder
+            /**
+             * Host icon with Apple HIG compliant touch target
+             * @requirement F-023 - iPad 触摸操作友好化
+             * @satisfies AC-069 - 触摸目标尺寸
+             */
+            Image(systemName: host.isPS5 ? "gamecontroller" : "gamecontroller.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 40, height: 40)
+                .frame(width: ChiakiTheme.Touch.minTargetSize, height: ChiakiTheme.Touch.minTargetSize)
                 .foregroundStyle(Color.chiakiPurple)
+                .contentShape(Circle())
                 .padding(.trailing, 8)
             
             VStack(alignment: .leading, spacing: 2) {

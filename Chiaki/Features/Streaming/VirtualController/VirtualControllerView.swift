@@ -21,16 +21,21 @@ struct VirtualControllerView: View {
                         
                         Spacer()
                         
+                        /**
+                         * Center menu buttons with Apple HIG compliant touch targets
+                         * @requirement F-023 - iPad 触摸操作友好化
+                         * @satisfies AC-069 - 触摸目标尺寸
+                         */
                         HStack(spacing: 30) {
-                            VirtualButtonView(iconName: "square.and.arrow.up", size: 40, color: .white, hapticStyle: .medium) { pressed in
+                            VirtualButtonView(iconName: "square.and.arrow.up", size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.share, pressed: pressed))
                             }
-                            
+
                             VirtualButtonView(iconName: "playstation.logo", size: 50, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.ps, pressed: pressed))
                             }
-                            
-                            VirtualButtonView(iconName: "line.3.horizontal", size: 40, color: .white, hapticStyle: .medium) { pressed in
+
+                            VirtualButtonView(iconName: "line.3.horizontal", size: ChiakiTheme.Touch.minTargetSize, color: .white, hapticStyle: .medium) { pressed in
                                 onInput(.button(.options, pressed: pressed))
                             }
                         }

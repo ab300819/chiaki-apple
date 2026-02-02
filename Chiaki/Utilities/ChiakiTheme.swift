@@ -40,6 +40,27 @@ enum ChiakiTheme {
         static let medium: CGFloat = 12
         static let large: CGFloat = 20
     }
+
+    // MARK: - Touch Target Constants
+
+    /**
+     * Touch target size constants following Apple HIG guidelines
+     * @requirement F-023 - iPad 触摸操作友好化
+     * @satisfies AC-069 - 触摸目标尺寸
+     */
+    enum Touch {
+        /// Apple HIG minimum touch target size (44×44pt)
+        static let minTargetSize: CGFloat = 44
+
+        /// Minimum spacing between adjacent interactive controls
+        static let minSpacing: CGFloat = 16
+
+        /// Recommended touch target size for comfortable interaction
+        static let recommendedTargetSize: CGFloat = 48
+
+        /// Slider touch area height
+        static let sliderHeight: CGFloat = 44
+    }
 }
 
 extension Color {
