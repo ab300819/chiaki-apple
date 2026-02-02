@@ -212,6 +212,9 @@ enum L10n {
         static func packetLossStats(loss: Double, dropped: Int, recovered: Int) -> String {
             String(localized: "accessibility.packetLossStats \(loss) \(dropped) \(recovered)")
         }
+        static func volumeLevel(_ percent: Int) -> String {
+            String(localized: "accessibility.volumeLevel \(percent)")
+        }
     }
 
     // MARK: - PSN Login

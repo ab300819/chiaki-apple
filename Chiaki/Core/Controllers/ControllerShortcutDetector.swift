@@ -10,7 +10,9 @@ import Foundation
 /**
  * Detects controller button combinations for quick access to app features
  * @requirement F-020 - 手柄操作友好化
+ * @requirement F-022 - 手柄操控 UI/UX 优化
  * @satisfies AC-059 - 手柄组合键快捷操作
+ * @satisfies AC-066 - 流媒体中音量快捷调节
  */
 final class ControllerShortcutDetector {
 
@@ -27,6 +29,14 @@ final class ControllerShortcutDetector {
     /// L1 + R1 + PS combination for disconnect shortcut
     private static let disconnectShortcut: ChiakiControllerButtons = [.l1, .r1, .ps]
 
+    /// PS + R2 combination for volume up
+    /// @satisfies AC-066 - PS+R2 音量+
+    private static let volumeUpShortcut: ChiakiControllerButtons = [.ps, .r2]
+
+    /// PS + L2 combination for volume down
+    /// @satisfies AC-066 - PS+L2 音量-
+    private static let volumeDownShortcut: ChiakiControllerButtons = [.ps, .l2]
+
     // MARK: - Callbacks
 
     /// Called when PS + Options is pressed (show/hide control menu)
@@ -34,6 +44,14 @@ final class ControllerShortcutDetector {
 
     /// Called when L1 + R1 + PS is pressed (disconnect)
     var onDisconnectShortcut: (() -> Void)?
+
+    /// Called when PS + R2 is pressed (volume up)
+    /// @satisfies AC-066 - 音量+回调
+    var onVolumeUp: (() -> Void)?
+
+    /// Called when PS + L2 is pressed (volume down)
+    /// @satisfies AC-066 - 音量-回调
+    var onVolumeDown: (() -> Void)?
 
     // MARK: - State
 
@@ -46,11 +64,25 @@ final class ControllerShortcutDetector {
     /// Whether disconnect shortcut was triggered for current button combination
     private var disconnectShortcutTriggeredForCurrentPress: Bool = false
 
+    /// Whether volume up shortcut was triggered for current button combination
+    private var volumeUpTriggeredForCurrentPress: Bool = false
+
+    /// Whether volume down shortcut was triggered for current button combination
+    private var volumeDownTriggeredForCurrentPress: Bool = false
+
     /// Timestamp of last menu shortcut trigger (for debounce across releases)
     private var lastMenuTriggerTime: Date = .distantPast
 
     /// Timestamp of last disconnect shortcut trigger (for debounce across releases)
     private var lastDisconnectTriggerTime: Date = .distantPast
+
+    /// Timestamp of last volume up trigger (for debounce)
+    /// @satisfies AC-066 - 200ms 节流
+    private var lastVolumeUpTriggerTime: Date = .distantPast
+
+    /// Timestamp of last volume down trigger (for debounce)
+    /// @satisfies AC-066 - 200ms 节流
+    private var lastVolumeDownTriggerTime: Date = .distantPast
 
     // MARK: - Initialization
 
@@ -74,6 +106,12 @@ final class ControllerShortcutDetector {
         if !buttons.containsAll(Self.disconnectShortcut) {
             disconnectShortcutTriggeredForCurrentPress = false
         }
+        if !buttons.containsAll(Self.volumeUpShortcut) {
+            volumeUpTriggeredForCurrentPress = false
+        }
+        if !buttons.containsAll(Self.volumeDownShortcut) {
+            volumeDownTriggeredForCurrentPress = false
+        }
 
         // Only check shortcuts when new buttons are pressed
         if !newlyPressed.isEmpty {
@@ -91,8 +129,12 @@ final class ControllerShortcutDetector {
         previousButtons = []
         menuShortcutTriggeredForCurrentPress = false
         disconnectShortcutTriggeredForCurrentPress = false
+        volumeUpTriggeredForCurrentPress = false
+        volumeDownTriggeredForCurrentPress = false
         lastMenuTriggerTime = .distantPast
         lastDisconnectTriggerTime = .distantPast
+        lastVolumeUpTriggerTime = .distantPast
+        lastVolumeDownTriggerTime = .distantPast
     }
 
     // MARK: - Private Methods
@@ -124,6 +166,39 @@ final class ControllerShortcutDetector {
                 menuShortcutTriggeredForCurrentPress = true
                 lastMenuTriggerTime = now
                 triggerCallback(onMenuShortcut)
+            }
+            return // Don't check volume shortcuts if menu combination is active
+        }
+
+        // Check volume shortcuts
+        // AC-066: Conflict protection - if both L2 and R2 are pressed with PS, ignore
+        let hasL2 = currentButtons.contains(.l2)
+        let hasR2 = currentButtons.contains(.r2)
+        let hasPS = currentButtons.contains(.ps)
+
+        if hasPS && hasL2 && hasR2 {
+            // Both triggers pressed - conflict, do nothing
+            return
+        }
+
+        // Check volume up (PS + R2)
+        if currentButtons.containsAll(Self.volumeUpShortcut) {
+            if !volumeUpTriggeredForCurrentPress &&
+               now.timeIntervalSince(lastVolumeUpTriggerTime) >= Self.debounceInterval {
+                volumeUpTriggeredForCurrentPress = true
+                lastVolumeUpTriggerTime = now
+                triggerCallback(onVolumeUp)
+            }
+            return
+        }
+
+        // Check volume down (PS + L2)
+        if currentButtons.containsAll(Self.volumeDownShortcut) {
+            if !volumeDownTriggeredForCurrentPress &&
+               now.timeIntervalSince(lastVolumeDownTriggerTime) >= Self.debounceInterval {
+                volumeDownTriggeredForCurrentPress = true
+                lastVolumeDownTriggerTime = now
+                triggerCallback(onVolumeDown)
             }
         }
     }

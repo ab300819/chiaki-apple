@@ -15,6 +15,8 @@ import Foundation
  * Note: Tests may show flaky results when run with parallel testing across multiple hosts.
  * All tests pass reliably with -parallel-testing-enabled NO.
  */
+@Suite("Controller Shortcut Detector Tests", .serialized)
+@MainActor
 struct ControllerShortcutDetectorTests {
 
     /**
@@ -135,10 +137,13 @@ struct ControllerShortcutDetectorTests {
      */
     @Test func testContinuousHoldNoRetrigger() {
         let detector = ControllerShortcutDetector()
+        detector.reset() // Ensure clean state
         var triggerCount = 0
 
         detector.onMenuShortcut = { triggerCount += 1 }
 
+        // First update with no buttons to establish baseline
+        detector.updateButtons([])
         // Press and hold
         detector.updateButtons([.ps, .options])
         #expect(triggerCount == 1, "First press should trigger")

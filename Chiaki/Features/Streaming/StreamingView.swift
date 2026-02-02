@@ -138,6 +138,18 @@ struct StreamingView: View {
                 .zIndex(2)
             }
 
+            /**
+             * Volume OSD overlay
+             * @requirement F-022 - 手柄操控 UI/UX 优化
+             * @satisfies AC-066 - 流媒体中音量快捷调节
+             */
+            VStack {
+                Spacer()
+                VolumeOSD(volume: viewModel.volume, isVisible: $viewModel.isVolumeOSDVisible)
+                    .padding(.bottom, 60)
+            }
+            .zIndex(5)
+
             // Control menu overlay
             if viewModel.isControlMenuVisible {
                 Color.black.opacity(0.4)

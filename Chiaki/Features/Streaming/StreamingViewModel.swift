@@ -46,6 +46,13 @@ final class StreamingViewModel {
     var videoPreset: StreamSettings.VideoPreset = .default
 
     /**
+     * Volume OSD visibility state
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - 流媒体中音量快捷调节
+     */
+    var isVolumeOSDVisible: Bool = false
+
+    /**
      * Last focused control in the streaming control menu
      * @requirement F-020 - 手柄操作友好化
      * @satisfies AC-060 - 焦点恢复逻辑
@@ -62,6 +69,14 @@ final class StreamingViewModel {
     let pipManager = PiPManager()
     let statsManager: StreamStatsManager
     private let inputMapper = ControllerInputMapper()
+
+    /**
+     * Controller shortcut detector for volume and other shortcuts
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - 流媒体中音量快捷调节
+     */
+    private let shortcutDetector = ControllerShortcutDetector()
+    private var volumeOSDHideTask: Task<Void, Never>?
 
     // MARK: - Internal state
     
@@ -91,6 +106,7 @@ final class StreamingViewModel {
 
         setupSession()
         setupNetworkMonitoring()
+        setupVolumeShortcuts()
         Logger.session.info("StreamingViewModel initialized for \(host.nickname)")
     }
     
@@ -123,6 +139,58 @@ final class StreamingViewModel {
     }
 
     // Note: Timer invalidation handled in disconnect() which should be called before deinit
+
+    /**
+     * Setup volume shortcut handlers
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - 流媒体中音量快捷调节
+     */
+    private func setupVolumeShortcuts() {
+        shortcutDetector.onVolumeUp = { [weak self] in
+            self?.adjustVolume(direction: .up)
+        }
+        shortcutDetector.onVolumeDown = { [weak self] in
+            self?.adjustVolume(direction: .down)
+        }
+    }
+
+    /**
+     * Adjust volume by shortcut and show OSD
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - 流媒体中音量快捷调节
+     */
+    private func adjustVolume(direction: VolumeDirection) {
+        let newVolume = VolumeAdjuster.adjustVolume(volume, direction: direction)
+        setVolume(newVolume)
+        showVolumeOSD()
+        Logger.controller.debug("Volume adjusted via shortcut: \(newVolume)")
+    }
+
+    /**
+     * Show volume OSD with auto-hide
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - OSD 2秒后自动隐藏
+     */
+    private func showVolumeOSD() {
+        // Cancel any existing hide task
+        volumeOSDHideTask?.cancel()
+
+        // Show OSD
+        withAnimation(.snappy) {
+            isVolumeOSDVisible = true
+        }
+
+        // Schedule auto-hide
+        volumeOSDHideTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(VolumeOSD.autoHideDelay))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation(.snappy) {
+                    self?.isVolumeOSDVisible = false
+                }
+            }
+        }
+    }
 
     // MARK: - Setup
 
@@ -229,9 +297,18 @@ final class StreamingViewModel {
 
     // MARK: - Input
 
-    /// Send controller input to the session
+    /**
+     * Send controller input to the session
+     * Also passes button state to shortcut detector for volume shortcuts
+     * @requirement F-022 - 手柄操控 UI/UX 优化
+     * @satisfies AC-066 - 流媒体中音量快捷调节
+     */
     func sendControllerInput(_ input: ChiakiControllerInput) {
         guard state == .streaming else { return }
+
+        // Check for volume shortcuts
+        shortcutDetector.updateButtons(input.buttons)
+
         session.sendControllerState(input)
     }
 
