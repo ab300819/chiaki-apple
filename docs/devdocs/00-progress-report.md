@@ -12,10 +12,10 @@
 | 指标 | 数值 |
 |------|------|
 | 总任务数 | 36 |
-| 已完成 | 25 |
+| 已完成 | 26 |
 | 进行中 | 1 |
-| 待处理 | 10 |
-| **完成率** | **69%** |
+| 待处理 | 9 |
+| **完成率** | **72%** |
 
 ---
 
@@ -69,6 +69,7 @@
 | T-142 | 触摸：Slider 交互区域 | `b06d9ad` | ✅ 已归档 |
 | T-143 | 触摸：触觉反馈统一 | `bc87252` | ✅ 已归档 |
 | T-144 | 触摸：虚拟控制器无障碍 | `a2d97f5` | ✅ 已归档 |
+| T-133 | GC：Haptics 引擎统一 | `f749b44` | 保留 |
 
 ### 进行中任务 (1)
 
@@ -76,11 +77,10 @@
 |------|------|------|
 | T-115 | 分发：多平台 App Icon 资产准备 | 待设计师提供图像资产 |
 
-### 待处理任务 (10)
+### 待处理任务 (9)
 
 | 编号 | 名称 | 优先级 | 关联功能 |
 |------|------|--------|----------|
-| T-133 | GC：Haptics 引擎统一 | P1 | F-021 |
 | T-137 | UI：流媒体音量快捷调节 | P1 | F-022 |
 | T-131 | GC：DualSense 自适应扳机 | P2 | F-021 |
 | T-132 | GC：触控板位置追踪 | P2 | F-021 |
@@ -121,8 +121,9 @@
 | AC-071 | Slider 交互区域 | `TouchableSlider.swift`, `StreamingControlsView.swift` | `TouchableSliderTests.swift` | ✅ |
 | AC-073 | 虚拟控制器无障碍 | `VirtualButtonView.swift`, `VirtualStickView.swift` | (VoiceOver) | ✅ |
 | AC-072 | 触觉反馈统一 | `HapticFeedback.swift`, `StreamingControlsView.swift`, `HostListView.swift` | `HapticFeedbackTests.swift` | ✅ |
+| AC-063 | Haptics 引擎统一 | `HapticsManager.swift`, `ControllerManager.swift` | `HapticsManagerTests.swift` | ✅ |
 
-**追溯标注文件数**: 41 个
+**追溯标注文件数**: 43 个
 **新增标注**: AC-069, AC-070, AC-071, AC-072 (T-140~T-143 完成)
 
 ---
@@ -157,12 +158,12 @@
 
 ### 🟡 P1 任务（v1.1 版本目标）
 
-| 任务 | 说明 | 估计工作量 |
-|------|------|-----------|
-| T-133 | Haptics 引擎统一（重构） | 中 |
-| T-137 | 流媒体音量快捷调节 | 中 |
+| 任务 | 说明 | 状态 |
+|------|------|------|
+| T-133 | Haptics 引擎统一（重构） | ✅ 已完成 |
+| T-137 | 流媒体音量快捷调节 | ⏳ 待处理 |
 
-> T-142, T-143, T-144 已完成
+> T-133 于 2026-02-02 完成，提交 `f749b44`
 
 ### Beta 1 发布准备
 

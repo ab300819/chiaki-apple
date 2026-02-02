@@ -29,7 +29,7 @@
 | **T-130** | **手柄：焦点恢复逻辑** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ⏳ 待处理 |
-| **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ⏳ 待处理 |
+| **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ✅ 已完成 |
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
@@ -553,34 +553,36 @@
   - [ ] 数组操作线程安全
   - [ ] ControllerInput.touchpad 类型正确
 
-### T-133: Haptics 引擎统一
+### T-133: Haptics 引擎统一 ✅
 
 - **目标**: 统一 CHHapticEngine 实例管理，避免资源冲突。
 - **关联需求**: F-021, AC-063
 - **关联测试**: UT-015.1~6, IT-008.1~3
 - **TDD 模式**: 🟡 推荐
 - **涉及文件**:
-  - `Chiaki/Core/Controllers/HapticsManager.swift` (已存在，需重构)
-  - `Chiaki/Core/Controllers/ControllerManager.swift`
+  - `Chiaki/Core/Controllers/HapticsManager.swift` ✅
+  - `Chiaki/Core/Controllers/ControllerManager.swift` ✅
+  - `ChiakiTests/HapticsManagerTests.swift` ✅ (新建)
 - **依赖**: 无
 - **验收标准**:
-  - [ ] `HapticsManager.shared` 单例提供共享 `CHHapticEngine`
-  - [ ] 添加 `startEngine() / stopEngine()` 公开方法
-  - [ ] 添加 `applyRumble(left:right:)` 震动方法
-  - [ ] 强度归一化: `UInt8(0-255)` → `Float(0.0-1.0)`
-  - [ ] `ControllerManager.applyRumble()` 委托给 `HapticsManager.shared`
-  - [ ] `startHaptics() / stopHaptics()` 调用 HapticsManager 对应方法
-  - [ ] 移除 ControllerManager 中的重复 CHHapticEngine 代码
+  - [x] `HapticsManager.shared` 单例提供共享 `CHHapticEngine`
+  - [x] 添加 `startEngine() / stopEngine()` 公开方法
+  - [x] 添加 `applyRumble(left:right:)` 震动方法
+  - [x] 强度归一化: `UInt8(0-255)` → `Float(0.0-1.0)`
+  - [x] `ControllerManager.applyRumble()` 委托给 `HapticsManager.shared`
+  - [x] `startHaptics() / stopHaptics()` 调用 HapticsManager 对应方法
+  - [x] 移除 ControllerManager 中的重复 CHHapticEngine 代码
 - **测试方法**:
-  - [ ] UT-015.1: 验证 HapticsManager 单例一致性
-  - [ ] UT-015.4: 验证强度归一化 (0→0.0, 255→1.0)
-  - [ ] IT-008.1: 验证 ControllerManager 委托调用
-  - [ ] IT-008.2: 验证连接时启动引擎
-  - [ ] IT-008.3: 验证断开时停止引擎
+  - [x] UT-015.1: 验证 HapticsManager 单例一致性
+  - [x] UT-015.4: 验证强度归一化 (0→0.0, 255→1.0)
+  - [x] IT-008.1: 验证 ControllerManager 委托调用
+  - [x] IT-008.2: 验证连接时启动引擎
+  - [x] IT-008.3: 验证断开时停止引擎
 - **Review 要点**:
-  - [ ] 引擎 resetHandler/stoppedHandler 正确设置
-  - [ ] 引擎启动失败不阻塞功能
-  - [ ] 支持设备检测 `CHHapticEngine.capabilitiesForHardware().supportsHaptics`
+  - [x] 引擎 resetHandler/stoppedHandler 正确设置
+  - [x] 引擎启动失败不阻塞功能
+  - [x] 支持设备检测 `CHHapticEngine.capabilitiesForHardware().supportsHaptics`
+- **完成提交**: `f749b44` feat(core): unify haptics engine in HapticsManager (T-133)
 
 ### T-134: 控制器电池电量显示
 
