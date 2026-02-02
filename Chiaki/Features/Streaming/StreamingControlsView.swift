@@ -157,8 +157,7 @@ private struct AudioControlSection: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
 
-                Slider(value: $volume, in: 0...1)
-                    .tint(Color.chiakiPurple)
+                TouchableSlider(value: $volume, range: 0...1, tint: .chiakiPurple)
                     .focused(focusedControl, equals: .volumeSlider)
 
                 Image(systemName: "speaker.wave.3.fill")
@@ -265,8 +264,7 @@ private struct DisplayModeSection: View {
                             .foregroundStyle(.secondary)
                             .font(.caption)
 
-                        Slider(value: $zoomFactor, in: 1.0...2.0)
-                            .tint(Color.chiakiPurple)
+                        TouchableSlider(value: $zoomFactor, range: 1.0...2.0, tint: .chiakiPurple)
                             .focused(focusedControl, equals: .zoomSlider) 
 
                         Image(systemName: "plus.magnifyingglass")
