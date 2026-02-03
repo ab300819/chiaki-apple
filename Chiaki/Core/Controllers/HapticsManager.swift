@@ -106,7 +106,7 @@ final class HapticsManager: Sendable {
         guard isEngineRunning else { return }
 
         engine?.stop(completionHandler: { [weak self] error in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 if let error = error {
                     logWarning("HapticsManager: Error stopping engine: \(error)")
                 } else {

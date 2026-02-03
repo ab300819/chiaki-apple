@@ -61,7 +61,7 @@ final class CrashReporter: Sendable {
     /// @satisfies AC-052 - 崩溃捕捉与报告
     func writeCrashReport(reason: String, stackTrace: String, logs: [String]) {
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        var report = """
+        let report = """
         --- CHIAKI CRASH REPORT ---
         Timestamp: \(timestamp)
         Reason: \(reason)

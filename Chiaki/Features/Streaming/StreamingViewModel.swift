@@ -115,7 +115,7 @@ final class StreamingViewModel {
         _ = withObservationTracking {
             NetworkMonitor.shared.isConnected
         } onChange: { [weak self] in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.handleNetworkStatusChange()
             }
         }

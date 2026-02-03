@@ -163,8 +163,7 @@ private struct KeyCaptureOverlay: View {
             .shadow(radius: 20)
         }
         .focusable()
-        .onKeyPress { press in
-            let keyCode = UInt16(press.key.character.asciiValue ?? 0)
+        .onKeyPress { _ in
             // Use the actual keyCode from NSEvent if available
             if let event = NSApp.currentEvent, event.type == .keyDown {
                 let actualKeyCode = UInt16(event.keyCode)

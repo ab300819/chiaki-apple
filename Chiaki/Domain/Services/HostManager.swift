@@ -73,7 +73,7 @@ final class HostManager {
         withObservationTracking {
             _ = hostStore.hosts
         } onChange: { [weak self] in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.syncHostsFromStore()
                 self?.observeHostStoreChanges()
             }
