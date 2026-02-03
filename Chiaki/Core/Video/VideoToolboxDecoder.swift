@@ -117,9 +117,11 @@ final class VideoToolboxDecoder {
         formatDescription = try createFormatDescription(sps: sps, pps: pps, vps: vps)
 
         // Create decompression session
-        logDebug("VideoToolboxDecoder: Creating session for \(width)x\(height)")
+        let pixelFormat = codec.isHDR ? kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange : kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+        logInfo("VideoToolboxDecoder: Creating session for \(width)x\(height), codec=\(codec.displayName), isHDR=\(codec.isHDR), pixelFormat=\(pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ? "P010(10-bit)" : "NV12(8-bit)")")
+        
         let destinationAttributes: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelBufferPixelFormatTypeKey as String: pixelFormat,
             kCVPixelBufferMetalCompatibilityKey as String: true,
             kCVPixelBufferWidthKey as String: width,
             kCVPixelBufferHeightKey as String: height

@@ -78,11 +78,23 @@ final class MetalVideoRenderer: NSObject {
     /// Texture cache for zero-copy CVPixelBuffer conversion
     private var textureCache: CVMetalTextureCache?
 
-    /// Render pipeline for biplanar YUV (NV12)
+    /// Render pipeline for biplanar YUV (NV12) - SDR
     private var biplanarPipeline: MTLRenderPipelineState?
 
-    /// Render pipeline for BGRA
+    /// Render pipeline for BGRA - SDR
     private var bgraPipeline: MTLRenderPipelineState?
+
+    /// Render pipeline for biplanar YUV (NV12) - HDR macOS (rgba16Float)
+    private var biplanarPipelineHDR: MTLRenderPipelineState?
+
+    /// Render pipeline for BGRA - HDR macOS (rgba16Float)
+    private var bgraPipelineHDR: MTLRenderPipelineState?
+
+    /// Render pipeline for biplanar YUV (NV12) - HDR iOS/tvOS (rgb10a2Unorm)
+    private var biplanarPipelineHDR10: MTLRenderPipelineState?
+
+    /// Render pipeline for BGRA - HDR iOS/tvOS (rgb10a2Unorm)
+    private var bgraPipelineHDR10: MTLRenderPipelineState?
 
     /// Vertex buffer for video quad
     private var vertexBuffer: MTLBuffer?
@@ -286,7 +298,6 @@ final class MetalVideoRenderer: NSObject {
         // Common pipeline descriptor setup
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
 
         // Get shader functions
         guard let vertexFunction = library.makeFunction(name: "videoVertexShader") else {
@@ -295,32 +306,76 @@ final class MetalVideoRenderer: NSObject {
         }
         pipelineDescriptor.vertexFunction = vertexFunction
 
-        // Biplanar pipeline (NV12/NV21)
-        if let biplanarFragment = library.makeFunction(name: "videoBiplanarFragmentShader") {
-            pipelineDescriptor.fragmentFunction = biplanarFragment
-            pipelineDescriptor.label = "Biplanar Video Pipeline"
-
-            do {
-                biplanarPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            } catch {
-                logError("Failed to create biplanar pipeline: \(error)")
-                return false
-            }
+        guard let biplanarFragment = library.makeFunction(name: "videoBiplanarFragmentShader"),
+              let bgraFragment = library.makeFunction(name: "videoBGRAFragmentShader") else {
+            logError("Failed to load fragment shaders")
+            return false
         }
 
-        // BGRA pipeline
-        if let bgraFragment = library.makeFunction(name: "videoBGRAFragmentShader") {
-            pipelineDescriptor.fragmentFunction = bgraFragment
-            pipelineDescriptor.label = "BGRA Video Pipeline"
+        // Create SDR pipelines (bgra8Unorm)
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
 
-            do {
-                bgraPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            } catch {
-                logError("Failed to create BGRA pipeline: \(error)")
-                return false
-            }
+        pipelineDescriptor.fragmentFunction = biplanarFragment
+        pipelineDescriptor.label = "Biplanar Video Pipeline (SDR)"
+        do {
+            biplanarPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create biplanar SDR pipeline: \(error)")
+            return false
         }
 
+        pipelineDescriptor.fragmentFunction = bgraFragment
+        pipelineDescriptor.label = "BGRA Video Pipeline (SDR)"
+        do {
+            bgraPipeline = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create BGRA SDR pipeline: \(error)")
+            return false
+        }
+
+        // Create HDR pipelines for macOS (rgba16Float for EDR)
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .rgba16Float
+
+        pipelineDescriptor.fragmentFunction = biplanarFragment
+        pipelineDescriptor.label = "Biplanar Video Pipeline (HDR-Float)"
+        do {
+            biplanarPipelineHDR = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create biplanar HDR pipeline: \(error)")
+            return false
+        }
+
+        pipelineDescriptor.fragmentFunction = bgraFragment
+        pipelineDescriptor.label = "BGRA Video Pipeline (HDR-Float)"
+        do {
+            bgraPipelineHDR = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create BGRA HDR pipeline: \(error)")
+            return false
+        }
+
+        // Create HDR10 pipelines for iOS/tvOS (rgb10a2Unorm)
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .rgb10a2Unorm
+
+        pipelineDescriptor.fragmentFunction = biplanarFragment
+        pipelineDescriptor.label = "Biplanar Video Pipeline (HDR10)"
+        do {
+            biplanarPipelineHDR10 = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create biplanar HDR10 pipeline: \(error)")
+            return false
+        }
+
+        pipelineDescriptor.fragmentFunction = bgraFragment
+        pipelineDescriptor.label = "BGRA Video Pipeline (HDR10)"
+        do {
+            bgraPipelineHDR10 = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        } catch {
+            logError("Failed to create BGRA HDR10 pipeline: \(error)")
+            return false
+        }
+
+        logInfo("MetalVideoRenderer: Created SDR, HDR, and HDR10 render pipelines")
         return true
     }
 
@@ -395,18 +450,34 @@ final class MetalVideoRenderer: NSObject {
         case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
             // Biplanar NV12 format (common from VideoToolbox)
             isBiplanar = true
+            uniforms.colorSpace = 0 // BT.709 (HD)
             uniforms.colorRange = 0 // Limited range
-            createBiplanarTextures(from: pixelBuffer, cache: textureCache)
+            if frameCount == 0 {
+                logInfo("🎬 SDR: Receiving 8-bit NV12 frames (colorSpace=BT.709)")
+            }
+            createBiplanarTextures(from: pixelBuffer, cache: textureCache, is10Bit: false)
 
         case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
             // Biplanar NV12 full range
             isBiplanar = true
+            uniforms.colorSpace = 0 // BT.709 (HD)
             uniforms.colorRange = 1 // Full range
-            createBiplanarTextures(from: pixelBuffer, cache: textureCache)
+            createBiplanarTextures(from: pixelBuffer, cache: textureCache, is10Bit: false)
+
+        case kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange:
+            // Biplanar P010 format (10-bit HDR from VideoToolbox)
+            isBiplanar = true
+            uniforms.colorSpace = 2 // BT.2020 (HDR)
+            uniforms.colorRange = 0 // Limited range (HDR uses limited range)
+            if frameCount == 0 {
+                logInfo("🎬 HDR: Receiving 10-bit P010 frames (colorSpace=BT.2020)")
+            }
+            createBiplanarTextures(from: pixelBuffer, cache: textureCache, is10Bit: true)
 
         case kCVPixelFormatType_32BGRA:
             // BGRA format
             isBiplanar = false
+            uniforms.colorSpace = 0 // BT.709 (HD)
             uniforms.colorRange = 1 // Full range for RGB textures
             createBGRATexture(from: pixelBuffer, cache: textureCache)
 
@@ -430,9 +501,15 @@ final class MetalVideoRenderer: NSObject {
         }
     }
 
-    private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache) {
+    private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache, is10Bit: Bool) {
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
+
+        // Select texture format based on bit depth
+        // 10-bit P010: Y is 16-bit (r16Unorm), UV is 16-bit per channel (rg16Unorm)
+        // 8-bit NV12: Y is 8-bit (r8Unorm), UV is 8-bit per channel (rg8Unorm)
+        let yFormat: MTLPixelFormat = is10Bit ? .r16Unorm : .r8Unorm
+        let uvFormat: MTLPixelFormat = is10Bit ? .rg16Unorm : .rg8Unorm
 
         // Y plane (full resolution)
         var textureY: CVMetalTexture?
@@ -441,7 +518,7 @@ final class MetalVideoRenderer: NSObject {
             cache,
             pixelBuffer,
             nil,
-            .r8Unorm,
+            yFormat,
             width,
             height,
             0,  // Y plane index
@@ -461,7 +538,7 @@ final class MetalVideoRenderer: NSObject {
             cache,
             pixelBuffer,
             nil,
-            .rg8Unorm,
+            uvFormat,
             width / 2,
             height / 2,
             1,  // UV plane index
@@ -541,14 +618,29 @@ final class MetalVideoRenderer: NSObject {
         }
         renderEncoder.label = "Video Render Encoder"
 
-        // Select pipeline
+        // Select pipeline based on drawable pixel format and input type
+        let drawableFormat = drawable.texture.pixelFormat
         let pipeline: MTLRenderPipelineState?
         if biplanar {
-            pipeline = biplanarPipeline
+            switch drawableFormat {
+            case .rgba16Float:
+                pipeline = biplanarPipelineHDR
+            case .rgb10a2Unorm:
+                pipeline = biplanarPipelineHDR10
+            default:
+                pipeline = biplanarPipeline
+            }
             renderEncoder.setFragmentTexture(textureY, index: 0)
             renderEncoder.setFragmentTexture(textureUV, index: 1)
         } else {
-            pipeline = bgraPipeline
+            switch drawableFormat {
+            case .rgba16Float:
+                pipeline = bgraPipelineHDR
+            case .rgb10a2Unorm:
+                pipeline = bgraPipelineHDR10
+            default:
+                pipeline = bgraPipeline
+            }
             renderEncoder.setFragmentTexture(textureBGRA, index: 0)
         }
 
@@ -746,6 +838,33 @@ final class MetalVideoRenderer: NSObject {
         float3(1.47460,    -0.57135,     0.0)
     );
 
+    // PQ (ST 2084) EOTF constants
+    constant float pq_m1 = 0.1593017578125;    // 2610/16384
+    constant float pq_m2 = 78.84375;           // 2523/32 * 128
+    constant float pq_c1 = 0.8359375;          // 3424/4096
+    constant float pq_c2 = 18.8515625;         // 2413/128
+    constant float pq_c3 = 18.6875;            // 2392/128
+
+    // PQ EOTF: Convert PQ-encoded value to linear light (0-10000 nits range, normalized)
+    float3 pqEOTF(float3 pq) {
+        float3 p = pow(max(pq, 0.0), 1.0 / pq_m2);
+        float3 num = max(p - pq_c1, 0.0);
+        float3 den = pq_c2 - pq_c3 * p;
+        return pow(num / den, 1.0 / pq_m1);
+    }
+
+    // Convert linear light to EDR (scale for display)
+    // SDR reference white = 203 nits, EDR 1.0 = 80 nits (SDR white)
+    // So HDR 203 nits should map to EDR 203/80 = 2.5375
+    float3 linearToEDR(float3 linear) {
+        // linear is in 0-1 range representing 0-10000 nits
+        // Scale so that SDR white (203 nits) = 1.0 in EDR
+        // 203/10000 in linear = 1.0 in EDR, so multiply by 10000/203
+        // But we also need to account for EDR headroom
+        // Simplified: multiply by ~12.5 to map HDR range to EDR
+        return linear * 12.5;
+    }
+
     vertex VertexOut videoVertexShader(
         VertexIn in [[stage_in]],
         constant VideoUniforms &uniforms [[buffer(1)]]
@@ -789,13 +908,28 @@ final class MetalVideoRenderer: NSObject {
         float3 yuv = float3(y, uv.x, uv.y);
         float3 rgb = m * yuv;
 
-        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
-        rgb = rgb * uniforms.brightness;
-
-        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
-        rgb = mix(float3(gray), rgb, uniforms.saturation);
-
-        rgb = clamp(rgb, 0.0, 1.0);
+        // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+        if (uniforms.colorSpace == 2u) {
+            // Clamp to valid PQ range before EOTF
+            rgb = clamp(rgb, 0.0, 1.0);
+            // Apply PQ EOTF to get linear light
+            rgb = pqEOTF(rgb);
+            // Convert to EDR range for display
+            rgb = linearToEDR(rgb);
+            // Apply color adjustments in linear space
+            rgb = rgb * uniforms.brightness;
+            float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+            rgb = mix(float3(gray), rgb, uniforms.saturation);
+            // Clamp lower bound only (allow EDR values > 1.0)
+            rgb = max(rgb, 0.0);
+        } else {
+            // SDR: apply adjustments in gamma space
+            rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+            rgb = rgb * uniforms.brightness;
+            float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+            rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = clamp(rgb, 0.0, 1.0);
+        }
 
         return float4(rgb, 1.0);
     }
@@ -810,13 +944,22 @@ final class MetalVideoRenderer: NSObject {
         float4 color = texture.sample(textureSampler, in.texCoord);
         float3 rgb = color.rgb;
 
-        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
-        rgb = rgb * uniforms.brightness;
-
-        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
-        rgb = mix(float3(gray), rgb, uniforms.saturation);
-
-        rgb = clamp(rgb, 0.0, 1.0);
+        // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+        if (uniforms.colorSpace == 2u) {
+            rgb = clamp(rgb, 0.0, 1.0);
+            rgb = pqEOTF(rgb);
+            rgb = linearToEDR(rgb);
+            rgb = rgb * uniforms.brightness;
+            float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+            rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = max(rgb, 0.0);
+        } else {
+            rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+            rgb = rgb * uniforms.brightness;
+            float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+            rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = clamp(rgb, 0.0, 1.0);
+        }
 
         return float4(rgb, color.a);
     }

@@ -83,6 +83,29 @@ constant float3x3 kBT2020Full = float3x3(
     float3(1.47460,   -0.57135,     0.0)
 );
 
+// MARK: - PQ (ST 2084) EOTF for HDR
+
+// PQ constants
+constant float pq_m1 = 0.1593017578125;    // 2610/16384
+constant float pq_m2 = 78.84375;           // 2523/32 * 128
+constant float pq_c1 = 0.8359375;          // 3424/4096
+constant float pq_c2 = 18.8515625;         // 2413/128
+constant float pq_c3 = 18.6875;            // 2392/128
+
+// PQ EOTF: Convert PQ-encoded value to linear light (0-10000 nits range, normalized)
+float3 pqEOTF(float3 pq) {
+    float3 p = pow(max(pq, 0.0), 1.0 / pq_m2);
+    float3 num = max(p - pq_c1, 0.0);
+    float3 den = pq_c2 - pq_c3 * p;
+    return pow(num / den, 1.0 / pq_m1);
+}
+
+// Convert linear light to EDR (scale for display)
+float3 linearToEDR(float3 linear) {
+    // Scale so that SDR white (203 nits) maps appropriately for EDR
+    return linear * 12.5;
+}
+
 // MARK: - Vertex Shader
 
 vertex VertexOut videoVertexShader(
@@ -137,16 +160,23 @@ fragment float4 videoBiplanarFragmentShader(
     float3 yuv = float3(y, uv.x, uv.y);
     float3 rgb = m * yuv;
 
-    // Apply color adjustments
-    rgb = (rgb - 0.5) * uniforms.contrast + 0.5;  // Contrast
-    rgb = rgb * uniforms.brightness;               // Brightness
-
-    // Saturation
-    float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
-    rgb = mix(float3(gray), rgb, uniforms.saturation);
-
-    // Clamp to valid range
-    rgb = clamp(rgb, 0.0, 1.0);
+    // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+    if (uniforms.colorSpace == 2u) {
+        rgb = clamp(rgb, 0.0, 1.0);
+        rgb = pqEOTF(rgb);
+        rgb = linearToEDR(rgb);
+        rgb = rgb * uniforms.brightness;
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+        rgb = max(rgb, 0.0);
+    } else {
+        // SDR: apply adjustments in gamma space
+        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+        rgb = rgb * uniforms.brightness;
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+        rgb = clamp(rgb, 0.0, 1.0);
+    }
 
     return float4(rgb, 1.0);
 }
@@ -164,14 +194,22 @@ fragment float4 videoBGRAFragmentShader(
     float4 color = texture.sample(textureSampler, in.texCoord);
     float3 rgb = color.rgb;
 
-    // Apply color adjustments
-    rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
-    rgb = rgb * uniforms.brightness;
-
-    float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
-    rgb = mix(float3(gray), rgb, uniforms.saturation);
-
-    rgb = clamp(rgb, 0.0, 1.0);
+    // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+    if (uniforms.colorSpace == 2u) {
+        rgb = clamp(rgb, 0.0, 1.0);
+        rgb = pqEOTF(rgb);
+        rgb = linearToEDR(rgb);
+        rgb = rgb * uniforms.brightness;
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+        rgb = max(rgb, 0.0);
+    } else {
+        rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
+        rgb = rgb * uniforms.brightness;
+        float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = mix(float3(gray), rgb, uniforms.saturation);
+        rgb = clamp(rgb, 0.0, 1.0);
+    }
 
     return float4(rgb, color.a);
 }

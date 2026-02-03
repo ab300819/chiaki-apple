@@ -8,6 +8,7 @@
 import SwiftUI
 import MetalKit
 import CoreVideo
+import CoreGraphics
 import Combine
 
 #if os(iOS) || os(tvOS)
@@ -30,6 +31,8 @@ struct VideoStreamView: ViewRepresentable {
 
     var preferredFramesPerSecond: Int
 
+    var isHDR: Bool
+
     var onMTKViewCreated: ((MTKView) -> Void)?
 
     init(
@@ -37,12 +40,14 @@ struct VideoStreamView: ViewRepresentable {
         displayMode: VideoDisplayMode = .normal,
         zoomFactor: Float = 1.0,
         preferredFramesPerSecond: Int = 60,
+        isHDR: Bool = false,
         onMTKViewCreated: ((MTKView) -> Void)? = nil
     ) {
         self.renderer = renderer
         self.displayMode = displayMode
         self.zoomFactor = zoomFactor
         self.preferredFramesPerSecond = preferredFramesPerSecond
+        self.isHDR = isHDR
         self.onMTKViewCreated = onMTKViewCreated
     }
 
@@ -72,12 +77,31 @@ struct VideoStreamView: ViewRepresentable {
             mtkView.device = device
         }
 
-        mtkView.colorPixelFormat = .bgra8Unorm
+        if isHDR {
+            #if os(macOS)
+            mtkView.colorPixelFormat = .rgba16Float
+            #else
+            mtkView.colorPixelFormat = .rgb10a2Unorm
+            #endif
+        } else {
+            mtkView.colorPixelFormat = .bgra8Unorm
+        }
+        
         mtkView.framebufferOnly = true
         mtkView.preferredFramesPerSecond = preferredFramesPerSecond
         mtkView.isPaused = false
         mtkView.enableSetNeedsDisplay = true
         
+        #if os(macOS) || os(iOS) || os(tvOS)
+        if isHDR, let layer = mtkView.layer as? CAMetalLayer {
+            #if os(macOS)
+            layer.wantsExtendedDynamicRangeContent = true
+            #endif
+            // Use extended linear Display P3 for HDR - widely supported on Apple platforms
+            layer.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
+        }
+        #endif
+
         #if os(iOS) || os(tvOS)
         mtkView.contentMode = .scaleToFill
         #endif

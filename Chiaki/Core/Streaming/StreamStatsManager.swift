@@ -68,6 +68,11 @@ final class StreamStatsManager {
         
         isPoorConnection = packetLoss > 5.0
         currentResolution = "1080p" // TODO: Get from session
-        isHDR = session?.isHDR ?? false
+
+        let newIsHDR = session?.isHDR ?? false
+        if newIsHDR != isHDR {
+            logInfo("StreamStatsManager: isHDR changed from \(isHDR) to \(newIsHDR)")
+        }
+        isHDR = newIsHDR
     }
 }
