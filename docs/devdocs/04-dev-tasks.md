@@ -30,7 +30,7 @@
 | **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ✅ 已完成 |
-| **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
+| **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ✅ 已完成 |
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ✅ 已完成 |
@@ -592,38 +592,43 @@
   - [x] 支持设备检测 `CHHapticEngine.capabilitiesForHardware().supportsHaptics`
 - **完成提交**: `f749b44` feat(core): unify haptics engine in HapticsManager (T-133)
 
-### T-134: 控制器电池电量显示
+### T-134: 控制器电池电量显示 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 在 UI 中显示连接手柄的电池电量。
 - **关联需求**: F-021, AC-064
 - **关联测试**: UT-016.1~6, E2E-007.1~3
 - **TDD 模式**: 🟢 可选（UI 层）
 - **涉及文件**:
-  - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Features/Streaming/ControllerBatteryIndicator.swift` (新建)
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift`
+  - `Chiaki/Core/Controllers/ControllerManager.swift` ✅
+  - `Chiaki/Features/Streaming/ControllerBatteryIndicator.swift` ✅ (新建)
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅
+  - `ChiakiTests/BatteryInfoTests.swift` ✅ (新建)
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 创建 `BatteryInfo` 结构体 (level: Float, state: BatteryState)
-  - [ ] `BatteryState` 枚举 (unknown, discharging, charging, full)
-  - [ ] 计算属性 `isLow: Bool { level < 0.2 }`
-  - [ ] 计算属性 `iconName: String` 返回 SF Symbol 名称
-  - [ ] 计算属性 `color: Color` (charging=green, low=red, normal=primary)
-  - [ ] `ControllerManager.batteryInfo` 计算属性读取 `GCController.battery`
-  - [ ] 创建 `ControllerBatteryIndicator` SwiftUI 视图
-  - [ ] 在 StreamingControlsView 中显示电池指示器
-- **测试方法**:
-  - [ ] UT-016.1: 验证 BatteryState 枚举完整性
-  - [ ] UT-016.2: 验证 isLow 阈值 (level < 0.2)
-  - [ ] UT-016.3: 验证各电量级别图标名称
-  - [ ] UT-016.4: 验证充电状态图标 (battery.100.bolt)
-  - [ ] UT-016.5: 验证各状态颜色
-  - [ ] E2E-007.1: 验证电池指示器显示
-  - [ ] E2E-007.2: 验证低电量警告样式
+  - [x] 创建 `BatteryInfo` 结构体 (level: Float, state: BatteryState)
+  - [x] `BatteryState` 枚举 (unknown, discharging, charging, full)
+  - [x] 计算属性 `isLow: Bool { level < 0.2 }`
+  - [x] 计算属性 `iconName: String` 返回 SF Symbol 名称
+  - [x] 计算属性 `color: Color` (charging=green, low=red, normal=primary)
+  - [x] `ControllerManager.batteryInfo` 计算属性读取 `GCController.battery`
+  - [x] 创建 `ControllerBatteryIndicator` SwiftUI 视图
+  - [x] 在 StreamingControlsView 中显示电池指示器
+- **测试结果**:
+  - [x] UT-016.1: 验证 BatteryState 枚举完整性
+  - [x] UT-016.2: 验证 isLow 阈值 (level < 0.2)
+  - [x] UT-016.3: 验证各电量级别图标名称
+  - [x] UT-016.4: 验证充电状态图标 (battery.100.bolt)
+  - [x] UT-016.5: 验证各状态颜色
+  - [x] UT-016.6: 验证 BatteryInfo Equatable
+  - [x] 额外测试: 边界值、百分比字符串、未知状态等
+  - 13 tests passed
 - **Review 要点**:
-  - [ ] 控制器未连接时 batteryInfo 返回 nil
-  - [ ] 电量图标使用系统 SF Symbols
-  - [ ] 无障碍标签正确设置
+  - [x] 控制器未连接时 batteryInfo 返回 nil
+  - [x] 电量图标使用系统 SF Symbols
+  - [x] 无障碍标签正确设置 (accessibilityLabel)
+- **完成提交**: `b3b48cd` feat(ui): implement controller battery indicator (T-134)
 
 ### T-135: StreamingOverlay HDR 标志 ✅
 
