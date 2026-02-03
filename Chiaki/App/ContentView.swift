@@ -144,4 +144,5 @@ struct WelcomeView: View {
     ContentView()
         .environment(SettingsStore())
         .environment(NavigationManager())
+        .environment(HostStore())
 }
