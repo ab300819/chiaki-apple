@@ -73,7 +73,8 @@ struct StreamingView: View {
                     VideoStreamView(
                         renderer: rendererHolder.renderer,
                         displayMode: viewModel.displayMode.toVideoDisplayMode,
-                        zoomFactor: Float(viewModel.zoomFactor)
+                        zoomFactor: Float(viewModel.zoomFactor),
+                        isHDR: settingsStore.streamSettings.hdrEnabled
                     ) { mtkView in
                         #if os(iOS)
                         viewModel.pipManager.setup(with: mtkView)

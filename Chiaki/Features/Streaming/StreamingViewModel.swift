@@ -327,11 +327,15 @@ final class StreamingViewModel {
         let videoCodec: ChiakiVideoCodec
         if settings.hdrEnabled && settings.codec == .h265 {
             videoCodec = .h265HDR
+            Logger.session.info("HDR enabled with H.265, using H.265 HDR codec")
         } else if settings.codec == .h265 {
             videoCodec = .h265
+            Logger.session.info("Using H.265 codec (HDR disabled: \(settings.hdrEnabled))")
         } else {
             videoCodec = .h264
+            Logger.session.info("Using H.264 codec")
         }
+        Logger.session.info("Stream settings - hdrEnabled: \(settings.hdrEnabled), codec: \(settings.codec.rawValue), selected: \(videoCodec.displayName)")
 
         videoDecoderBridge.configure(
             codec: videoCodec,
@@ -545,6 +549,9 @@ final class StreamingViewModel {
     // MARK: - Statistics Update
 
     private func startStatsUpdate() {
+        // Immediately update stats (including HDR status from session config)
+        statsManager.update()
+
         statsUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
