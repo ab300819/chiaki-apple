@@ -4367,6 +4367,22 @@
         }
       }
     },
+    "streaming.wakeUpTimeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wake-up timeout: host did not respond"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "唤醒超时：主机未响应"
+          }
+        }
+      }
+    },
     "streamingControls.applyAndReconnect" : {
       "localizations" : {
         "en" : {

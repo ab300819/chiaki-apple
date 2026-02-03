@@ -236,17 +236,15 @@ final class StreamingViewModel {
     // MARK: - Connection
 
     /// Connect to the PlayStation host
+    /// If host is in standby, will attempt to wake it first
     func connect(settings: StreamSettings, isRemote: Bool = false) {
         lastSettings = settings
         lastIsRemote = isRemote
-        
+
         guard !state.isActive || state == .reconnecting else {
             Logger.session.warning("Cannot connect: already active")
             return
         }
-
-        state = .connecting
-        Logger.session.info("Connecting to \(host.nickname) at \(host.address)")
 
         // Verify host has registration data
         guard !host.registKey.isEmpty else {
@@ -254,6 +252,65 @@ final class StreamingViewModel {
             Logger.session.error("Connection failed: host not registered")
             return
         }
+
+        // Check if host needs to be woken up first
+        if host.state == .standby {
+            state = .connecting
+            Logger.session.info("Host \(host.nickname) is in standby, sending wake-up signal")
+
+            Task {
+                await wakeAndConnect(settings: settings, isRemote: isRemote)
+            }
+            return
+        }
+
+        // Host is online or unknown state, proceed with connection
+        performConnection(settings: settings, isRemote: isRemote)
+    }
+
+    /// Wake up host and then connect
+    private func wakeAndConnect(settings: StreamSettings, isRemote: Bool) async {
+        do {
+            // Send wake-up signal
+            try await HostManager.shared.wakeUp(host)
+            Logger.session.info("Wake-up signal sent to \(host.nickname), waiting for host to come online")
+
+            // Wait for host to wake up (poll every 1 second, timeout after 30 seconds)
+            let maxAttempts = 30
+            var attempts = 0
+
+            while attempts < maxAttempts {
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                attempts += 1
+
+                // Check if host is now online via HostManager
+                if let updatedHost = HostManager.shared.host(byId: host.id),
+                   updatedHost.state == .online {
+                    Logger.session.info("Host \(host.nickname) is now online after \(attempts) seconds")
+                    performConnection(settings: settings, isRemote: isRemote)
+                    return
+                }
+
+                // Update UI with progress
+                if attempts % 5 == 0 {
+                    Logger.session.debug("Waiting for host to wake up... (\(attempts)/\(maxAttempts)s)")
+                }
+            }
+
+            // Timeout - host didn't wake up in time
+            state = .error(String(localized: "streaming.wakeUpTimeout"))
+            Logger.session.error("Wake-up timeout: host did not come online within \(maxAttempts) seconds")
+
+        } catch {
+            state = .error(error.localizedDescription)
+            Logger.session.error("Failed to wake up host: \(error)")
+        }
+    }
+
+    /// Perform the actual connection (after wake-up if needed)
+    private func performConnection(settings: StreamSettings, isRemote: Bool) {
+        state = .connecting
+        Logger.session.info("Connecting to \(host.nickname) at \(host.address)")
 
         let hostConfig = HostConfig(
             address: host.address,
@@ -267,7 +324,7 @@ final class StreamingViewModel {
 
         // Configure video based on resolution setting
         let videoCodec: ChiakiVideoCodec = settings.codec == .h265 ? .h265 : .h264
-        
+
         videoDecoderBridge.configure(
             codec: videoCodec,
             width: Int32(profile.resolution.width),
