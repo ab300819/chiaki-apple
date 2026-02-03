@@ -10,6 +10,7 @@ import SwiftUI
 /// Floating control menu for streaming playback settings
 struct StreamingControlsView: View {
     @Bindable var viewModel: StreamingViewModel
+    @Environment(SettingsStore.self) private var settingsStore
     var onSaveSettings: (Double, StreamSettings.DisplayMode, Double) -> Void
     var onDisconnect: () -> Void
     var onGoToBed: () -> Void
@@ -20,6 +21,20 @@ struct StreamingControlsView: View {
      * @satisfies AC-055 - 流媒体控制菜单焦点管理
      */
     @FocusState private var focusedControl: StreamingControlFocus?
+
+    /// Bitrate binding for quick settings
+    /// @satisfies AC-068 - 设置快捷入口
+    private var bitrate: Binding<Int> {
+        Binding(
+            get: { settingsStore.streamSettings.localProfile.bitrate },
+            set: { settingsStore.streamSettings.localProfile.bitrate = $0 }
+        )
+    }
+
+    /// Current resolution for quick settings
+    private var currentResolution: StreamSettings.Resolution {
+        settingsStore.streamSettings.localProfile.resolution
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -102,11 +117,27 @@ struct StreamingControlsView: View {
                     VideoPresetSection(
                         preset: Binding(
                             get: { viewModel.videoPreset },
-                            set: { 
+                            set: {
                                 HapticFeedback.selection()
-                                viewModel.setVideoPreset($0) 
+                                viewModel.setVideoPreset($0)
                             }
                         ),
+                        focusedControl: $focusedControl
+                    )
+
+                    Divider()
+
+                    /**
+                     * Quick settings section for advanced options
+                     * @satisfies AC-068 - 设置快捷入口
+                     */
+                    QuickSettingsSection(
+                        volume: Binding(
+                            get: { viewModel.volume },
+                            set: { viewModel.setVolume($0) }
+                        ),
+                        bitrate: bitrate,
+                        currentResolution: currentResolution,
                         focusedControl: $focusedControl
                     )
 
@@ -156,10 +187,10 @@ struct StreamingControlsView: View {
 
     #if os(tvOS)
     private let controlsWidth: CGFloat = 500
-    private let controlsHeight: CGFloat = 450
+    private let controlsHeight: CGFloat = 550
     #else
-    private let controlsWidth: CGFloat = 320
-    private let controlsHeight: CGFloat = 380
+    private let controlsWidth: CGFloat = 340
+    private let controlsHeight: CGFloat = 480
     #endif
 }
 
@@ -476,32 +507,53 @@ private struct ActionButton: View {
  * Focusable controls in the streaming control menu
  * @requirement F-020 - 手柄操作友好化
  * @satisfies AC-055 - 流媒体控制菜单焦点管理
+ * @satisfies AC-068 - 设置快捷入口
  */
 enum StreamingControlFocus: String, Hashable, CaseIterable {
     /// Button to disconnect from the host
     case disconnectButton
-    
+
     /// Toggle for microphone mute state
     case micToggle
-    
+
     /// Slider for audio volume
     case volumeSlider
-    
+
     /// Slider for zoom factor
     case zoomSlider
-    
+
     /// Picker for video quality/preset
     case qualityPicker
-    
+
     /// Picker for display mode (Fit/Stretch/Zoom)
     case displayModePicker
-    
+
     /// Toggle for streaming statistics overlay
     case statsToggle
-    
+
     /// Button to close the control menu
     case closeButton
-    
+
     /// Button for rest mode
     case restModeButton
+
+    // MARK: - Quick Settings (AC-068)
+
+    /// Header button for quick settings disclosure
+    case quickSettingsHeader
+
+    /// Decrease bitrate button
+    case bitrateDecrease
+
+    /// Increase bitrate button
+    case bitrateIncrease
+
+    /// Volume slider in quick settings
+    case quickSettingsVolume
+
+    /// Resolution picker
+    case resolutionPicker
+
+    /// Apply and reconnect button
+    case reconnectButton
 }

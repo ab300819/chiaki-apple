@@ -89,6 +89,14 @@ enum L10n {
         static let micMuted = String(localized: "streamingControls.micMuted")
         static let micActive = String(localized: "streamingControls.micActive")
         static let toggleStats = String(localized: "streamingControls.toggleStats")
+
+        // Quick Settings (AC-068)
+        static let quickSettings = String(localized: "streamingControls.quickSettings")
+        static let bitrate = String(localized: "streamingControls.bitrate")
+        static let resolution = String(localized: "streamingControls.resolution")
+        static let requiresReconnect = String(localized: "streamingControls.requiresReconnect")
+        static let resolutionChangeWarning = String(localized: "streamingControls.resolutionChangeWarning")
+        static let applyAndReconnect = String(localized: "streamingControls.applyAndReconnect")
     }
 
     // MARK: - Settings

@@ -35,7 +35,7 @@
 | **T-136** | **UI：主机快速操作栏** | P2 | 🟢 可选 | ⏳ 待处理 |
 | **T-137** | **UI：流媒体音量快捷调节** | P1 | 🔴 强制 | ✅ 已完成 |
 | **T-138** | **UI：PIN 输入数字键盘** | P2 | 🟡 推荐 | ✅ 已完成 |
-| **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-139** | **UI：流媒体快速设置面板** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-140** | **触摸：触摸目标尺寸优化** | P0 | ⚪ 不适用 | 📦 已归档 |
 | **T-141** | **触摸：控件间距优化** | P0 | ⚪ 不适用 | 📦 已归档 |
 | **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | 📦 已归档 |
@@ -756,34 +756,35 @@
   - [x] PIN 显示使用占位符而非明文 (PINDisplay 组件)
   - [x] 无障碍标签正确设置
 
-### T-139: 流媒体快速设置面板
+### T-139: 流媒体快速设置面板 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 在流媒体控制菜单中添加快速设置入口。
 - **关联需求**: F-022 (AC-068)
 - **来源**: INS-031
 - **TDD 模式**: 🟢 可选（UI 层）
 - **关联测试**: UT-020.1~6
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/QuickSettingsSection.swift` [新建]
-  - `Chiaki/Features/Streaming/StreamingControlsView.swift` [修改]
+  - `Chiaki/Features/Streaming/QuickSettingsSection.swift` ✅ (新建)
+  - `Chiaki/Features/Streaming/StreamingControlsView.swift` ✅ (修改)
+  - `ChiakiTests/QuickSettingsSectionTests.swift` ✅ (新建)
 - **依赖**: T-125 (控制菜单焦点管理基础)
 - **验收标准**:
-  - [ ] 创建 `QuickSettingsSection` 组件，使用 `DisclosureGroup`
-  - [ ] 包含码率调节 Stepper (5000~50000, 步长 5000)
-  - [ ] 包含音量调节 Slider (0.0~1.0)
-  - [ ] 包含分辨率选择 Picker (720p/1080p)
-  - [ ] 码率和音量变更即时生效
-  - [ ] 分辨率变更需要重连，显示警告提示
-  - [ ] 点击"应用并重连"发送 `reconnectRequired` 通知
-  - [ ] 根据音量显示对应图标
-- **测试方法**:
-  - 运行 `UT-020` 验证配置逻辑
-  - 手动测试设置变更效果
-  - 验证重连通知正确发送
+  - [x] 创建 `QuickSettingsSection` 组件，使用折叠展开样式
+  - [x] 包含码率调节 Stepper (5000~50000, 步长 5000)
+  - [x] 包含音量调节 Slider (0.0~1.0)
+  - [x] 包含分辨率选择 Picker (720p/1080p)
+  - [x] 码率和音量变更即时生效
+  - [x] 分辨率变更需要重连，显示警告提示
+  - [x] 点击"应用并重连"发送 `reconnectRequired` 通知
+  - [x] 根据音量显示对应图标
+- **测试结果**:
+  - UT-020: 11 tests passed (QuickSettingsSectionTests)
 - **Review 要点**:
-  - [ ] 使用 `@Environment(SettingsStore.self)` 获取设置
-  - [ ] 分辨率选择标注"需重连"提示
-  - [ ] 通知使用 `Notification.Name` 扩展定义
+  - [x] 使用 `@Environment(SettingsStore.self)` 获取设置
+  - [x] 分辨率选择标注"需重连"提示
+  - [x] 通知使用 `Notification.Name` 扩展定义
 
 ---
 
