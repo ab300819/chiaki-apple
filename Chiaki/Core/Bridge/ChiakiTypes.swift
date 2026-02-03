@@ -335,6 +335,78 @@ struct ChiakiStreamVideoProfile {
     }
 }
 
+// MARK: - Touchpad
+
+/// Touchpad coordinate constants matching PlayStation touchpad resolution
+/// @requirement F-021 - GameController 深度集成
+enum TouchpadConstants {
+    /// Maximum X coordinate (1920)
+    static let maxX: UInt16 = 1920
+    /// Maximum Y coordinate (1079)
+    static let maxY: UInt16 = 1079
+    /// Maximum number of simultaneous touch points
+    static let maxTouches: Int = 2
+}
+
+/// Represents a single touch point on the DualSense touchpad
+/// @requirement F-021 - GameController 深度集成
+/// @satisfies AC-062 - 触控板位置追踪
+struct TouchPoint: Sendable, Equatable, Identifiable {
+    /// Touch point identifier (0 or 1 for dual-touch support)
+    let id: Int
+
+    /// Normalized X coordinate (0.0~1.0)
+    let x: Float
+
+    /// Normalized Y coordinate (0.0~1.0)
+    let y: Float
+
+    /// Whether this touch point is currently active
+    let isActive: Bool
+
+    /// Create a touch point with normalized coordinates
+    /// - Parameters:
+    ///   - id: Touch point identifier (0 or 1)
+    ///   - x: Normalized X coordinate (0.0~1.0)
+    ///   - y: Normalized Y coordinate (0.0~1.0)
+    ///   - isActive: Whether the touch is currently active
+    init(id: Int, x: Float, y: Float, isActive: Bool) {
+        self.id = id
+        // Clamp coordinates to valid range
+        self.x = min(max(x, 0.0), 1.0)
+        self.y = min(max(y, 0.0), 1.0)
+        self.isActive = isActive
+    }
+
+    /// Create a touch point from raw touchpad coordinates
+    /// - Parameters:
+    ///   - id: Touch point identifier
+    ///   - rawX: Raw X coordinate (0~1920)
+    ///   - rawY: Raw Y coordinate (0~1079)
+    ///   - isActive: Whether the touch is currently active
+    init(id: Int, rawX: UInt16, rawY: UInt16, isActive: Bool) {
+        self.id = id
+        self.x = min(Float(rawX) / Float(TouchpadConstants.maxX), 1.0)
+        self.y = min(Float(rawY) / Float(TouchpadConstants.maxY), 1.0)
+        self.isActive = isActive
+    }
+
+    /// Convert to raw X coordinate for chiaki
+    var rawX: UInt16 {
+        UInt16(x * Float(TouchpadConstants.maxX))
+    }
+
+    /// Convert to raw Y coordinate for chiaki
+    var rawY: UInt16 {
+        UInt16(y * Float(TouchpadConstants.maxY))
+    }
+
+    /// Inactive touch point (used as placeholder)
+    static func inactive(id: Int) -> TouchPoint {
+        TouchPoint(id: id, x: 0, y: 0, isActive: false)
+    }
+}
+
 // MARK: - Controller State
 
 /// Swift-friendly controller state wrapper
@@ -356,6 +428,15 @@ struct ChiakiControllerInput {
     var orientY: Float = 0
     var orientZ: Float = 0
     var orientW: Float = 1
+
+    /// Touchpad touch points (up to 2 for dual-touch support)
+    /// @satisfies AC-062 - 触控板位置追踪
+    var touchpad: [TouchPoint] = []
+
+    /// Whether there are any active touches on the touchpad
+    var hasTouchpadInput: Bool {
+        touchpad.contains { $0.isActive }
+    }
 }
 
 // MARK: - Registered Host
@@ -508,6 +589,20 @@ extension ChiakiControllerInput {
         state.orient_y = orientY
         state.orient_z = orientZ
         state.orient_w = orientW
+
+        // Apply touchpad data
+        // Note: chiaki's touches is a C fixed-size array, accessed as tuple in Swift
+        // We use withUnsafeMutablePointer to access as array
+        withUnsafeMutablePointer(to: &state.touches) { touchesPtr in
+            touchesPtr.withMemoryRebound(to: ChiakiControllerTouch.self, capacity: Int(CHIAKI_CONTROLLER_TOUCHES_MAX)) { buffer in
+                for (index, touch) in touchpad.prefix(Int(CHIAKI_CONTROLLER_TOUCHES_MAX)).enumerated() {
+                    buffer[index].x = touch.rawX
+                    buffer[index].y = touch.rawY
+                    buffer[index].id = touch.isActive ? Int8(touch.id) : -1
+                }
+            }
+        }
+
         return state
     }
 }

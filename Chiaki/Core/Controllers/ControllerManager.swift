@@ -302,7 +302,81 @@ final class ControllerManager {
             }
         }
 
-        Logger.controller.debug("DualSense handlers configured")
+        // Touchpad position tracking
+        setupTouchpadInput(dualSense)
+
+        Logger.controller.debug("DualSense handlers configured with touchpad tracking")
+    }
+
+    // MARK: - Touchpad Position Tracking
+
+    /// Setup touchpad input handlers for DualSense controller
+    /// @requirement F-021 - GameController 深度集成
+    /// @satisfies AC-062 - 触控板位置追踪
+    private func setupTouchpadInput(_ dualSense: GCDualSenseGamepad) {
+        // Primary touch (finger 1)
+        dualSense.touchpadPrimary.valueChangedHandler = { [weak self] dpad, xValue, yValue in
+            Task { @MainActor in
+                self?.handleTouchpadInput(touchId: 0, xValue: xValue, yValue: yValue, dpad: dpad)
+            }
+        }
+
+        // Secondary touch (finger 2)
+        dualSense.touchpadSecondary.valueChangedHandler = { [weak self] dpad, xValue, yValue in
+            Task { @MainActor in
+                self?.handleTouchpadInput(touchId: 1, xValue: xValue, yValue: yValue, dpad: dpad)
+            }
+        }
+
+        Logger.controller.debug("Touchpad position tracking enabled")
+    }
+
+    /// Handle touchpad input update
+    /// - Parameters:
+    ///   - touchId: Touch point identifier (0 for primary, 1 for secondary)
+    ///   - xValue: X axis value from GCControllerDirectionPad (-1.0 to 1.0)
+    ///   - yValue: Y axis value from GCControllerDirectionPad (-1.0 to 1.0)
+    ///   - dpad: The direction pad element for touch state checking
+    private func handleTouchpadInput(touchId: Int, xValue: Float, yValue: Float, dpad: GCControllerDirectionPad) {
+        // GCControllerDirectionPad reports values in -1.0 to 1.0 range
+        // We need to normalize to 0.0 to 1.0 range
+        let normalizedX = (xValue + 1.0) / 2.0
+        let normalizedY = (yValue + 1.0) / 2.0
+
+        // Determine if touch is active (any axis is non-zero or buttons pressed)
+        let isActive = xValue != 0 || yValue != 0 ||
+                       dpad.up.isPressed || dpad.down.isPressed ||
+                       dpad.left.isPressed || dpad.right.isPressed
+
+        let touchPoint = TouchPoint(id: touchId, x: normalizedX, y: normalizedY, isActive: isActive)
+
+        // Update touchpad array
+        updateTouchpadState(touchPoint)
+
+        // Notify input changed
+        onInputChanged?(currentInput)
+    }
+
+    /// Update the touchpad state with a new touch point
+    /// - Parameter touchPoint: The touch point to update
+    private func updateTouchpadState(_ touchPoint: TouchPoint) {
+        // Find existing touch point with same ID or add new one
+        if let index = currentInput.touchpad.firstIndex(where: { $0.id == touchPoint.id }) {
+            if touchPoint.isActive {
+                currentInput.touchpad[index] = touchPoint
+            } else {
+                // Remove inactive touch points
+                currentInput.touchpad.remove(at: index)
+            }
+        } else if touchPoint.isActive {
+            // Only add if active and within max touches limit
+            if currentInput.touchpad.count < TouchpadConstants.maxTouches {
+                currentInput.touchpad.append(touchPoint)
+            }
+        }
+
+        // Sort by ID for consistent ordering
+        currentInput.touchpad.sort { $0.id < $1.id }
     }
 
     private func setupDualSenseFeatures(_ controller: GCController) {
