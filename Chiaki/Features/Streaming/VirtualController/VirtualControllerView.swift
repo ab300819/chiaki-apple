@@ -1,10 +1,17 @@
 import SwiftUI
 
 #if os(iOS)
+/**
+ * Virtual controller overlay for touch-based input
+ * @requirement F-023 - iPad 触摸操作友好化
+ * @satisfies AC-074 - 长按手势支持
+ */
 struct VirtualControllerView: View {
     var onInput: (VirtualControllerInput) -> Void
+    /// Optional callback for long press on specific buttons (e.g., Square for screenshot)
+    var onLongPress: ((VirtualControllerButton) -> Void)?
     var opacity: Double = 0.5
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -129,6 +136,11 @@ struct VirtualControllerView: View {
         }
     }
     
+    /**
+     * Face buttons with long press support on Square for screenshot
+     * @requirement F-023 - iPad 触摸操作友好化
+     * @satisfies AC-074 - 长按手势支持
+     */
     private var faceButtonsView: some View {
         Grid(horizontalSpacing: 15, verticalSpacing: 15) {
             GridRow {
@@ -139,9 +151,18 @@ struct VirtualControllerView: View {
                 Color.clear.frame(width: 55, height: 55)
             }
             GridRow {
-                VirtualButtonView(iconName: "square.fill", buttonName: String(localized: "virtualController.square"), size: 55, color: .pink, hapticStyle: .medium) { pressed in
-                    onInput(.button(.square, pressed: pressed))
-                }
+                // Square button with long press support (example: screenshot trigger)
+                VirtualButtonView(
+                    iconName: "square.fill",
+                    buttonName: String(localized: "virtualController.square"),
+                    size: 55,
+                    color: .pink,
+                    hapticStyle: .medium,
+                    onStateChanged: { pressed in
+                        onInput(.button(.square, pressed: pressed))
+                    },
+                    onLongPress: onLongPress != nil ? { onLongPress?(.square) } : nil
+                )
                 Color.clear.frame(width: 55, height: 55)
                 VirtualButtonView(iconName: "circle.fill", buttonName: String(localized: "virtualController.circle"), size: 55, color: .red, hapticStyle: .medium) { pressed in
                     onInput(.button(.circle, pressed: pressed))
@@ -161,9 +182,14 @@ struct VirtualControllerView: View {
 #Preview(traits: .landscapeLeft) {
     ZStack {
         Color.blue.edgesIgnoringSafeArea(.all)
-        VirtualControllerView { input in
-            print("Input: \(input)")
-        }
+        VirtualControllerView(
+            onInput: { input in
+                print("Input: \(input)")
+            },
+            onLongPress: { button in
+                print("Long press on: \(button)")
+            }
+        )
     }
     .environment(SettingsStore())
     .environment(NavigationManager())

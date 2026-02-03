@@ -4816,6 +4816,22 @@
         }
       }
     },
+    "virtualController.longPressHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold for more options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按显示更多选项"
+          }
+        }
+      }
+    },
     "virtualController.ps" : {
       "localizations" : {
         "en" : {

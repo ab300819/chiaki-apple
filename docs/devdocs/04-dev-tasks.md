@@ -41,7 +41,7 @@
 | **T-142** | **触摸：Slider 交互区域** | P1 | ⚪ 不适用 | 📦 已归档 |
 | **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | 📦 已归档 |
 | **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | 📦 已归档 |
-| **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
 
 > **最新更新**: 2026-02-02 - T-130 完成，追加 F-023 iPad 触摸优化任务 (T-140~T-146)
@@ -794,26 +794,31 @@
 > **关联验收标准**: AC-069 ~ AC-075
 > **已归档**: T-140~T-144 (5 个任务) → `04-dev-tasks-archive.md`
 
-### T-145: 长按手势支持
+### T-145: 长按手势支持 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 为虚拟按钮添加长按手势支持。
 - **关联需求**: F-023 (AC-074)
 - **来源**: INS-038
 - **TDD 模式**: 🟢 可选
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` [修改]
-  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` [修改]
-- **依赖**: T-144
+  - `Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` ✅
+  - `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` ✅
+  - `ChiakiTests/VirtualButtonLongPressTests.swift` ✅ (新建)
+  - `Chiaki/Resources/Localizable.xcstrings` ✅
+- **依赖**: T-144 (已归档)
 - **验收标准**:
-  - [ ] VirtualButtonView 添加 `onLongPress: (() -> Void)?` 回调
-  - [ ] 使用 `SimultaneousGesture` 组合 DragGesture 和 LongPressGesture
-  - [ ] 长按时间阈值 0.5 秒
-  - [ ] 长按 Square 触发截图功能（示例）
-- **测试方法**:
-  - 手动测试长按虚拟按钮
+  - [x] VirtualButtonView 添加 `onLongPress: (() -> Void)?` 回调
+  - [x] 使用 `SimultaneousGesture` 组合 DragGesture 和 LongPressGesture
+  - [x] 长按时间阈值 0.5 秒 (`VirtualButtonConfig.longPressDuration`)
+  - [x] 长按 Square 触发 onLongPress 回调（示例）
+- **测试结果**:
+  - UT-023: 7 tests passed (VirtualButtonLongPressTests)
 - **Review 要点**:
-  - [ ] 长按不干扰普通点击
-  - [ ] 长按有视觉/触觉反馈
+  - [x] 长按不干扰普通点击 (DragGesture 先触发按下)
+  - [x] 长按有视觉反馈 (0.85 scale effect)
+  - [x] 长按有触觉反馈 (heavy impact)
 
 ### T-146: 滑动快捷调节
 
