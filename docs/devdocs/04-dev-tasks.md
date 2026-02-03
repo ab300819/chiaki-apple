@@ -28,7 +28,7 @@
 | **T-129** | **手柄：组合键快捷操作** | P1 | 🔴 强制 | ✅ 已完成 |
 | **T-130** | **手柄：焦点恢复逻辑** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-131** | **GC：DualSense 自适应扳机** | P2 | 🟢 可选 | ✅ 已完成 |
-| **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-132** | **GC：触控板位置追踪** | P2 | 🟢 可选 | ✅ 已完成 |
 | **T-133** | **GC：Haptics 引擎统一** | P1 | 🟡 推荐 | ✅ 已完成 |
 | **T-134** | **GC：控制器电池电量显示** | P3 | 🟢 可选 | ⏳ 待处理 |
 | **T-135** | **UI：StreamingOverlay HDR 标志** | P2 | 🟢 可选 | ✅ 已完成 |
@@ -528,33 +528,38 @@
   - [x] 非 DualSense 控制器静默忽略
   - [x] 平台限制: iOS 14.5+ / macOS 11.3+ (GCDualSenseAdaptiveTrigger API)
 
-### T-132: 触控板位置追踪
+### T-132: 触控板位置追踪 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 支持 DualSense 触控板位置追踪，解锁需要触控板的 PS5 游戏。
 - **关联需求**: F-021, AC-062
 - **关联测试**: UT-014.1~4
 - **TDD 模式**: 🟢 可选（硬件依赖）
 - **涉及文件**:
-  - `Chiaki/Core/Controllers/ControllerManager.swift`
-  - `Chiaki/Domain/Models/ControllerInput.swift`
+  - `Chiaki/Core/Bridge/ChiakiTypes.swift` ✅ (添加 TouchPoint, TouchpadConstants)
+  - `Chiaki/Core/Controllers/ControllerManager.swift` ✅
+  - `ChiakiTests/TouchPointTests.swift` ✅ (新建)
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 创建 `TouchPoint` 结构体 (id, x, y, isActive)
-  - [ ] `setupTouchpadInput()` 配置 `touchpadPrimary/Secondary.touchSurface`
-  - [ ] 注册 `valueChangedHandler` 接收 (x, y, touching)
-  - [ ] 坐标归一化到 0.0~1.0 范围
-  - [ ] 更新 `currentState.touchpad: [TouchPoint]` 数组
-  - [ ] 支持双点触控 (id=0, id=1)
-- **测试方法**:
-  - [ ] UT-014.1: 验证 TouchPoint 初始化
-  - [ ] UT-014.2: 验证 TouchPoint Equatable
-  - [ ] UT-014.3: 验证坐标范围 0.0~1.0
-  - [ ] UT-014.4: 验证多点 ID 唯一性
-  - [ ] (手动) 使用 DualSense 测试触控板
+  - [x] 创建 `TouchPoint` 结构体 (id, x, y, isActive)
+  - [x] `setupTouchpadInput()` 配置 `touchpadPrimary/Secondary`
+  - [x] 注册 `valueChangedHandler` 接收 (x, y, touching)
+  - [x] 坐标归一化到 0.0~1.0 范围
+  - [x] 更新 `currentInput.touchpad: [TouchPoint]` 数组
+  - [x] 支持双点触控 (id=0, id=1)
+- **测试结果**:
+  - [x] UT-014.1: 验证 TouchPoint 初始化
+  - [x] UT-014.2: 验证 TouchPoint Equatable
+  - [x] UT-014.3: 验证坐标范围 0.0~1.0
+  - [x] UT-014.4: 验证多点 ID 唯一性
+  - [x] 额外测试: 原始坐标转换、Identifiable 协议、常量定义等
+  - 16 tests passed
 - **Review 要点**:
-  - [ ] 触摸结束时正确移除 TouchPoint
-  - [ ] 数组操作线程安全
-  - [ ] ControllerInput.touchpad 类型正确
+  - [x] 触摸结束时正确移除 TouchPoint
+  - [x] 数组操作线程安全 (@MainActor)
+  - [x] ControllerInput.touchpad 类型正确 ([TouchPoint])
+- **完成提交**: `3953a60` feat(core): implement DualSense touchpad position tracking (T-132)
 
 ### T-133: Haptics 引擎统一 ✅
 
