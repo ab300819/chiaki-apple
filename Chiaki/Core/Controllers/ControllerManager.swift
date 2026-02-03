@@ -9,6 +9,7 @@
 import Foundation
 import GameController
 import Combine
+import SwiftUI
 
 // MARK: - Controller Info
 
@@ -587,5 +588,103 @@ final class ControllerManager {
         case playstation
         case xbox
         case generic
+    }
+
+    // MARK: - Battery Information
+
+    /**
+     * Battery information for the active controller
+     * @requirement F-021 - GameController 深度集成
+     * @satisfies AC-064 - 控制器电池电量显示
+     */
+    struct BatteryInfo: Sendable, Equatable {
+        /// Battery level from 0.0 (empty) to 1.0 (full)
+        let level: Float
+
+        /// Current battery state
+        let state: BatteryState
+
+        /// Battery state enumeration matching GCDeviceBattery.State
+        enum BatteryState: Int, Sendable {
+            case unknown = -1
+            case discharging = 0
+            case charging = 1
+            case full = 2
+
+            /// Create from GCDeviceBattery.State
+            init(from gcState: GCDeviceBattery.State) {
+                switch gcState {
+                case .unknown:
+                    self = .unknown
+                case .discharging:
+                    self = .discharging
+                case .charging:
+                    self = .charging
+                case .full:
+                    self = .full
+                @unknown default:
+                    self = .unknown
+                }
+            }
+        }
+
+        /// Whether the battery level is considered low (< 20%)
+        var isLow: Bool {
+            level < 0.2
+        }
+
+        /// SF Symbol name for the battery icon based on level and state
+        var iconName: String {
+            // Charging always shows bolt icon
+            if state == .charging {
+                return "battery.100.bolt"
+            }
+
+            // Full state shows 100%
+            if state == .full {
+                return "battery.100"
+            }
+
+            // Level-based icons
+            if level >= 0.75 {
+                return "battery.100"
+            } else if level >= 0.5 {
+                return "battery.75"
+            } else if level >= 0.25 {
+                return "battery.50"
+            } else {
+                return "battery.25"
+            }
+        }
+
+        /// Color for the battery indicator
+        var color: Color {
+            if state == .charging || state == .full {
+                return .green
+            } else if isLow {
+                return .red
+            } else {
+                return .primary
+            }
+        }
+
+        /// Formatted percentage string
+        var percentageString: String {
+            "\(Int(level * 100))%"
+        }
+    }
+
+    /// Battery information for the active controller, nil if not available
+    /// @satisfies AC-064 - 控制器电池电量显示
+    var batteryInfo: BatteryInfo? {
+        guard let controller = activeController?.controller,
+              let battery = controller.battery else {
+            return nil
+        }
+
+        return BatteryInfo(
+            level: battery.batteryLevel,
+            state: BatteryInfo.BatteryState(from: battery.batteryState)
+        )
     }
 }

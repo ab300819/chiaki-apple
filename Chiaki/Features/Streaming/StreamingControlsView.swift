@@ -31,9 +31,16 @@ struct StreamingControlsView: View {
 
                 Spacer()
 
-                Button(action: { 
+                // Controller battery indicator
+                // @satisfies AC-064 - 控制器电池电量显示
+                ControllerBatteryIndicator(
+                    batteryInfo: ControllerManager.shared.batteryInfo,
+                    compact: true
+                )
+
+                Button(action: {
                     HapticFeedback.button()
-                    viewModel.toggleControlMenu() 
+                    viewModel.toggleControlMenu()
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
