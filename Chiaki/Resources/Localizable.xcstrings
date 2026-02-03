@@ -166,38 +166,6 @@
         }
       }
     },
-    "numPad.backspace" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Backspace"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "退格"
-          }
-        }
-      }
-    },
-    "numPad.pressToEnter" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press to enter"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "按下输入"
-          }
-        }
-      }
-    },
     "addHost.address" : {
       "localizations" : {
         "en" : {
@@ -392,6 +360,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按任意键取消"
+          }
+        }
+      }
+    },
+    "Battery.AccessibilityLabel" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Controller battery %1$lld percent, %2$@"
+          }
+        }
+      }
+    },
+    "Battery.State.charging" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "charging"
+          }
+        }
+      }
+    },
+    "Battery.State.discharging" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "discharging"
+          }
+        }
+      }
+    },
+    "Battery.State.full" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "fully charged"
+          }
+        }
+      }
+    },
+    "Battery.State.low" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "low battery"
+          }
+        }
+      }
+    },
+    "Battery.State.unknown" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "unknown"
           }
         }
       }
@@ -802,38 +836,6 @@
         }
       }
     },
-    "consolePin.useKeyboard" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use Keyboard"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用键盘"
-          }
-        }
-      }
-    },
-    "consolePin.useNumPad" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use Number Pad"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "使用数字键盘"
-          }
-        }
-      }
-    },
     "consolePin.pinRequiredDescription" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -891,6 +893,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置主机 PIN"
+          }
+        }
+      }
+    },
+    "consolePin.useKeyboard" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Keyboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用键盘"
+          }
+        }
+      }
+    },
+    "consolePin.useNumPad" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Number Pad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用数字键盘"
           }
         }
       }
@@ -1428,6 +1462,50 @@
         }
       }
     },
+    "HostQuickAction.connect" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Connect"
+          }
+        }
+      }
+    },
+    "HostQuickAction.delete" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
+    "HostQuickAction.pin" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "PIN"
+          }
+        }
+      }
+    },
+    "HostQuickAction.wake" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wake"
+          }
+        }
+      }
+    },
     "hostRow.firmwareVersion" : {
       "comment" : "MARK: - Host Row",
       "extractionState" : "manual",
@@ -1764,6 +1842,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "视频"
+          }
+        }
+      }
+    },
+    "numPad.backspace" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backspace"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退格"
+          }
+        }
+      }
+    },
+    "numPad.pressToEnter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press to enter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下输入"
           }
         }
       }
@@ -4257,6 +4367,22 @@
         }
       }
     },
+    "streamingControls.applyAndReconnect" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply & Reconnect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用并重连"
+          }
+        }
+      }
+    },
     "streamingControls.audio" : {
       "comment" : "MARK: - Streaming Controls",
       "localizations" : {
@@ -4270,6 +4396,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "音频"
+          }
+        }
+      }
+    },
+    "streamingControls.bitrate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitrate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "码率"
           }
         }
       }
@@ -4338,9 +4480,6 @@
         }
       }
     },
-    "streamingControls.toggleStats" : {
-
-    },
     "streamingControls.quickSettings" : {
       "localizations" : {
         "en" : {
@@ -4353,38 +4492,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "快捷设置"
-          }
-        }
-      }
-    },
-    "streamingControls.bitrate" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bitrate"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "码率"
-          }
-        }
-      }
-    },
-    "streamingControls.resolution" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resolution"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "分辨率"
           }
         }
       }
@@ -4405,6 +4512,22 @@
         }
       }
     },
+    "streamingControls.resolution" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resolution"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分辨率"
+          }
+        }
+      }
+    },
     "streamingControls.resolutionChangeWarning" : {
       "localizations" : {
         "en" : {
@@ -4421,21 +4544,8 @@
         }
       }
     },
-    "streamingControls.applyAndReconnect" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apply & Reconnect"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "应用并重连"
-          }
-        }
-      }
+    "streamingControls.toggleStats" : {
+
     },
     "streamingControls.videoPreset" : {
       "localizations" : {
@@ -4784,6 +4894,22 @@
         }
       }
     },
+    "virtualController.longPressHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold for more options"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按显示更多选项"
+          }
+        }
+      }
+    },
     "virtualController.options" : {
       "localizations" : {
         "en" : {
@@ -4812,22 +4938,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按下"
-          }
-        }
-      }
-    },
-    "virtualController.longPressHint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hold for more options"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "长按显示更多选项"
           }
         }
       }

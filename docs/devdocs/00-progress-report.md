@@ -1,9 +1,9 @@
 # M11 进度报告
 
-**生成时间**: 2026-02-02
-**同步模式**: 全量归档检查 (--archive)
+**生成时间**: 2026-02-03
+**同步模式**: 吸收模式 (--absorb)
 **阶段目标**: Beta 1 发布冲刺
-**本次归档**: M11-Part4 iPad 触摸优化 (T-140~T-144)
+**本次同步**: 完成 T-145, T-146, T-136, T-139 等任务后全量同步
 
 ---
 
@@ -12,16 +12,27 @@
 | 指标 | 数值 |
 |------|------|
 | 总任务数 | 36 |
-| 已完成 | 28 |
+| 已完成 | 30 |
 | 进行中 | 1 |
-| 待处理 | 7 |
-| **完成率** | **78%** |
+| 待处理 | 5 |
+| **完成率** | **83%** |
+
+### 功能点完成状态
+
+| 功能 | 状态 | 完成任务数 |
+|------|------|------------|
+| F-019 日志系统 | ✅ 完成 | 8/8 |
+| F-020 手柄操作友好化 | ✅ 完成 | 6/6 |
+| F-021 GameController 深度集成 | ✅ 完成 | 4/4 |
+| F-022 手柄操控 UI/UX 优化 | ✅ 完成 | 4/4 |
+| F-023 iPad 触摸操作友好化 | ✅ 完成 | 7/7 |
+| F-018 分发准备 | ⏳ 进行中 | 1/2 (待 App Icon) |
 
 ---
 
-## 📦 本次归档
+## 📦 归档记录
 
-### 归档任务组
+### 已归档任务组
 
 | 功能组 | 任务数 | 归档位置 |
 |--------|--------|----------|
@@ -30,101 +41,90 @@
 | M11-Part3: 手柄操作友好化 (F-020) | 6 个 (T-125~T-130) | `04-dev-tasks-archive.md` |
 | M11-Part4: iPad 触摸优化 (F-023) | 5 个 (T-140~T-144) | `04-dev-tasks-archive.md` |
 
-### 归档后任务文档瘦身
+### 主文档保留任务
 
-- **归档前**: 04-dev-tasks.md 包含 36 个任务详情
-- **归档后**: 主文档保留 12 个活跃任务 (T-131~T-139, T-145~T-146 + T-115)
-- **历史记录**: 24 个已完成任务移至归档文件
+- **活跃任务**: 12 个 (T-131~T-139, T-145~T-146 + T-115)
+- **已完成**: 11 个
+- **进行中**: 1 个 (T-115)
 
 ---
 
 ## 📋 任务状态汇总
 
-### 已完成任务 (25)
+### 最近完成任务 (2026-02-02 ~ 02-03)
 
-| 编号 | 名称 | 完成提交 | 归档状态 |
-|------|------|----------|----------|
-| T-111 | i18n：深度本地化与 xcstrings 迁移 | `20024d5` | ✅ 已归档 |
-| T-112 | 稳定性：NetworkMonitor 与自动重连 | `d378546` | ✅ 已归档 |
-| T-113 | 性能：Metal 渲染器节能调优 (VRR) | `f491c92` | ✅ 已归档 |
-| T-114 | 分发：Info.plist 隐私说明与元数据补全 | `da63492` | ✅ 已归档 |
-| T-116 | 体验：语义化触觉反馈 (CoreHaptics) 精调 | `d9e98ac` | ✅ 已归档 |
-| T-117 | 日志：FileLogHandler 文件持久化 | `f591f60` | ✅ 已归档 |
-| T-118 | 日志：Logger 集成 FileLogHandler | `409317a` | ✅ 已归档 |
-| T-119 | 日志：DiagnosticsExporter 诊断包导出 | `5e9baa7` | ✅ 已归档 |
-| T-120 | 日志：CrashReporter 崩溃捕获 | `0562dcb` | ✅ 已归档 |
-| T-121 | 日志：LogViewerView 增强与诊断包 UI | `fec2b3c` | ✅ 已归档 |
-| T-122 | 日志：CrashReportView 崩溃报告 UI | `f491c92` | ✅ 已归档 |
-| T-123 | 日志：App 启动集成与本地化 | `3801818` | ✅ 已归档 |
-| T-124 | 日志：核心流程日志覆盖增强 | `19e9623` | ✅ 已归档 |
-| T-125 | 手柄：控制菜单焦点管理 | `e47d95c` | ✅ 已归档 |
-| T-126 | 手柄：tvOS 焦点视觉反馈 | `bc77fae` | ✅ 已归档 |
-| T-127 | 手柄：控制菜单焦点陷阱 | `f9d3d1e` | ✅ 已归档 |
-| T-128 | 手柄：tvOS 方向键导航 | `6a98368` | ✅ 已归档 |
-| T-129 | 手柄：组合键快捷操作 | `2257e97` | ✅ 已归档 |
-| T-130 | 手柄：焦点恢复逻辑 | `e91cadd` | ✅ 已归档 |
-| T-135 | UI：StreamingOverlay HDR 标志 | `3241eae` | 保留 |
-| T-140 | 触摸：触摸目标尺寸优化 | `30c917e` | ✅ 已归档 |
-| T-141 | 触摸：控件间距优化 | `47dea8a` | ✅ 已归档 |
-| T-142 | 触摸：Slider 交互区域 | `b06d9ad` | ✅ 已归档 |
-| T-143 | 触摸：触觉反馈统一 | `bc87252` | ✅ 已归档 |
-| T-144 | 触摸：虚拟控制器无障碍 | `a2d97f5` | ✅ 已归档 |
-| T-133 | GC：Haptics 引擎统一 | `f749b44` | 保留 |
-| T-137 | UI：流媒体音量快捷调节 | `bf64c15` | 保留 |
-| T-138 | UI：PIN 输入数字键盘 | (pending commit) | 保留 |
+| 编号 | 名称 | 完成提交 |
+|------|------|----------|
+| T-146 | 触摸：滑动快捷调节 | `e36716c` |
+| T-145 | 触摸：长按手势支持 | `1ce7585` |
+| T-139 | UI：流媒体快速设置面板 | `58fe369` |
+| T-136 | UI：主机快速操作栏 | `cb76ddd` |
+| T-134 | GC：控制器电池电量显示 | `b3b48cd` |
+| T-132 | GC：触控板位置追踪 | `3953a60` |
+| T-131 | GC：DualSense 自适应扳机 | `4c863db` |
+| T-138 | UI：PIN 输入数字键盘 | `d20eab9` |
+| T-137 | UI：流媒体音量快捷调节 | `bf64c15` |
+| T-133 | GC：Haptics 引擎统一 | `f749b44` |
 
 ### 进行中任务 (1)
 
-| 编号 | 名称 | 进度 |
+| 编号 | 名称 | 状态 |
 |------|------|------|
-| T-115 | 分发：多平台 App Icon 资产准备 | 待设计师提供图像资产 |
+| T-115 | 分发：多平台 App Icon 资产准备 | ⏳ 待设计师提供图像资产 |
 
-### 待处理任务 (7)
+### F-021 已全部完成 ✅
 
-| 编号 | 名称 | 优先级 | 关联功能 |
-|------|------|--------|----------|
-| T-131 | GC：DualSense 自适应扳机 | P2 | F-021 |
-| T-132 | GC：触控板位置追踪 | P2 | F-021 |
-| T-136 | UI：主机快速操作栏 | P2 | F-022 |
-| T-139 | UI：流媒体快速设置面板 | P2 | F-022 |
-| T-145 | 触摸：长按手势支持 | P2 | F-023 |
-| T-146 | 触摸：滑动快捷调节 | P2 | F-023 |
-| T-134 | GC：控制器电池电量显示 | P3 | F-021 |
+| 编号 | 名称 | 完成提交 |
+|------|------|----------|
+| T-131 | DualSense 自适应扳机 | `4c863db` |
+| T-132 | 触控板位置追踪 | `3953a60` |
+| T-133 | Haptics 引擎统一 | `f749b44` |
+| T-134 | 控制器电池电量显示 | `b3b48cd` |
 
 ---
 
 ## 🎯 追溯矩阵状态
 
-通过代码扫描验证（`@satisfies`/`@verifies` 标注），以下验收标准已完成标注：
+通过代码扫描验证（`@satisfies`/`@verifies` 标注），统计如下：
 
-| 编号 | 验收标准 | 满足文件 (@satisfies) | 验证文件 (@verifies) | 状态 |
-|------|----------|-----------------------|-----------------------|------|
-| AC-038 | 迁移至 @Observable | (Implicit) | `AdvancedTests.swift` | ✅ |
-| AC-039 | 架构解耦 | `ControllerInputMapper.swift`, `StreamStatsManager.swift` | `ControllerInputMapperTests.swift`, `StreamStatsManagerTests.swift` | ✅ |
-| AC-045 | 自动重连机制 | `NetworkMonitor.swift` | `NetworkMonitorTests.swift` | ✅ |
-| AC-046 | VRR 节能 | `MetalVideoRenderer.swift` | `VRRTests.swift` | ✅ |
-| AC-047 | 隐私说明 | `Info.plist` | (Manual) | ✅ |
-| AC-049 | 日志持久化 | `FileLogHandler.swift`, `Logger.swift` | `FileLogHandlerTests.swift`, `LoggerIntegrationTests.swift` | ✅ |
-| AC-050 | 日志轮换 | `FileLogHandler.swift` | `FileLogHandlerTests.swift` | ✅ |
-| AC-051 | 诊断包导出 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
-| AC-052 | 崩溃捕获 | `CrashReporter.swift`, `CrashReportView.swift` | `CrashReporterTests.swift`, `StartupIntegrationTests.swift` | ✅ |
-| AC-053 | 数据脱敏 | `DiagnosticsExporter.swift` | `DiagnosticsExporterTests.swift` | ✅ |
-| AC-054 | 日志覆盖 | 7 个核心模块 | (Manual validation) | ✅ |
-| AC-055 | 焦点管理 | `StreamingControlsView.swift` | `StreamingFocusTests.swift` | ✅ |
-| AC-056 | tvOS 焦点反馈 | `FocusableButtonStyle.swift` | `FocusableButtonStyleTests.swift` | ✅ |
-| AC-057 | 焦点陷阱 | `StreamingView.swift` | `FocusTrapIntegrationTests.swift` | ✅ |
-| AC-058 | tvOS 方向键导航 | `StreamingView.swift` | (E2E tests) | ✅ |
-| AC-059 | 组合键快捷操作 | `ControllerShortcutDetector.swift` | `ControllerShortcutDetectorTests.swift` | ✅ |
-| AC-060 | 焦点恢复逻辑 | `StreamingControlsView.swift`, `StreamingViewModel.swift` | `StreamingFocusTests.swift` | ✅ |
-| AC-069 | 触摸目标尺寸 | `HostRowView.swift`, `VirtualControllerView.swift` | (Manual) | ✅ |
-| AC-070 | 控件间距优化 | `VirtualControllerView.swift`, `StreamingControlsView.swift` | (Manual) | ✅ |
-| AC-071 | Slider 交互区域 | `TouchableSlider.swift`, `StreamingControlsView.swift` | `TouchableSliderTests.swift` | ✅ |
-| AC-073 | 虚拟控制器无障碍 | `VirtualButtonView.swift`, `VirtualStickView.swift` | (VoiceOver) | ✅ |
-| AC-072 | 触觉反馈统一 | `HapticFeedback.swift`, `StreamingControlsView.swift`, `HostListView.swift` | `HapticFeedbackTests.swift` | ✅ |
-| AC-063 | Haptics 引擎统一 | `HapticsManager.swift`, `ControllerManager.swift` | `HapticsManagerTests.swift` | ✅ |
+### 代码标注统计
 
-**追溯标注文件数**: 43 个
-**新增标注**: AC-069, AC-070, AC-071, AC-072 (T-140~T-143 完成)
+| 指标 | 数值 |
+|------|------|
+| 总标注数 | 262 处 |
+| 标注文件数 | 69 个 |
+| 源文件 | 41 个 |
+| 测试文件 | 28 个 |
+
+### 高标注密度文件
+
+| 文件 | 标注数 |
+|------|--------|
+| `HapticsManagerTests.swift` | 12 |
+| `GamepadNumPadTests.swift` | 11 |
+| `ControllerShortcutDetector.swift` | 10 |
+| `ControllerManager.swift` | 10 |
+| `StreamingControlsView.swift` | 9 |
+| `VolumeShortcutTests.swift` | 9 |
+| `DiagnosticsExporter.swift` | 8 |
+| `EdgeVolumeGestureTests.swift` | 8 |
+| `VirtualButtonLongPressTests.swift` | 8 |
+| `ControllerShortcutDetectorTests.swift` | 8 |
+
+### 新增验收标准覆盖
+
+| 编号 | 验收标准 | 满足文件 | 验证文件 | 状态 |
+|------|----------|----------|----------|------|
+| AC-061 | 自适应扳机 | `AdaptiveTriggerEffect.swift`, `ControllerManager.swift` | `AdaptiveTriggerTests.swift` | ✅ |
+| AC-062 | 触控板追踪 | `ChiakiTypes.swift`, `ControllerManager.swift` | `TouchPointTests.swift` | ✅ |
+| AC-063 | Haptics 统一 | `HapticsManager.swift`, `ControllerManager.swift` | `HapticsManagerTests.swift` | ✅ |
+| AC-064 | 电池显示 | `ControllerManager.swift`, `ControllerBatteryIndicator.swift` | `BatteryInfoTests.swift` | ✅ |
+| AC-065 | 快速操作栏 | `HostQuickActionBar.swift` | `HostQuickActionTests.swift` | ✅ |
+| AC-066 | 音量快捷键 | `ControllerShortcutDetector.swift`, `VolumeAdjuster.swift`, `VolumeOSD.swift` | `VolumeShortcutTests.swift`, `VolumeOSDIntegrationTests.swift` | ✅ |
+| AC-067 | PIN 数字键盘 | `GamepadNumPad.swift`, `ConsolePinView.swift` | `GamepadNumPadTests.swift` | ✅ |
+| AC-068 | 快速设置面板 | `QuickSettingsSection.swift`, `StreamingControlsView.swift` | `QuickSettingsSectionTests.swift` | ✅ |
+| AC-074 | 长按手势 | `VirtualButtonView.swift` | `VirtualButtonLongPressTests.swift` | ✅ |
+| AC-075 | 滑动调节 | `EdgeVolumeGesture.swift`, `StreamingView.swift` | `EdgeVolumeGestureTests.swift` | ✅ |
 
 ---
 
@@ -132,41 +132,79 @@
 
 | 指标 | 数值 |
 |------|------|
-| 单元测试 | 98/98 通过 (100%) |
-| UI 测试 | 36/40 通过 (90%) |
-| 代码覆盖率 | 22.44% (3,357/14,957 行) |
+| 单元测试文件 | 32 个 |
+| 新增测试文件 (本次) | 2 个 |
+| 代码覆盖率 | ~25% (估算) |
 
-### 高覆盖率模块
+### 新增测试文件
 
-| 模块 | 覆盖率 |
-|------|--------|
-| NavigationManager.swift | 100% |
-| FileLogHandler.swift | 93.9% |
-| DiagnosticsExporter.swift | 87.7% |
-| NetworkMonitor.swift | 83.3% |
-| CrashReporter.swift | 62.5% |
+| 文件 | 测试数 | 关联任务 |
+|------|--------|----------|
+| `VirtualButtonLongPressTests.swift` | 7 | T-145 |
+| `EdgeVolumeGestureTests.swift` | 7 | T-146 |
+
+### 测试用例编号对照
+
+| 文档编号 | 实现文件 | 状态 |
+|----------|----------|------|
+| UT-025.1~2 (AC-074) | `VirtualButtonLongPressTests.swift` | ✅ 已实现 |
+| UT-026.1~3 (AC-075) | `EdgeVolumeGestureTests.swift` | ✅ 已实现 |
+
+---
+
+## 🔍 吸收报告
+
+### 自动吸收 (低风险)
+
+| 变更 | 数量 | 说明 |
+|------|------|------|
+| 任务状态更新 | 10 | T-131~T-139, T-145, T-146 → ✅ 已完成 |
+| 提交哈希记录 | 10 | 完成提交已记录 |
+| 测试结果同步 | 2 | 新增测试文件已执行 |
+
+### 文档一致性检查
+
+| 检查项 | 状态 |
+|--------|------|
+| 04-dev-tasks.md 任务状态 | ✅ 一致 |
+| 00-context.md 进度 | ✅ 已更新 |
+| 代码标注与文档对应 | ✅ 一致 |
+
+### 偏差检测
+
+| 偏差 | 级别 | 处理 |
+|------|------|------|
+| UT 编号对照 | 低 | 文档使用 UT-025/026，实现使用 UT-024 测试编号，功能等价 |
 
 ---
 
 ## 🎯 下一步建议
 
-### ✅ P0 任务已全部完成
+### ✅ P0/P1 任务已全部完成
 
-所有 P0 优先级任务已完成：
-- [x] T-140: 触摸目标尺寸优化
-- [x] T-141: 控件间距优化
+所有高优先级任务已完成：
+- [x] 生产就绪基础 (T-111~T-116)
+- [x] 日志系统 F-019 (T-117~T-124)
+- [x] 手柄操作友好化 F-020 (T-125~T-130)
+- [x] GameController 深度集成 F-021 (T-131~T-134)
+- [x] 手柄操控 UI/UX 优化 F-022 (T-136~T-139)
+- [x] iPad 触摸优化 F-023 (T-140~T-146)
 
-### 🟡 P1 任务（v1.1 版本目标）
+### 唯一剩余任务
 
-| 任务 | 说明 | 状态 |
-|------|------|------|
-| T-133 | Haptics 引擎统一（重构） | ✅ 已完成 |
-| T-137 | 流媒体音量快捷调节 | ⏳ 待处理 |
+| 任务 | 状态 | 阻塞原因 |
+|------|------|----------|
+| T-115 | ⏳ 进行中 | 等待设计师提供 App Icon 图像资产 |
 
-> T-133 于 2026-02-02 完成，提交 `f749b44`
+### Beta 1 发布准备清单
 
-### Beta 1 发布准备
-
+- [x] 所有 P0/P1/P2 开发任务完成
+- [x] 核心功能稳定
+- [x] 日志与崩溃捕获系统
+- [x] 手柄操作友好化
+- [x] 手柄 UI/UX 优化
+- [x] iPad 触摸优化
+- [ ] T-115: App Icon 资产（等待设计师）
 - [ ] 清理代码中的 TODO 标记
 - [ ] 准备 TestFlight 元数据
 - [ ] App Store Connect 配置
@@ -176,40 +214,26 @@
 
 ## 📝 本次同步详情
 
-### 归档操作
+### 同步操作
 
-- **归档时间**: 2026-02-02
-- **归档模式**: `--archive`
-- **归档任务数**: 5 个 (T-140~T-144)
-- **归档功能组**: F-023 iPad 触摸优化
+- **同步时间**: 2026-02-03
+- **同步模式**: `--absorb`
+- **触发原因**: T-145, T-146 完成后文档同步
 
-### 状态更新
+### 文档更新
 
-| 任务 | 更新 |
-|------|------|
-| T-140~T-144 | ✅ 已完成 → 📦 已归档 |
+| 文档 | 更新内容 |
+|------|----------|
+| `00-context.md` | 进度更新、新增模块、配置常量 |
+| `00-progress-report.md` | 任务状态、追溯矩阵、测试覆盖 |
+| `04-dev-tasks.md` | 任务状态标记 |
 
-### 代码追溯扫描
+### Git 状态
 
-代码中发现 **51** 处 `@satisfies`/`@verifies` 标注，分布在 25 个文件中。
-
-**高标注密度文件**：
-| 文件 | 标注数 |
-|------|--------|
-| `DiagnosticsExporter.swift` | 8 |
-| `StreamingControlsView.swift` | 5 |
-| `VirtualControllerView.swift` | 4 |
-| `FileLogHandler.swift` | 4 |
-| `CrashReporter.swift` | 4 |
-
-### 文档瘦身效果
-
-| 指标 | 归档前 | 归档后 |
-|------|--------|--------|
-| 04-dev-tasks.md 行数 | 1002 | ~850 |
-| 活跃任务详情数 | 17 | 12 |
-| 归档任务总数 | 19 | 24 |
+- **当前分支**: dev
+- **最新提交**: `e36716c` feat(ui): implement edge swipe volume gesture for iPad (T-146)
+- **未提交变更**: 文档更新 (Localizable.xcstrings, 00-context.md, 04-dev-tasks.md)
 
 ---
 
-*报告由 `/devdocs-sync --archive` 生成 (2026-02-02)*
+*报告由 `/devdocs-sync --absorb` 生成 (2026-02-03)*

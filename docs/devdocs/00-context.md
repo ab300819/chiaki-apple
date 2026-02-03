@@ -1,6 +1,6 @@
 # 项目上下文：Chiaki-ng Apple 原生客户端
 
-**生成时间**：2026-02-02 (更新)
+**生成时间**：2026-02-03 (更新)
 **生成工具**：/devdocs-onboard --update
 
 ---
@@ -25,7 +25,7 @@
 | F-019 | 完善日志系统 (持久化/诊断包/崩溃捕获) | ✅ 已完成 |
 | F-020 | 手柄操作友好化 | ✅ 已完成 |
 | F-021 | GameController 深度集成 | ⏳ 待开发 |
-| F-022 | 手柄操控 UI/UX 优化 | ⏳ 待开发 |
+| F-022 | 手柄操控 UI/UX 优化 | ✅ 已完成 |
 | F-023 | iPad 触摸操作友好化 | ✅ 已完成 |
 
 ### 1.3 技术栈
@@ -58,11 +58,14 @@
 | **Logging** | 日志持久化与脱敏 | `FileLogHandler.swift`, `DiagnosticsExporter.swift` |
 | **Crash** | 崩溃监测与报告 | `CrashReporter.swift` |
 | **Controller** | 手柄输入与触觉反馈 | `ControllerManager.swift`, `HapticsManager.swift` |
+| **VirtualController** | 虚拟触摸控制器 | `VirtualControllerView.swift`, `VirtualButtonView.swift` |
+| **EdgeGesture** | 边缘滑动手势 | `EdgeVolumeGesture.swift` |
 
 ### 2.3 核心接口
 - `ChiakiSessionWrapper`: 连接、断开、发送输入。
 - `VideoDecoderBridge`: 解码器配置与数据分发。
 - `AudioPlayerBridge`: 音频同步与音量控制。
+- `ControllerShortcutDetector`: 手柄快捷键检测（音量调节等）。
 
 ---
 
@@ -77,6 +80,8 @@ Chiaki/
 │   ├── PSNLogin/       # PSN 身份认证
 │   ├── Settings/       # 全局设置与日志查看
 │   └── Streaming/      # 流媒体核心视图
+│       ├── VirtualController/  # 虚拟控制器组件
+│       └── Controls/           # 流媒体控制组件
 ├── Core/               # 底层基础设施
 │   ├── Audio/          # 音频引擎
 │   ├── Bridge/         # C 库桥接
@@ -97,10 +102,13 @@ Chiaki/
 | `DiagnosticsExporter.swift` | 诊断数据脱敏打包 (ZIP) |
 | `Localizable.xcstrings` | 100% 覆盖的中英文本地化 |
 | `StreamingOverlay.swift` | 流媒体状态覆盖层（含 HDR 徽章） |
+| `VirtualButtonView.swift` | 虚拟按钮组件（支持长按手势） |
+| `EdgeVolumeGesture.swift` | 边缘滑动音量调节 |
+| `ControllerShortcutDetector.swift` | 手柄快捷键检测器 |
 
 ### 3.3 代码统计
-- **Swift 源文件**: 67 个
-- **测试文件**: 14 个 (Unit/Integration)
+- **Swift 源文件**: 70+ 个
+- **测试文件**: 16 个 (Unit/Integration)
 
 ---
 
@@ -109,65 +117,51 @@ Chiaki/
 ### 4.1 总体进度 (M11)
 | 类型 | 总数 | 已完成 | 进行中 | 完成率 |
 |------|------|--------|--------|--------|
-| 功能点 | 23 | 20 | 0 | 87% |
-| 开发任务 (T-111~146) | 36 | 25 | 1 | 69% |
+| 功能点 | 23 | 22 | 0 | 96% |
+| 开发任务 (T-111~146) | 36 | 30 | 1 | 83% |
 
-### 4.2 最近完成 (2026-02-02)
+### 4.2 最近完成 (2026-02-02 ~ 02-03)
+- **T-146**: 滑动快捷调节（边缘音量手势）`e36716c`
+- **T-145**: 长按手势支持（虚拟按钮）`1ce7585`
+- **T-139**: 流媒体快速设置面板 `58fe369`
+- **T-138**: PIN 输入数字键盘 `bfa12a2`
+- **T-137**: 流媒体音量快捷调节 `f5dfc62`
+- **T-136**: 主机快速操作栏 `0a7f4b3`
 - **T-144**: 虚拟控制器无障碍 `a2d97f5`
 - **T-143**: 触觉反馈统一 `bc87252`
-- **T-142**: Slider 交互区域 `b06d9ad`
-- **T-141**: 控件间距优化 `47dea8a`
-- **T-140**: 触摸目标尺寸优化 `30c917e`
-- **T-130**: 焦点恢复逻辑 `e91cadd`
 - **T-129**: 组合键快捷操作 `2257e97`
 - **T-128**: tvOS 方向键导航 `6a98368`
 
 ### 4.3 归档记录
-已归档 24 个完成任务至 `04-dev-tasks-archive.md`：
+已归档 30 个完成任务至 `04-dev-tasks-archive.md`：
 - **M11-Part1**: 生产就绪基础 (T-111~T-116)
 - **M11-Part2**: 日志系统 F-019 (T-117~T-124)
 - **M11-Part3**: 手柄操作友好化 F-020 (T-125~T-130)
-- **M11-Part4**: iPad 触摸优化 F-023 (T-140~T-144)
+- **M11-Part4**: iPad 触摸优化 F-023 (T-140~T-146)
+- **M11-Part5**: 手柄 UI/UX 优化 F-022 (T-136~T-139)
 
 ### 4.4 Git 状态
 - **当前分支**: dev
+- **最新提交**: `2257e97` feat(core): implement controller shortcut detector (T-129)
 - **工作区**: 有未提交变更 (文档更新)
 
 ---
 
 ## 5. 待办任务
 
-### 5.1 P1 优先级任务 (v1.1 目标)
-| 任务 | 名称 | 关联需求 | 说明 |
+### 5.1 唯一剩余任务
+| 任务 | 名称 | 关联需求 | 状态 |
 |------|------|----------|------|
-| **T-133** | Haptics 引擎统一 | F-021 | 重构触觉反馈系统 |
-| **T-137** | 流媒体音量快捷调节 | F-022 | 手柄快捷调音量 |
+| **T-115** | 多平台 App Icon 资产准备 | F-018 | ⏳ 等待设计师提供图像资产 |
 
-### 5.2 P2 优先级任务
-| 任务 | 名称 | 关联需求 |
-|------|------|----------|
-| **T-131** | DualSense 自适应扳机 | F-021 |
-| **T-132** | 触控板位置追踪 | F-021 |
-| **T-136** | 主机快速操作栏 | F-022 |
-| **T-138** | PIN 输入数字键盘 | F-022 |
-| **T-139** | 流媒体快速设置面板 | F-022 |
-| **T-145** | 长按手势支持 | F-023 |
-| **T-146** | 滑动快捷调节 | F-023 |
-
-### 5.3 P3 优先级任务
-| 任务 | 名称 | 关联需求 |
-|------|------|----------|
-| **T-134** | 控制器电池电量显示 | F-021 |
-
-### 5.4 进行中任务
-| 任务 | 名称 | 状态 |
+### 5.2 F-021 待开发任务
+以下任务属于 F-021 (GameController 深度集成)，暂未纳入 M11：
+| 任务 | 名称 | 说明 |
 |------|------|------|
-| **T-115** | 多平台 App Icon 资产准备 | 待设计师提供图像资产 |
-
-### 5.5 建议执行顺序
-1. **P1 任务**: T-133 → T-137
-2. **P2 任务**: T-131, T-132, T-136, T-138, T-145, T-146 (可并行)
-3. **P3 任务**: T-134
+| **T-131** | DualSense 自适应扳机 | 需要深入 GameController API |
+| **T-132** | 触控板位置追踪 | 需要 DualSense 触控板支持 |
+| **T-133** | Haptics 引擎统一 | 重构触觉反馈系统 |
+| **T-134** | 控制器电池电量显示 | 需要 GameController API |
 
 ---
 
@@ -188,6 +182,18 @@ Chiaki/
 - 格式：`<type>(scope): <subject> (T-XXX)`
 - 示例：`feat(ui): add host quick action bar (T-136)`
 
+### 6.4 配置常量
+关键配置值（便于调试和测试）：
+| 常量 | 值 | 说明 |
+|------|-----|------|
+| `VirtualButtonConfig.longPressDuration` | 0.5s | 长按触发时间 |
+| `VirtualButtonConfig.longPressScale` | 0.85 | 长按缩放比例 |
+| `EdgeVolumeConfig.edgeWidth` | 44pt | 边缘检测宽度 (Apple HIG) |
+| `EdgeVolumeConfig.minimumDragDistance` | 20pt | 最小拖拽距离 |
+| `EdgeVolumeConfig.volumePerPoint` | 0.002 | 每点音量变化 |
+| `VolumeAdjuster.step` | 0.05 | 手柄音量步进 |
+| `VolumeOSD.autoHideDelay` | 2.0s | OSD 自动隐藏延迟 |
+
 ---
 
 ## 7. 快速开始
@@ -205,7 +211,7 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 ### 7.3 执行开发任务
 ```bash
 # 使用 DevDocs 工作流开发
-/devdocs-dev-workflow T-125
+/devdocs-dev-workflow T-XXX
 ```
 
 ---
@@ -216,7 +222,7 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 |------|------|------|
 | 上下文 | `docs/devdocs/00-context.md` | 项目全貌与接手指南 (本文件) |
 | 进度报告 | `docs/devdocs/00-progress-report.md` | M11 进度统计与追溯矩阵 |
-| 需求文档 | `docs/devdocs/01-requirements.md` | F-001~023 功能点、AC-001~070 验收标准 |
+| 需求文档 | `docs/devdocs/01-requirements.md` | F-001~023 功能点、AC-001~075 验收标准 |
 | 系统设计 | `docs/devdocs/02-system-design.md` | 架构设计 v1.5.0 |
 | 测试用例 | `docs/devdocs/03-test-cases.md` | 测试用例、追溯矩阵 |
 | 开发任务 | `docs/devdocs/04-dev-tasks.md` | 活跃任务 T-131~146 |
@@ -227,10 +233,11 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 
 **接手建议**：
 1. 阅读本文档了解项目全貌
-2. 查看"待办任务"部分了解当前工作重点
-3. 所有 P0 任务已完成，从 **P1 任务** 开始（T-133 或 T-137）
-4. 使用 `/devdocs-dev-workflow T-XXX` 执行任务
-5. 遇到细节问题查阅对应 DevDocs 文档
+2. M11 开发任务已基本完成（96% 功能点，83% 任务）
+3. 唯一剩余任务 **T-115** 等待设计师提供 App Icon 资产
+4. 如需继续开发，可启动 F-021 (GameController 深度集成) 相关任务
+5. 使用 `/devdocs-dev-workflow T-XXX` 执行任务
+6. 遇到细节问题查阅对应 DevDocs 文档
 
 ---
 
@@ -241,7 +248,11 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 - [x] 核心功能稳定
 - [x] 日志与崩溃捕获系统
 - [x] 手柄操作友好化 (F-020)
-- [x] iPad 触摸优化核心功能 (F-023: T-140~T-144)
+- [x] 手柄 UI/UX 优化 (F-022)
+- [x] iPad 触摸优化 (F-023)
+- [x] 虚拟控制器长按手势
+- [x] 边缘滑动音量调节
+- [x] 手柄快捷键音量调节
 
 ### 9.2 待完成
 - [ ] 清理代码中的 TODO 标记
