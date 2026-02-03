@@ -94,10 +94,34 @@ struct StreamingView: View {
             
             #if os(iOS)
             if viewModel.state == .streaming && settingsStore.streamSettings.isTouchControllerEnabled {
-                VirtualControllerView { input in
-                    viewModel.handleInput(input)
-                }
+                VirtualControllerView(
+                    onInput: { input in
+                        viewModel.handleInput(input)
+                    },
+                    onLongPress: { button in
+                        // Long press handler (e.g., Square for screenshot)
+                        Logger.controller.debug("Long press on virtual button: \(String(describing: button))")
+                    }
+                )
                 .zIndex(1)
+            }
+
+            /**
+             * Edge volume gesture overlay (right edge only)
+             * @requirement F-023 - iPad 触摸操作友好化
+             * @satisfies AC-075 - 滑动快捷调节
+             */
+            if viewModel.state == .streaming {
+                EdgeVolumeGestureView(
+                    volume: Binding(
+                        get: { viewModel.volume },
+                        set: { viewModel.setVolume($0) }
+                    ),
+                    onVolumeChange: {
+                        viewModel.showVolumeOSD()
+                    }
+                )
+                .zIndex(0.5) // Below virtual controller but above video
             }
             #endif
             

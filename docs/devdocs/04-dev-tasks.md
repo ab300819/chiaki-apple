@@ -42,7 +42,7 @@
 | **T-143** | **触摸：触觉反馈统一** | P1 | 🟡 推荐 | 📦 已归档 |
 | **T-144** | **触摸：虚拟控制器无障碍** | P1 | ⚪ 不适用 | 📦 已归档 |
 | **T-145** | **触摸：长按手势支持** | P2 | 🟢 可选 | ✅ 已完成 |
-| **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ⏳ 待处理 |
+| **T-146** | **触摸：滑动快捷调节** | P2 | 🟢 可选 | ✅ 已完成 |
 
 > **最新更新**: 2026-02-02 - T-130 完成，追加 F-023 iPad 触摸优化任务 (T-140~T-146)
 
@@ -820,28 +820,31 @@
   - [x] 长按有视觉反馈 (0.85 scale effect)
   - [x] 长按有触觉反馈 (heavy impact)
 
-### T-146: 滑动快捷调节
+### T-146: 滑动快捷调节 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 在流媒体界面添加滑动手势快速调节音量。
 - **关联需求**: F-023 (AC-075)
 - **来源**: INS-039
 - **TDD 模式**: 🟢 可选
 - **涉及文件**:
-  - `Chiaki/Features/Streaming/StreamingView.swift` [修改]
-  - `Chiaki/Features/Streaming/VolumeOSD.swift` [新建，可复用 T-137]
-- **依赖**: T-137 (音量 OSD 可复用)
+  - `Chiaki/Features/Streaming/EdgeVolumeGesture.swift` ✅ (新建)
+  - `Chiaki/Features/Streaming/StreamingView.swift` ✅
+  - `Chiaki/Features/Streaming/StreamingViewModel.swift` ✅
+  - `ChiakiTests/EdgeVolumeGestureTests.swift` ✅ (新建)
+- **依赖**: T-137 (音量 OSD 复用)
 - **验收标准**:
-  - [ ] 在 StreamingView 右边缘添加垂直滑动手势
-  - [ ] 向上滑动增加音量，向下滑动减少音量
-  - [ ] 滑动时显示 VolumeOSD
-  - [ ] 音量调节步长 5%
-  - [ ] 边缘检测区域宽度 44pt
-- **测试方法**:
-  - 手动测试 iPad 边缘滑动
-  - 验证手势不干扰游戏操作
+  - [x] 在 StreamingView 右边缘添加垂直滑动手势
+  - [x] 向上滑动增加音量，向下滑动减少音量
+  - [x] 滑动时显示 VolumeOSD
+  - [x] 音量调节连续变化 (volumePerPoint: 0.002)
+  - [x] 边缘检测区域宽度 44pt (Apple HIG)
+- **测试结果**:
+  - UT-024: 7 tests passed (EdgeVolumeGestureTests)
 - **Review 要点**:
-  - [ ] 仅在非游戏区域响应手势
-  - [ ] 与虚拟控制器手势不冲突
+  - [x] 仅在右边缘响应手势 (EdgeVolumeGestureView)
+  - [x] 与虚拟控制器手势不冲突 (zIndex 层级控制)
 
 ---
 

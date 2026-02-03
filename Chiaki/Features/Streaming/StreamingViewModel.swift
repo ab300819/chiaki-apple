@@ -170,8 +170,9 @@ final class StreamingViewModel {
      * Show volume OSD with auto-hide
      * @requirement F-022 - 手柄操控 UI/UX 优化
      * @satisfies AC-066 - OSD 2秒后自动隐藏
+     * @satisfies AC-075 - 滑动快捷调节
      */
-    private func showVolumeOSD() {
+    func showVolumeOSD() {
         // Cancel any existing hide task
         volumeOSDHideTask?.cancel()
 
