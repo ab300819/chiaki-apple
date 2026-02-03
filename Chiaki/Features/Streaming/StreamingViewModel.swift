@@ -322,8 +322,16 @@ final class StreamingViewModel {
 
         let profile = isRemote ? settings.remoteProfile : settings.localProfile
 
-        // Configure video based on resolution setting
-        let videoCodec: ChiakiVideoCodec = settings.codec == .h265 ? .h265 : .h264
+        // Configure video codec based on settings
+        // HDR requires H.265 codec; use H.265 HDR when hdrEnabled is true
+        let videoCodec: ChiakiVideoCodec
+        if settings.hdrEnabled && settings.codec == .h265 {
+            videoCodec = .h265HDR
+        } else if settings.codec == .h265 {
+            videoCodec = .h265
+        } else {
+            videoCodec = .h264
+        }
 
         videoDecoderBridge.configure(
             codec: videoCodec,
@@ -331,6 +339,23 @@ final class StreamingViewModel {
             height: Int32(profile.resolution.height),
             fps: profile.frameRate.rawValue
         )
+
+        // Configure session stream settings (including HDR codec for isHDR property)
+        let chiakiResolution: ChiakiResolution = switch profile.resolution {
+        case .r540p: .r540p
+        case .r720p: .r720p
+        case .r1080p: .r1080p
+        case .r2160p: .r1080p  // Fallback to 1080p for 4K (not supported by ChiakiResolution)
+        }
+        let chiakiFPS: ChiakiFPS = profile.frameRate == .fps60 ? .fps60 : .fps30
+        let streamConfig = StreamConfig(
+            resolution: chiakiResolution,
+            fps: chiakiFPS,
+            codec: videoCodec,
+            bitrate: UInt32(profile.bitrate * 1000),  // Convert kbps to bps
+            autoDowngrade: true
+        )
+        session.configure(stream: streamConfig)
 
         // Start connection
         do {
