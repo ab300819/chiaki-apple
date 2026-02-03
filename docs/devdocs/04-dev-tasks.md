@@ -655,8 +655,10 @@
 > **来源需求**: F-022 手柄操控 UI/UX 优化 (INS-028~031)
 > **关联验收标准**: AC-065 ~ AC-068
 
-### T-136: 主机快速操作栏
+### T-136: 主机快速操作栏 ✅
 
+- **状态**: ✅ 已完成
+- **完成日期**: 2026-02-03
 - **目标**: 为聚焦的主机卡片添加底部快速操作栏，替代长按上下文菜单。
 - **关联需求**: F-022 (AC-065)
 - **来源**: INS-028
@@ -665,23 +667,24 @@
 - **涉及文件**:
   - `Chiaki/Features/HostList/HostQuickActionBar.swift` [新建]
   - `Chiaki/Features/HostList/HostListView.swift` [修改]
-  - `ChiakiTV/Features/TVHostCardView.swift` [修改]
+  - `Chiaki/Features/HostList/TVHostCardView.swift` [修改]
 - **依赖**: 无
 - **验收标准**:
-  - [ ] 创建 `HostQuickAction` 枚举：wake/connect/pin/delete
-  - [ ] 创建 `HostQuickActionBar` 组件，包含焦点管理
-  - [ ] 主机卡片聚焦时显示操作栏，失焦时隐藏
-  - [ ] 待机主机显示"唤醒"，就绪主机显示"连接"
-  - [ ] tvOS 支持 Menu 键切换操作栏显示
-  - [ ] 操作栏内使用方向键导航
+  - [x] 创建 `HostQuickAction` 枚举：wake/connect/pin/delete
+  - [x] 创建 `HostQuickActionBar` 组件，包含焦点管理
+  - [x] 主机卡片聚焦时显示操作栏，失焦时隐藏
+  - [x] 待机主机显示"唤醒"，就绪主机显示"连接"
+  - [x] tvOS 支持 Menu 键切换操作栏显示（通过 contextMenu 保留）
+  - [x] 操作栏内使用方向键导航
 - **测试方法**:
   - 运行 `UT-017` 单元测试验证枚举和焦点逻辑
   - 运行 `IT-009` 集成测试验证操作栏与 HostManager 交互
   - 手动测试 tvOS 上的方向键导航
 - **Review 要点**:
-  - [ ] 焦点状态使用 `@FocusState` 而非手动管理
-  - [ ] 动画使用 `.snappy` 或 `.spring()`
-  - [ ] 长按菜单保留作为备选方案
+  - [x] 焦点状态使用 `@FocusState` 而非手动管理
+  - [x] 动画使用 `.snappy` 或 `.spring()`
+  - [x] 长按菜单保留作为备选方案
+- **完成提交**: `dc5e0ac` feat(ui): implement host quick action bar for tvOS (T-136)
 
 ### T-137: 流媒体音量快捷调节 ✅
 

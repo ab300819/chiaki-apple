@@ -101,15 +101,37 @@ struct HostListView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 400, maximum: 500), spacing: 50)], spacing: 50) {
                     ForEach(viewModel.hosts) { host in
                         if host.isRegistered {
+                            /**
+                             * Registered host card with quick action bar
+                             * @satisfies AC-065 - 主机快速操作栏
+                             */
                             NavigationLink(value: host) {
-                                TVHostCardView(host: host) {
-                                    HapticFeedback.button()
-                                    viewModel.wakeUp(host)
-                                }
+                                TVHostCardView(
+                                    host: host,
+                                    onWakeUp: {
+                                        HapticFeedback.button()
+                                        viewModel.wakeUp(host)
+                                    },
+                                    onConnect: {
+                                        // Connect is handled by NavigationLink
+                                    },
+                                    onPin: {
+                                        HapticFeedback.button()
+                                        settingPinHost = host
+                                    },
+                                    onDelete: {
+                                        HapticFeedback.button()
+                                        if let index = viewModel.hosts.firstIndex(of: host) {
+                                            viewModel.deleteHost(at: IndexSet(integer: index))
+                                        }
+                                    }
+                                )
                             }
                             .buttonStyle(.plain)
                             .focused($focusedHost, equals: host.id)
                             .contextMenu {
+                                // Context menu preserved as fallback
+                                // @satisfies AC-065 - 长按菜单保留作为备选方案
                                 if host.state == .standby {
                                     Button(L10n.HostList.wakeUp) {
                                         viewModel.wakeUp(host)
@@ -130,14 +152,17 @@ struct HostListView: View {
                                 }
                             }
                         } else {
-                            Button(action: { 
+                            Button(action: {
                                 HapticFeedback.button()
-                                registeringHost = host 
+                                registeringHost = host
                             }) {
-                                TVHostCardView(host: host) {
-                                    HapticFeedback.button()
-                                    viewModel.wakeUp(host)
-                                }
+                                TVHostCardView(
+                                    host: host,
+                                    onWakeUp: {
+                                        HapticFeedback.button()
+                                        viewModel.wakeUp(host)
+                                    }
+                                )
                             }
                             .buttonStyle(.plain)
                             .focused($focusedHost, equals: host.id)

@@ -1,12 +1,24 @@
 import SwiftUI
 
 #if os(tvOS)
+/**
+ * Host card view for tvOS with quick action bar support
+ * @requirement F-022 - 手柄操控 UI/UX 优化
+ * @satisfies AC-065 - 主机快速操作栏
+ */
 struct TVHostCardView: View {
     let host: ConsoleHost
     var onWakeUp: () -> Void
-    
+    var onConnect: (() -> Void)?
+    var onPin: (() -> Void)?
+    var onDelete: (() -> Void)?
+
     @Environment(\.isFocused) var isFocused
-    
+
+    /// Whether the quick action bar is visible
+    /// @satisfies AC-065 - 主机卡片聚焦时显示操作栏，失焦时隐藏
+    @State private var showQuickActionBar = false
+
     var body: some View {
         VStack(spacing: 12) {
             ZStack {
@@ -125,14 +137,60 @@ struct TVHostCardView: View {
         .scaleEffect(isFocused ? 1.1 : 1.0)
         .brightness(isFocused ? 0.1 : 0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFocused)
+        .overlay(alignment: .bottom) {
+            // Quick action bar appears below card when focused
+            // @satisfies AC-065 - 主机卡片聚焦时显示操作栏，失焦时隐藏
+            if isFocused && hasQuickActions {
+                HostQuickActionBar(
+                    host: host,
+                    onWake: onWakeUp,
+                    onConnect: { onConnect?() },
+                    onPin: { onPin?() },
+                    onDelete: { onDelete?() },
+                    isVisible: .constant(true)
+                )
+                .offset(y: 80) // Position below the card
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .onChange(of: isFocused) { _, newValue in
+            // Show/hide action bar based on focus
+            showQuickActionBar = newValue
+        }
+    }
+
+    /// Whether this card should show quick actions
+    private var hasQuickActions: Bool {
+        // Only show for registered hosts or when actions are provided
+        host.isRegistered || onConnect != nil
     }
 }
 
-#Preview {
-    TVHostCardView(host: ConsoleHost.mockOnline, onWakeUp: {})
-        .environment(SettingsStore())
-        .environment(NavigationManager())
-        .padding()
-        .background(Color.gray)
+#Preview("Online Host") {
+    TVHostCardView(
+        host: ConsoleHost.mockOnline,
+        onWakeUp: {},
+        onConnect: {},
+        onPin: {},
+        onDelete: {}
+    )
+    .environment(SettingsStore())
+    .environment(NavigationManager())
+    .padding()
+    .background(Color.gray)
+}
+
+#Preview("Standby Host") {
+    TVHostCardView(
+        host: ConsoleHost.mockStandby,
+        onWakeUp: {},
+        onConnect: {},
+        onPin: {},
+        onDelete: {}
+    )
+    .environment(SettingsStore())
+    .environment(NavigationManager())
+    .padding()
+    .background(Color.gray)
 }
 #endif
