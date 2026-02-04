@@ -35,6 +35,11 @@ struct VideoStreamView: ViewRepresentable {
 
     var onMTKViewCreated: ((MTKView) -> Void)?
 
+    /// Dynamic EDR headroom monitor
+    /// [requirement] F-025
+    /// [satisfies] AC-081
+    @State private var headroomMonitor = EDRHeadroomMonitor()
+
     init(
         renderer: MetalVideoRenderer?,
         displayMode: VideoDisplayMode = .normal,
@@ -122,7 +127,46 @@ struct VideoStreamView: ViewRepresentable {
     }
 
     private func updateMTKView(_ mtkView: MTKView, context: Context) {
-        // Update renderer reference
+        // 1. Pass EDR Headroom to renderer
+        // [verifies] AC-081
+        if let renderer = renderer {
+            renderer.edrHeadroom = headroomMonitor.currentHeadroom
+        }
+
+        // 2. Handle dynamic HDR switching for MTKView
+        // [satisfies] AC-082
+        let targetPixelFormat: MTLPixelFormat
+        if isHDR {
+            #if os(macOS)
+            targetPixelFormat = .rgba16Float
+            #else
+            targetPixelFormat = .rgb10a2Unorm
+            #endif
+        } else {
+            targetPixelFormat = .bgra8Unorm
+        }
+
+        if mtkView.colorPixelFormat != targetPixelFormat {
+            mtkView.colorPixelFormat = targetPixelFormat
+            
+            #if os(macOS) || os(iOS) || os(tvOS)
+            if let layer = mtkView.layer as? CAMetalLayer {
+                if isHDR {
+                    #if os(macOS)
+                    layer.wantsExtendedDynamicRangeContent = true
+                    #endif
+                    layer.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
+                } else {
+                    #if os(macOS)
+                    layer.wantsExtendedDynamicRangeContent = false
+                    #endif
+                    layer.colorspace = nil // Default SDR
+                }
+            }
+            #endif
+        }
+
+        // 3. Update renderer properties
         if let renderer = renderer {
             renderer.mtkView = mtkView
             mtkView.delegate = renderer
@@ -131,7 +175,7 @@ struct VideoStreamView: ViewRepresentable {
             renderer.updateViewSize(mtkView.drawableSize)
         }
 
-        // Update frame rate
+        // 4. Update frame rate
         mtkView.preferredFramesPerSecond = preferredFramesPerSecond
     }
 }
