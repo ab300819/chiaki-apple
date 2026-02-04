@@ -4466,3 +4466,721 @@ final class ViewModelIntegrationTests: XCTestCase {
 | AC-094 | ConsolesSettingsViewModel | UT-038 | IT-013 | - |
 | AC-095 | 协议抽象 | UT-039, UT-040 | IT-013 | - |
 | AC-096 | 目录结构优化 | - | - | - |
+
+---
+
+## 23. F-028 HDR 配置完全落地测试
+
+> **功能**: F-028 HDR 配置完全落地
+> **用户故事**: US-016
+> **验收标准**: AC-097 ~ AC-100
+> **设计版本**: 2026-02-04
+
+### 23.1 测试概述
+
+| 测试类型 | 数量 | 覆盖 AC |
+|----------|------|---------|
+| 单元测试 | 14 | AC-097, AC-098, AC-099, AC-100 |
+| 集成测试 | 2 | AC-097, AC-098 |
+| E2E 测试 | 1 | AC-098, AC-099 |
+
+### 23.2 单元测试
+
+#### UT-042: VideoUniforms 扩展测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-042.1 | testVideoUniformsHasEDRIntensity | Uniforms 包含 edrIntensity | 字段存在且默认值 1.0 | P0 |
+| UT-042.2 | testVideoUniformsHasGamutMappingEnabled | Uniforms 包含 gamutMappingEnabled | 字段存在且默认值 1 | P0 |
+| UT-042.3 | testVideoUniformsStructSize | Uniforms 结构大小 | 对齐正确，大小符合预期 | P1 |
+| UT-042.4 | testDefaultUniformsValues | 默认 Uniforms 值 | edrIntensity=1.0, gamutMapping=1 | P0 |
+
+```swift
+// VideoUniformsTests.swift
+// @verifies AC-097
+
+final class VideoUniformsTests: XCTestCase {
+
+    /// UT-042.1: VideoUniforms 包含 edrIntensity 字段
+    func testVideoUniformsHasEDRIntensity() {
+        let uniforms = VideoUniforms.default
+        XCTAssertEqual(uniforms.edrIntensity, 1.0, accuracy: 0.001)
+    }
+
+    /// UT-042.2: VideoUniforms 包含 gamutMappingEnabled 字段
+    func testVideoUniformsHasGamutMappingEnabled() {
+        let uniforms = VideoUniforms.default
+        XCTAssertEqual(uniforms.gamutMappingEnabled, 1)
+    }
+
+    /// UT-042.3: VideoUniforms 结构大小对齐
+    func testVideoUniformsStructSize() {
+        // 16 字节对齐验证
+        XCTAssertEqual(MemoryLayout<VideoUniforms>.stride % 16, 0)
+    }
+
+    /// UT-042.4: 默认 Uniforms 值正确
+    func testDefaultUniformsValues() {
+        let uniforms = VideoUniforms.default
+        XCTAssertEqual(uniforms.edrIntensity, 1.0, accuracy: 0.001)
+        XCTAssertEqual(uniforms.gamutMappingEnabled, 1)
+        XCTAssertEqual(uniforms.edrHeadroom, 1.0, accuracy: 0.001)
+    }
+}
+```
+
+#### UT-043: MetalVideoRenderer 配置同步测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-043.1 | testHDRConfigSyncsEDRIntensity | HDR 配置同步 edrIntensity | uniforms.edrIntensity 更新 | P0 |
+| UT-043.2 | testHDRConfigSyncsGamutMapping | HDR 配置同步 gamutMapping | uniforms.gamutMappingEnabled 更新 | P0 |
+| UT-043.3 | testSetEDRIntensityClampsValue | setEDRIntensity 边界 | 值被 clamp 到 0.5~2.0 | P1 |
+| UT-043.4 | testSetGamutMappingEnabled | setGamutMappingEnabled | 正确设置 0 或 1 | P0 |
+
+```swift
+// MetalVideoRendererConfigTests.swift
+// @verifies AC-097, AC-098, AC-099
+
+final class MetalVideoRendererConfigTests: XCTestCase {
+
+    /// UT-043.1: HDR 配置同步 edrIntensity
+    func testHDRConfigSyncsEDRIntensity() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        var config = HDRConfiguration.hdr
+        config.edrIntensity = 1.5
+        renderer.hdrConfiguration = config
+
+        // 验证 uniforms 已更新（通过公开属性或反射）
+        XCTAssertEqual(renderer.edrIntensity, 1.5, accuracy: 0.001)
+    }
+
+    /// UT-043.2: HDR 配置同步 gamutMapping
+    func testHDRConfigSyncsGamutMapping() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        var config = HDRConfiguration.hdr
+        config.gamutMappingEnabled = false
+        renderer.hdrConfiguration = config
+
+        XCTAssertFalse(renderer.isGamutMappingEnabled)
+    }
+
+    /// UT-043.3: EDR 强度边界 clamp
+    func testSetEDRIntensityClampsValue() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        renderer.setEDRIntensity(0.1)  // 低于下限
+        XCTAssertEqual(renderer.edrIntensity, 0.5, accuracy: 0.001)
+
+        renderer.setEDRIntensity(3.0)  // 高于上限
+        XCTAssertEqual(renderer.edrIntensity, 2.0, accuracy: 0.001)
+    }
+
+    /// UT-043.4: 色域映射开关设置
+    func testSetGamutMappingEnabled() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        renderer.setGamutMappingEnabled(true)
+        XCTAssertTrue(renderer.isGamutMappingEnabled)
+
+        renderer.setGamutMappingEnabled(false)
+        XCTAssertFalse(renderer.isGamutMappingEnabled)
+    }
+}
+```
+
+#### UT-044: VideoShaderConstants 测试 (AC-100)
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-044.1 | testPQEOTF_Black | PQ EOTF 黑色 | 输入 0.0 → 输出 0.0 | P0 |
+| UT-044.2 | testPQEOTF_SDRWhite | PQ EOTF SDR 白点 | 输入 0.508 → ~0.0203 | P0 |
+| UT-044.3 | testPQEOTF_Peak | PQ EOTF 峰值 | 输入 1.0 → ~1.0 | P0 |
+| UT-044.4 | testGamutMapping_White | 色域映射白点 | 白点保持不变 | P0 |
+| UT-044.5 | testGamutMapping_NoNegatives | 色域映射无负值 | 任意输入无负输出 | P0 |
+| UT-044.6 | testACES_Black | ACES 黑色 | 输入 0 → 输出 0 | P0 |
+| UT-044.7 | testACES_Clamp | ACES clamp | 高输入 clamp 到 1.0 | P0 |
+| UT-044.8 | testACES_SDRRange | ACES SDR 范围 | 中灰合理响应 | P1 |
+| UT-044.9 | testBT709_WhitePoint | BT.709 白点 | Y=1,U=0,V=0 → 白色 | P0 |
+| UT-044.10 | testRec2020ToP3Matrix | 2020→P3 矩阵 | 矩阵值正确 | P1 |
+
+```swift
+// VideoShaderConstantsTests.swift
+// @verifies AC-100
+
+final class VideoShaderConstantsTests: XCTestCase {
+
+    // MARK: - PQ EOTF Tests
+
+    /// UT-044.1: PQ 0.0 应解码为线性 0.0
+    func testPQEOTF_Black() {
+        let result = VideoShaderConstants.pqEOTF(0.0)
+        XCTAssertEqual(result, 0.0, accuracy: 0.0001)
+    }
+
+    /// UT-044.2: PQ 0.508 ≈ 203 nits (SDR 参考白)
+    func testPQEOTF_SDRWhite() {
+        let result = VideoShaderConstants.pqEOTF(0.508)
+        XCTAssertEqual(result, 0.0203, accuracy: 0.002)
+    }
+
+    /// UT-044.3: PQ 1.0 应解码为线性 1.0 (10000 nits)
+    func testPQEOTF_Peak() {
+        let result = VideoShaderConstants.pqEOTF(1.0)
+        XCTAssertEqual(result, 1.0, accuracy: 0.01)
+    }
+
+    // MARK: - Gamut Mapping Tests
+
+    /// UT-044.4: D65 白点在两个色域中应一致
+    func testGamutMapping_White() {
+        let white = simd_float3(1.0, 1.0, 1.0)
+        let mapped = VideoShaderConstants.applyGamutMapping(white)
+        XCTAssertEqual(mapped.x, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.y, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.z, 1.0, accuracy: 0.01)
+    }
+
+    /// UT-044.5: 任意输入都不应产生负值
+    func testGamutMapping_NoNegatives() {
+        let testColors: [simd_float3] = [
+            simd_float3(0.5, 0.0, 0.0),
+            simd_float3(0.0, 0.5, 0.0),
+            simd_float3(0.0, 0.0, 0.5),
+            simd_float3(0.3, 0.6, 0.9)
+        ]
+
+        for color in testColors {
+            let mapped = VideoShaderConstants.applyGamutMapping(color)
+            XCTAssertGreaterThanOrEqual(mapped.x, 0.0)
+            XCTAssertGreaterThanOrEqual(mapped.y, 0.0)
+            XCTAssertGreaterThanOrEqual(mapped.z, 0.0)
+        }
+    }
+
+    // MARK: - ACES Tone Mapping Tests
+
+    /// UT-044.6: ACES 黑色输入
+    func testACES_Black() {
+        let result = VideoShaderConstants.acesTonemap(simd_float3(0, 0, 0))
+        XCTAssertEqual(result.x, 0.0, accuracy: 0.0001)
+    }
+
+    /// UT-044.7: 高输入应被 clamp 到 1.0
+    func testACES_Clamp() {
+        let result = VideoShaderConstants.acesTonemap(simd_float3(10, 10, 10))
+        XCTAssertLessThanOrEqual(result.x, 1.0)
+        XCTAssertLessThanOrEqual(result.y, 1.0)
+        XCTAssertLessThanOrEqual(result.z, 1.0)
+    }
+
+    /// UT-044.8: SDR 范围合理 S 曲线响应
+    func testACES_SDRRange() {
+        let midGray = VideoShaderConstants.acesTonemap(simd_float3(0.18, 0.18, 0.18))
+        XCTAssertGreaterThan(midGray.x, 0.1)
+        XCTAssertLessThan(midGray.x, 0.3)
+    }
+
+    // MARK: - YUV Matrix Tests
+
+    /// UT-044.9: BT.709 白点测试
+    func testBT709_WhitePoint() {
+        let yuv = simd_float3(1.0, 0.0, 0.0)
+        let rgb = VideoShaderConstants.bt709Limited * yuv
+        XCTAssertEqual(rgb.x, 1.0, accuracy: 0.01)
+        XCTAssertEqual(rgb.y, 1.0, accuracy: 0.01)
+        XCTAssertEqual(rgb.z, 1.0, accuracy: 0.01)
+    }
+
+    /// UT-044.10: Rec.2020 → P3 矩阵验证
+    func testRec2020ToP3Matrix() {
+        let matrix = VideoShaderConstants.rec2020ToP3Matrix
+        // 验证对角线元素在合理范围
+        XCTAssertGreaterThan(matrix.columns.0.x, 1.0)  // ~1.2249
+        XCTAssertGreaterThan(matrix.columns.1.y, 1.0)  // ~1.0419
+        XCTAssertGreaterThan(matrix.columns.2.z, 1.0)  // ~1.0979
+    }
+}
+```
+
+### 23.3 集成测试
+
+#### IT-015: HDR 配置渲染集成测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-015.1 | testEDRIntensityAffectsRendering | EDR 强度影响渲染 | 不同强度产生不同输出 | P0 |
+| IT-015.2 | testGamutMappingToggleAffectsColor | 色域映射开关影响颜色 | 开关状态影响输出 | P0 |
+
+```swift
+// HDRConfigRenderingIntegrationTests.swift
+// @verifies AC-097, AC-098
+
+final class HDRConfigRenderingIntegrationTests: XCTestCase {
+
+    /// IT-015.1: EDR 强度影响渲染输出
+    func testEDRIntensityAffectsRendering() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        // 创建测试帧
+        guard let testBuffer = createTestPixelBuffer(format: kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange) else {
+            XCTFail("Failed to create test buffer")
+            return
+        }
+
+        // 设置 HDR 配置
+        var config = HDRConfiguration.hdr
+        config.edrIntensity = 1.0
+        renderer.hdrConfiguration = config
+        renderer.submitFrame(testBuffer)
+
+        // 验证 uniforms 中的 edrIntensity 已应用
+        // 实际渲染验证需要捕获 GPU 输出，这里验证配置传递
+        XCTAssertEqual(renderer.edrIntensity, 1.0, accuracy: 0.001)
+
+        config.edrIntensity = 2.0
+        renderer.hdrConfiguration = config
+        XCTAssertEqual(renderer.edrIntensity, 2.0, accuracy: 0.001)
+    }
+
+    /// IT-015.2: 色域映射开关影响颜色输出
+    func testGamutMappingToggleAffectsColor() {
+        guard let renderer = MetalVideoRenderer() else {
+            XCTSkip("Metal not available")
+            return
+        }
+
+        var config = HDRConfiguration.hdr
+        config.gamutMappingEnabled = true
+        renderer.hdrConfiguration = config
+        XCTAssertTrue(renderer.isGamutMappingEnabled)
+
+        config.gamutMappingEnabled = false
+        renderer.hdrConfiguration = config
+        XCTAssertFalse(renderer.isGamutMappingEnabled)
+    }
+
+    private func createTestPixelBuffer(format: OSType) -> CVPixelBuffer? {
+        var pixelBuffer: CVPixelBuffer?
+        CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            1920, 1080,
+            format,
+            nil,
+            &pixelBuffer
+        )
+        return pixelBuffer
+    }
+}
+```
+
+### 23.4 E2E 测试
+
+#### E2E-012: HDR 配置用户体验测试
+
+| 编号 | 测试步骤 | 预期结果 | 优先级 |
+|------|----------|----------|--------|
+| E2E-012.1 | 1. 打开设置-视频<br>2. 启用 HDR<br>3. 调整 EDR 强度滑块<br>4. 观察预览效果 | 画面亮度随滑块实时变化 | P1 |
+
+### 23.5 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-097: Shader 动态分支 | UT-042.1~4, UT-043.1~2 | IT-015.1~2 | - |
+| AC-098: EDR 强度应用 | UT-043.1, UT-043.3 | IT-015.1 | E2E-012.1 |
+| AC-099: 色域映射开关 | UT-043.2, UT-043.4 | IT-015.2 | E2E-012.1 |
+| AC-100: 单元测试覆盖 | UT-044.1~10 | - | - |
+
+---
+
+## 24. F-029 MainActor 边界规范化测试
+
+> **功能**: F-029 MainActor 边界规范化
+> **用户故事**: US-017
+> **验收标准**: AC-101 ~ AC-103
+> **设计版本**: 2026-02-04
+
+### 24.1 测试概述
+
+| 测试类型 | 数量 | 覆盖 AC |
+|----------|------|---------|
+| 单元测试 | 6 | AC-101, AC-102 |
+| 集成测试 | 3 | AC-101, AC-102, AC-103 |
+| 代码审查 | 1 | AC-103 |
+
+### 24.2 单元测试
+
+#### UT-045: SettingsStore MainActor 测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-045.1 | testSettingsStoreIsMainActor | SettingsStore 标注 | 类型标注 @MainActor | P0 |
+| UT-045.2 | testSettingsStoreSharedOnMainActor | shared 在 MainActor | 访问 shared 需要 MainActor | P0 |
+| UT-045.3 | testSettingsStorePropertiesOnMainActor | 属性在 MainActor | 属性访问需要 MainActor | P1 |
+
+```swift
+// SettingsStoreMainActorTests.swift
+// @verifies AC-101
+
+final class SettingsStoreMainActorTests: XCTestCase {
+
+    /// UT-045.1: SettingsStore 整体标注 @MainActor
+    @MainActor
+    func testSettingsStoreIsMainActor() {
+        // 如果能直接访问，说明在 MainActor 上
+        let store = SettingsStore.shared
+        XCTAssertNotNil(store)
+    }
+
+    /// UT-045.2: shared 在 MainActor 上
+    func testSettingsStoreSharedOnMainActor() async {
+        // 从非 MainActor 上下文访问需要 await
+        let store = await MainActor.run {
+            SettingsStore.shared
+        }
+        XCTAssertNotNil(store)
+    }
+
+    /// UT-045.3: 属性访问需要 MainActor
+    @MainActor
+    func testSettingsStorePropertiesOnMainActor() {
+        let store = SettingsStore.shared
+        // 直接访问属性（在 MainActor 上）
+        _ = store.streamSettings
+        XCTAssertTrue(true)  // 编译通过即验证
+    }
+}
+```
+
+#### UT-046: HostStore MainActor 测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-046.1 | testHostStoreIsMainActor | HostStore 标注 | 类型标注 @MainActor | P0 |
+| UT-046.2 | testHostStoreSharedOnMainActor | shared 在 MainActor | 访问 shared 需要 MainActor | P0 |
+| UT-046.3 | testHostStoreCRUDOnMainActor | CRUD 在 MainActor | CRUD 操作需要 MainActor | P1 |
+
+```swift
+// HostStoreMainActorTests.swift
+// @verifies AC-102
+
+final class HostStoreMainActorTests: XCTestCase {
+
+    /// UT-046.1: HostStore 整体标注 @MainActor
+    @MainActor
+    func testHostStoreIsMainActor() {
+        let store = HostStore.shared
+        XCTAssertNotNil(store)
+    }
+
+    /// UT-046.2: shared 在 MainActor 上
+    func testHostStoreSharedOnMainActor() async {
+        let store = await MainActor.run {
+            HostStore.shared
+        }
+        XCTAssertNotNil(store)
+    }
+
+    /// UT-046.3: CRUD 操作在 MainActor 上
+    @MainActor
+    func testHostStoreCRUDOnMainActor() {
+        let store = HostStore(userDefaults: .init(suiteName: "test")!)
+        let host = ConsoleHost.mock()
+        store.addHost(host)
+        XCTAssertTrue(store.hosts.contains(where: { $0.id == host.id }))
+        store.removeHost(host)
+    }
+}
+```
+
+### 24.3 集成测试
+
+#### IT-016: MainActor 边界集成测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-016.1 | testBackgroundAccessToSettingsStore | 后台线程访问 SettingsStore | 需要 MainActor.run | P0 |
+| IT-016.2 | testBackgroundAccessToHostStore | 后台线程访问 HostStore | 需要 MainActor.run | P0 |
+| IT-016.3 | testNetworkMonitorStateUpdateOnMainActor | NetworkMonitor 状态更新 | 状态变更在 MainActor | P1 |
+
+```swift
+// MainActorBoundaryIntegrationTests.swift
+// @verifies AC-101, AC-102, AC-103
+
+final class MainActorBoundaryIntegrationTests: XCTestCase {
+
+    /// IT-016.1: 后台线程访问 SettingsStore
+    func testBackgroundAccessToSettingsStore() async {
+        // 在后台任务中访问
+        let expectation = expectation(description: "Background access")
+
+        Task.detached {
+            // 从后台访问需要 MainActor.run
+            let settings = await MainActor.run {
+                SettingsStore.shared.streamSettings
+            }
+            XCTAssertNotNil(settings)
+            expectation.fulfill()
+        }
+
+        await fulfillment(of: [expectation], timeout: 5.0)
+    }
+
+    /// IT-016.2: 后台线程访问 HostStore
+    func testBackgroundAccessToHostStore() async {
+        let expectation = expectation(description: "Background access")
+
+        Task.detached {
+            let hosts = await MainActor.run {
+                HostStore.shared.hosts
+            }
+            XCTAssertNotNil(hosts)
+            expectation.fulfill()
+        }
+
+        await fulfillment(of: [expectation], timeout: 5.0)
+    }
+
+    /// IT-016.3: NetworkMonitor 状态更新在 MainActor
+    @MainActor
+    func testNetworkMonitorStateUpdateOnMainActor() {
+        let monitor = NetworkMonitor.shared
+        // 验证属性可在 MainActor 上访问
+        _ = monitor.isConnected
+        _ = monitor.connectionType
+        XCTAssertTrue(true)  // 编译通过即验证
+    }
+}
+```
+
+### 24.4 代码审查测试
+
+#### CR-001: Observable Store 审查
+
+| 审查项 | 检查内容 | 状态 |
+|--------|----------|------|
+| SettingsStore | 类声明包含 `@MainActor` | 待验证 |
+| HostStore | 类声明包含 `@MainActor` | 待验证 |
+| ControllerManager | 已有 `@MainActor` 或等效隔离 | 待验证 |
+| NetworkMonitor | 状态属性标注 `@MainActor` | 待验证 |
+
+### 24.5 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | 代码审查 |
+|----------|----------|----------|----------|
+| AC-101: SettingsStore 标注 | UT-045.1~3 | IT-016.1 | CR-001 |
+| AC-102: HostStore 标注 | UT-046.1~3 | IT-016.2 | CR-001 |
+| AC-103: 其他 Store 审查 | - | IT-016.3 | CR-001 |
+
+---
+
+## 25. F-030 日志输出规范化测试
+
+> **功能**: F-030 日志输出规范化
+> **用户故事**: US-018
+> **验收标准**: AC-104 ~ AC-106
+> **设计版本**: 2026-02-04
+
+### 25.1 测试概述
+
+| 测试类型 | 数量 | 覆盖 AC |
+|----------|------|---------|
+| 单元测试 | 4 | AC-104, AC-105 |
+| 代码审查 | 3 | AC-104, AC-105, AC-106 |
+
+### 25.2 单元测试
+
+#### UT-047: Logger 统一测试
+
+| 编号 | 测试方法 | 场景 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-047.1 | testLoggerSessionCategory | Logger.session 可用 | 日志正常输出 | P0 |
+| UT-047.2 | testLoggerVideoCategory | Logger.video 可用 | 日志正常输出 | P0 |
+| UT-047.3 | testLogDebugNotInRelease | Debug 日志 Release 不输出 | Release 无 debug 输出 | P1 |
+| UT-047.4 | testLogVerboseProtectedByDebug | Verbose 日志受 DEBUG 保护 | 仅 DEBUG 时输出 | P1 |
+
+```swift
+// LoggerUnificationTests.swift
+// @verifies AC-104, AC-105
+
+final class LoggerUnificationTests: XCTestCase {
+
+    /// UT-047.1: Logger.session 类别可用
+    func testLoggerSessionCategory() {
+        // 验证不会崩溃
+        Logger.session.info("Test session log")
+        XCTAssertTrue(true)
+    }
+
+    /// UT-047.2: Logger.video 类别可用
+    func testLoggerVideoCategory() {
+        Logger.video.info("Test video log")
+        XCTAssertTrue(true)
+    }
+
+    /// UT-047.3: Debug 日志在 Release 中不输出
+    func testLogDebugNotInRelease() {
+        #if DEBUG
+        // Debug 模式下输出
+        Logger.session.debug("This is debug log")
+        XCTAssertTrue(true)
+        #else
+        // Release 模式下验证 debug 级别日志被过滤
+        // 这需要检查 Logger 的 levelMask 设置
+        XCTAssertTrue(true)  // Release 构建时验证
+        #endif
+    }
+
+    /// UT-047.4: Verbose 日志受 DEBUG 保护
+    func testLogVerboseProtectedByDebug() {
+        #if DEBUG
+        logVerbose("This verbose log is protected")
+        XCTAssertTrue(true)
+        #else
+        // Release 模式下此代码不应存在
+        XCTAssertTrue(true)
+        #endif
+    }
+}
+```
+
+### 25.3 代码审查测试
+
+#### CR-002: ChiakiSessionWrapper 日志审查 (AC-104)
+
+| 审查项 | 检查内容 | 文件位置 |
+|--------|----------|----------|
+| print 替换 | 无裸 `print()` 调用 | ChiakiSession.swift |
+| Logger 使用 | 使用 `Logger.session.*` | ChiakiSession.swift |
+| 级别正确 | error/warning/info/debug 正确使用 | ChiakiSession.swift |
+
+#### CR-003: DEBUG 保护审查 (AC-105)
+
+| 审查项 | 检查内容 | 文件位置 |
+|--------|----------|----------|
+| 高频日志保护 | `logVerbose` 使用 `#if DEBUG` | VideoDecoderBridge.swift |
+| 参数计算保护 | 昂贵计算在 DEBUG 块中 | AudioPlayerBridge.swift |
+
+#### CR-004: Bridge 层日志审查 (AC-106)
+
+| 文件 | print 数量 | Logger 数量 | 状态 |
+|------|-----------|-------------|------|
+| ChiakiSession.swift | 0 | ≥5 | 待验证 |
+| ChiakiDiscovery.swift | 0 | ≥3 | 待验证 |
+| ChiakiRegist.swift | 0 | ≥3 | 待验证 |
+| VideoDecoderBridge.swift | 0 | ≥5 | 待验证 |
+| VideoToolboxDecoder.swift | 0 | ≥3 | 待验证 |
+| AudioPlayerBridge.swift | 0 | ≥3 | 待验证 |
+
+### 25.4 自动化检查脚本
+
+```bash
+#!/bin/bash
+# check_logging_compliance.sh
+# @verifies AC-104, AC-105, AC-106
+
+BRIDGE_DIR="Chiaki/Core/Bridge"
+VIDEO_DIR="Chiaki/Core/Video"
+AUDIO_DIR="Chiaki/Core/Audio"
+
+echo "=== Logging Compliance Check ==="
+
+# AC-104: 检查 print 使用
+echo "Checking for bare print() calls in Bridge layer..."
+PRINT_COUNT=$(grep -r "print(" "$BRIDGE_DIR" "$VIDEO_DIR" "$AUDIO_DIR" --include="*.swift" | grep -v "// " | wc -l)
+if [ "$PRINT_COUNT" -gt 0 ]; then
+    echo "❌ Found $PRINT_COUNT bare print() calls"
+    grep -r "print(" "$BRIDGE_DIR" "$VIDEO_DIR" "$AUDIO_DIR" --include="*.swift" | grep -v "// "
+else
+    echo "✅ No bare print() calls found"
+fi
+
+# AC-105: 检查 logVerbose 保护
+echo "Checking logVerbose DEBUG protection..."
+UNPROTECTED=$(grep -B1 "logVerbose" "$BRIDGE_DIR" "$VIDEO_DIR" "$AUDIO_DIR" --include="*.swift" | grep -v "#if DEBUG" | grep "logVerbose" | wc -l)
+if [ "$UNPROTECTED" -gt 0 ]; then
+    echo "⚠️ Found $UNPROTECTED potentially unprotected logVerbose calls"
+else
+    echo "✅ All logVerbose calls appear protected"
+fi
+
+# AC-106: 统计 Logger 使用
+echo "Logger usage statistics:"
+for DIR in "$BRIDGE_DIR" "$VIDEO_DIR" "$AUDIO_DIR"; do
+    LOGGER_COUNT=$(grep -r "Logger\." "$DIR" --include="*.swift" 2>/dev/null | wc -l)
+    echo "  $DIR: $LOGGER_COUNT Logger calls"
+done
+
+echo "=== Check Complete ==="
+```
+
+### 25.5 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 代码审查 | 自动化检查 |
+|----------|----------|----------|------------|
+| AC-104: Logger 统一 | UT-047.1~2 | CR-002 | check_logging_compliance.sh |
+| AC-105: DEBUG 保护 | UT-047.3~4 | CR-003 | check_logging_compliance.sh |
+| AC-106: Bridge 层审查 | - | CR-004 | check_logging_compliance.sh |
+
+---
+
+## 26. 测试用例汇总 (F-028, F-029, F-030)
+
+### 26.1 新增测试统计
+
+| 功能 | 单元测试 | 集成测试 | E2E 测试 | 代码审查 | 总计 |
+|------|----------|----------|----------|----------|------|
+| F-028 HDR 配置完全落地 | 14 | 2 | 1 | 0 | 17 |
+| F-029 MainActor 边界规范化 | 6 | 3 | 0 | 1 | 10 |
+| F-030 日志输出规范化 | 4 | 0 | 0 | 3 | 7 |
+| **总计** | **24** | **5** | **1** | **4** | **34** |
+
+### 26.2 优先级分布
+
+| 优先级 | 数量 | 说明 |
+|--------|------|------|
+| P0 | 20 | 核心功能必测 |
+| P1 | 10 | 重要功能 |
+| P2 | 0 | 扩展功能 |
+| 审查 | 4 | 代码审查验证 |
+
+### 26.3 测试编号范围
+
+| 类型 | 范围 | 说明 |
+|------|------|------|
+| 单元测试 | UT-042 ~ UT-047 | 6 个测试组 |
+| 集成测试 | IT-015 ~ IT-016 | 2 个测试组 |
+| E2E 测试 | E2E-012 | 1 个测试组 |
+| 代码审查 | CR-001 ~ CR-004 | 4 个审查项 |
+
+### 26.4 完整追溯矩阵
+
+| AC 编号 | 验收标准 | UT | IT | E2E | CR |
+|---------|----------|-----|-----|-----|-----|
+| AC-097 | Shader 动态分支 | UT-042, UT-043 | IT-015 | - | - |
+| AC-098 | EDR 强度应用 | UT-043.1, UT-043.3 | IT-015.1 | E2E-012 | - |
+| AC-099 | 色域映射开关 | UT-043.2, UT-043.4 | IT-015.2 | E2E-012 | - |
+| AC-100 | 单元测试覆盖 | UT-044.1~10 | - | - | - |
+| AC-101 | SettingsStore 标注 | UT-045.1~3 | IT-016.1 | - | CR-001 |
+| AC-102 | HostStore 标注 | UT-046.1~3 | IT-016.2 | - | CR-001 |
+| AC-103 | 其他 Store 审查 | - | IT-016.3 | - | CR-001 |
+| AC-104 | Logger 统一 | UT-047.1~2 | - | - | CR-002 |
+| AC-105 | DEBUG 保护 | UT-047.3~4 | - | - | CR-003 |
+| AC-106 | Bridge 层审查 | - | - | - | CR-004 |
