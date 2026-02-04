@@ -4,20 +4,23 @@
 // Chiaki - PlayStation Remote Play Client for Apple Platforms
 //
 // View for managing PSN account and settings
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-091 - AccountSettingsView 使用 ViewModel
 
 import SwiftUI
 
+/// Account settings view using MVVM pattern
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct AccountSettingsView: View {
-    @State private var psnService = PSNService.shared
+    @State private var viewModel = AccountSettingsViewModel()
     @State private var showingLogin = false
-    @State private var isRefreshing = false
-    @State private var refreshError: String?
     @State private var showRefreshSuccess = false
 
     var body: some View {
         List {
             Section {
-                if let account = psnService.account {
+                if let account = viewModel.account {
                     HStack {
                         VStack(alignment: .leading) {
                             Text(account.onlineId)
@@ -33,40 +36,27 @@ struct AccountSettingsView: View {
                             .foregroundStyle(.green)
                     }
 
-                    // Token status
-                    if let expirationDate = psnService.tokenExpirationDate {
-                        HStack {
-                            Text(String(localized: "psnLogin.tokenExpires"))
-                            Spacer()
-                            if psnService.isTokenExpired {
-                                Text(String(localized: "psnLogin.tokenExpired"))
-                                    .foregroundStyle(.red)
-                            } else {
-                                Text(expirationDate.formatted(date: .abbreviated, time: .shortened))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .font(.caption)
-                    }
-
                     // Manual refresh button
                     Button {
                         Task {
-                            await refreshToken()
+                            await viewModel.refreshToken()
+                            if viewModel.errorMessage == nil {
+                                showRefreshSuccess = true
+                            }
                         }
                     } label: {
                         HStack {
-                            if isRefreshing {
+                            if viewModel.isRefreshing {
                                 ProgressView()
                                     .scaleEffect(0.8)
                             }
                             Text(String(localized: "psnLogin.refreshToken"))
                         }
                     }
-                    .disabled(isRefreshing)
+                    .disabled(viewModel.isRefreshing)
 
                     Button(role: .destructive) {
-                        psnService.signOut()
+                        viewModel.signOut()
                     } label: {
                         Text(String(localized: "psnLogin.signOut"))
                     }
@@ -89,7 +79,7 @@ struct AccountSettingsView: View {
             } header: {
                 Text(String(localized: "psnLogin.sectionTitle"))
             } footer: {
-                if !psnService.isAuthenticated {
+                if !viewModel.isSignedIn {
                     Text(String(localized: "psnLogin.credentialsNote"))
                 }
             }
@@ -99,32 +89,18 @@ struct AccountSettingsView: View {
             PSNLoginView()
         }
         .alert(String(localized: "psnLogin.refreshFailed"), isPresented: .init(
-            get: { refreshError != nil },
-            set: { if !$0 { refreshError = nil } }
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { /* errorMessage cleared on next action */ } }
         )) {
             Button(L10n.Common.ok, role: .cancel) {}
         } message: {
-            if let error = refreshError {
+            if let error = viewModel.errorMessage {
                 Text(error)
             }
         }
         .alert(String(localized: "psnLogin.refreshSuccess"), isPresented: $showRefreshSuccess) {
             Button(L10n.Common.ok, role: .cancel) {}
         }
-    }
-
-    private func refreshToken() async {
-        isRefreshing = true
-        refreshError = nil
-
-        do {
-            try await psnService.manualRefresh()
-            showRefreshSuccess = true
-        } catch {
-            refreshError = error.localizedDescription
-        }
-
-        isRefreshing = false
     }
 }
 
