@@ -6086,3 +6086,777 @@ Chiaki/Shared/
 1. `MetalVideoRenderer` 不再直接实现 `MTKViewDelegate`，使用 `VideoStreamView.Coordinator` 代替
 2. 新 ViewModel 采用依赖注入，支持 Mock 测试
 3. 协议抽象允许替换具体实现，便于单元测试
+
+---
+
+## 18. HDR 配置完全落地设计 [增量]
+
+> **变更来源**: F-028 HDR 配置完全落地 (INS-048)
+> **关联需求**: AC-097 ~ AC-100
+> **设计版本**: v1.8.0
+
+### 18.1 影响分析
+
+#### 背景
+
+当前 `HDRConfiguration` 已包含 `edrIntensity`、`gamutMappingEnabled` 等字段，但 Metal Shader 中 HDR 路径基本固定执行，这些配置字段未能真正影响渲染行为。本设计将这些配置字段接入 `VideoUniforms`，并在 Shader 中实现动态分支。
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `VideoUniforms` | 修改 | 新增 `edrIntensity`、`gamutMappingEnabled` 字段 |
+| `MetalVideoRenderer` | 修改 | 同步 HDRConfiguration 到 Uniforms |
+| `VideoShaders.metal` (运行时源) | 修改 | 根据配置动态执行色域映射和 EDR 强度 |
+| `VideoShaderConstants.swift` | 新增 | CPU 端色彩常量验证 |
+| `VideoShaderConstantsTests.swift` | 新增 | Shader 常量单元测试 |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| VideoUniforms 扩展 | ✅ 兼容 | 新增字段，现有字段不变 |
+| Shader 动态分支 | ✅ 兼容 | 默认行为与当前一致 |
+| 新增测试 | ✅ 兼容 | 纯增量 |
+
+### 18.2 VideoUniforms 扩展 (AC-097)
+
+```swift
+/// 扩展后的 VideoUniforms
+/// @requirement F-028
+/// @satisfies AC-097
+struct VideoUniforms {
+    var transform: simd_float4x4
+    var textureSizeY: simd_float2
+    var textureSizeUV: simd_float2
+    var brightness: Float
+    var contrast: Float
+    var saturation: Float
+    var colorSpace: UInt32   // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
+    var colorRange: UInt32   // 0 = VideoRange(Limited), 1 = FullRange
+    var edrHeadroom: Float   // AC-081: EDR Headroom (1.0+)
+    var tonemapMode: UInt32  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
+
+    // 新增字段 (AC-097)
+    var edrIntensity: Float      // AC-098: EDR 强度乘数 (0.5 ~ 2.0, 默认 1.0)
+    var gamutMappingEnabled: UInt32  // AC-099: 0 = 禁用, 1 = 启用
+    var _padding: Float = 0.0    // 保持 16 字节对齐
+
+    static var `default`: VideoUniforms {
+        VideoUniforms(
+            transform: matrix_identity_float4x4,
+            textureSizeY: simd_float2(1920, 1080),
+            textureSizeUV: simd_float2(960, 540),
+            brightness: 1.0,
+            contrast: 1.0,
+            saturation: 1.0,
+            colorSpace: 0,
+            colorRange: 0,
+            edrHeadroom: 1.0,
+            tonemapMode: 0,
+            edrIntensity: 1.0,        // 新增
+            gamutMappingEnabled: 1,   // 新增（默认启用）
+            _padding: 0.0
+        )
+    }
+}
+```
+
+### 18.3 MetalVideoRenderer 配置同步
+
+```swift
+/// HDRConfiguration 设置器修改
+/// @requirement F-028
+/// @satisfies AC-097, AC-098, AC-099
+var hdrConfiguration: HDRConfiguration = .sdr {
+    didSet {
+        uniforms.colorSpace = hdrConfiguration.colorSpace.rawValue
+        uniforms.colorRange = hdrConfiguration.colorRange.rawValue
+        uniforms.tonemapMode = hdrConfiguration.tonemapMode.rawValue
+
+        // 新增: 同步 edrIntensity 和 gamutMappingEnabled (AC-097)
+        uniforms.edrIntensity = hdrConfiguration.edrIntensity
+        uniforms.gamutMappingEnabled = hdrConfiguration.gamutMappingEnabled ? 1 : 0
+
+        triggerRedraw()
+    }
+}
+
+/// 单独设置 EDR 强度（用于实时预览）
+/// @satisfies AC-098
+func setEDRIntensity(_ intensity: Float) {
+    uniforms.edrIntensity = max(0.5, min(2.0, intensity))
+    triggerRedraw()
+}
+
+/// 单独设置色域映射开关
+/// @satisfies AC-099
+func setGamutMappingEnabled(_ enabled: Bool) {
+    uniforms.gamutMappingEnabled = enabled ? 1 : 0
+    triggerRedraw()
+}
+```
+
+### 18.4 Metal Shader 动态分支
+
+```metal
+// VideoShaders.metal (运行时源) - 修改后的 HDR 处理
+// @requirement F-028
+// @satisfies AC-098, AC-099
+
+fragment float4 videoBiplanarFragmentShader(
+    VertexOut in [[stage_in]],
+    texture2d<float> textureY [[texture(0)]],
+    texture2d<float> textureUV [[texture(1)]],
+    constant VideoUniforms &uniforms [[buffer(1)]]
+) {
+    // ... YUV 解码部分不变 ...
+
+    // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+    if (uniforms.colorSpace == 2u) {
+        rgb = clamp(rgb, 0.0, 1.0);
+        rgb = pqEOTF(rgb);
+
+        // AC-099: 条件色域映射（根据配置）
+        if (uniforms.gamutMappingEnabled == 1u) {
+            rgb = applyGamutMapping(rgb);
+        }
+
+        if (uniforms.tonemapMode == 1u) {
+            // ACES Tone Mapping (SDR Output)
+            rgb = acesTonemap(rgb);
+        } else {
+            // HDR Output (EDR Scaling)
+            rgb = linearToEDR(rgb);
+            rgb = rgb * uniforms.edrHeadroom;
+
+            // AC-098: 应用用户 EDR 强度设置
+            rgb = rgb * uniforms.edrIntensity;
+        }
+
+        // ... 颜色调整部分不变 ...
+    }
+    // ... SDR 处理不变 ...
+}
+```
+
+### 18.5 VideoShaderConstants (AC-100)
+
+CPU 端常量定义，用于验证 Shader 行为一致性。
+
+```swift
+/// CPU 端 Shader 常量定义
+/// @requirement F-028
+/// @satisfies AC-100
+enum VideoShaderConstants {
+
+    // MARK: - PQ EOTF 常量
+    static let pq_m1: Float = 0.1593017578125    // 2610/16384
+    static let pq_m2: Float = 78.84375           // 2523/32 * 128
+    static let pq_c1: Float = 0.8359375          // 3424/4096
+    static let pq_c2: Float = 18.8515625         // 2413/128
+    static let pq_c3: Float = 18.6875            // 2392/128
+
+    // MARK: - 色域映射矩阵 (Rec.2020 → P3)
+    /// Rec.2020 到 Display P3 转换矩阵 (D65 白点，线性空间)
+    /// 列主序，与 Metal shader 一致
+    static let rec2020ToP3Matrix: simd_float3x3 = simd_float3x3(
+        simd_float3( 1.2249, -0.0420, -0.0197),  // Column 0
+        simd_float3(-0.2247,  1.0419, -0.0786),  // Column 1
+        simd_float3( 0.0000,  0.0000,  1.0979)   // Column 2
+    )
+
+    // MARK: - YUV 转 RGB 矩阵
+
+    /// BT.709 Limited Range
+    static let bt709Limited: simd_float3x3 = simd_float3x3(
+        simd_float3(1.0,         1.0,         1.0),
+        simd_float3(0.0,        -0.21325,     2.11240),
+        simd_float3(1.79274,    -0.53291,     0.0)
+    )
+
+    /// BT.2020 Limited Range
+    static let bt2020Limited: simd_float3x3 = simd_float3x3(
+        simd_float3(1.0,         1.0,         1.0),
+        simd_float3(0.0,        -0.18740,     2.14290),
+        simd_float3(1.67958,    -0.65046,     0.0)
+    )
+
+    // MARK: - PQ EOTF (CPU 端验证)
+
+    /// 应用 PQ EOTF 解码
+    /// - Parameter pq: PQ 编码值 (0~1)
+    /// - Returns: 线性光值 (0~1, 代表 0~10000 nits)
+    static func pqEOTF(_ pq: Float) -> Float {
+        let p = pow(max(pq, 0), 1.0 / pq_m2)
+        let num = max(p - pq_c1, 0)
+        let den = pq_c2 - pq_c3 * p
+        return pow(num / den, 1.0 / pq_m1)
+    }
+
+    /// 应用 PQ EOTF 到 RGB 向量
+    static func pqEOTF(_ rgb: simd_float3) -> simd_float3 {
+        simd_float3(pqEOTF(rgb.x), pqEOTF(rgb.y), pqEOTF(rgb.z))
+    }
+
+    // MARK: - ACES Tone Mapping (CPU 端验证)
+
+    /// ACES Filmic Tone Mapping
+    /// 基于 Narkowicz 2015
+    static func acesTonemap(_ x: simd_float3) -> simd_float3 {
+        let a: Float = 2.51
+        let b: Float = 0.03
+        let c: Float = 2.43
+        let d: Float = 0.59
+        let e: Float = 0.14
+
+        let result = (x * (a * x + b)) / (x * (c * x + d) + e)
+        return simd_clamp(result, simd_float3(0, 0, 0), simd_float3(1, 1, 1))
+    }
+
+    // MARK: - Gamut Mapping
+
+    /// 应用 Rec.2020 → P3 色域映射
+    static func applyGamutMapping(_ color: simd_float3) -> simd_float3 {
+        let p3 = rec2020ToP3Matrix * color
+        return simd_max(p3, simd_float3(0, 0, 0))
+    }
+}
+```
+
+### 18.6 单元测试 (AC-100)
+
+```swift
+/// VideoShaderConstants 单元测试
+/// @requirement F-028
+/// @satisfies AC-100
+final class VideoShaderConstantsTests: XCTestCase {
+
+    // MARK: - PQ EOTF Tests
+
+    func testPQEOTF_Black() {
+        // PQ 0.0 应解码为线性 0.0
+        let result = VideoShaderConstants.pqEOTF(0.0)
+        XCTAssertEqual(result, 0.0, accuracy: 0.0001)
+    }
+
+    func testPQEOTF_SDRWhite() {
+        // PQ 0.508 ≈ 203 nits (SDR 参考白)
+        // 203/10000 = 0.0203 线性
+        let result = VideoShaderConstants.pqEOTF(0.508)
+        XCTAssertEqual(result, 0.0203, accuracy: 0.002)
+    }
+
+    func testPQEOTF_Peak() {
+        // PQ 1.0 应解码为线性 1.0 (10000 nits)
+        let result = VideoShaderConstants.pqEOTF(1.0)
+        XCTAssertEqual(result, 1.0, accuracy: 0.01)
+    }
+
+    // MARK: - Gamut Mapping Tests
+
+    func testGamutMapping_White() {
+        // D65 白点在两个色域中应一致
+        let white = simd_float3(1.0, 1.0, 1.0)
+        let mapped = VideoShaderConstants.applyGamutMapping(white)
+        XCTAssertEqual(mapped.x, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.y, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.z, 1.0, accuracy: 0.01)
+    }
+
+    func testGamutMapping_Red() {
+        // Rec.2020 红原色映射到 P3
+        let rec2020Red = simd_float3(1.0, 0.0, 0.0)
+        let p3Red = VideoShaderConstants.applyGamutMapping(rec2020Red)
+        // P3 红比 2020 红更窄，所以 x 会略大于 1.0，需要 clamp
+        XCTAssertGreaterThan(p3Red.x, 0.9)
+    }
+
+    func testGamutMapping_NoNegatives() {
+        // 任意输入都不应产生负值
+        let testColors: [simd_float3] = [
+            simd_float3(0.5, 0.0, 0.0),
+            simd_float3(0.0, 0.5, 0.0),
+            simd_float3(0.0, 0.0, 0.5),
+            simd_float3(0.3, 0.6, 0.9)
+        ]
+
+        for color in testColors {
+            let mapped = VideoShaderConstants.applyGamutMapping(color)
+            XCTAssertGreaterThanOrEqual(mapped.x, 0.0)
+            XCTAssertGreaterThanOrEqual(mapped.y, 0.0)
+            XCTAssertGreaterThanOrEqual(mapped.z, 0.0)
+        }
+    }
+
+    // MARK: - ACES Tone Mapping Tests
+
+    func testACES_Black() {
+        let result = VideoShaderConstants.acesTonemap(simd_float3(0, 0, 0))
+        XCTAssertEqual(result.x, 0.0, accuracy: 0.0001)
+    }
+
+    func testACES_Clamp() {
+        // 高输入应被 clamp 到 1.0
+        let result = VideoShaderConstants.acesTonemap(simd_float3(10, 10, 10))
+        XCTAssertLessThanOrEqual(result.x, 1.0)
+        XCTAssertLessThanOrEqual(result.y, 1.0)
+        XCTAssertLessThanOrEqual(result.z, 1.0)
+    }
+
+    func testACES_SDRRange() {
+        // SDR 范围 (0~1) 应有合理的 S 曲线响应
+        let midGray = VideoShaderConstants.acesTonemap(simd_float3(0.18, 0.18, 0.18))
+        XCTAssertGreaterThan(midGray.x, 0.1)
+        XCTAssertLessThan(midGray.x, 0.3)
+    }
+
+    // MARK: - YUV Matrix Tests
+
+    func testBT709_WhitePoint() {
+        // Y=1, U=0, V=0 应转换为白色
+        let yuv = simd_float3(1.0, 0.0, 0.0)
+        let rgb = VideoShaderConstants.bt709Limited * yuv
+        XCTAssertEqual(rgb.x, 1.0, accuracy: 0.01)
+        XCTAssertEqual(rgb.y, 1.0, accuracy: 0.01)
+        XCTAssertEqual(rgb.z, 1.0, accuracy: 0.01)
+    }
+}
+```
+
+### 18.7 代码结构变更
+
+```
+Chiaki/
+├── Core/
+│   └── Video/
+│       ├── MetalVideoRenderer.swift      # [修改] AC-097, AC-098, AC-099
+│       ├── HDRConfiguration.swift        # [无变更] 字段已存在
+│       └── VideoShaderConstants.swift    # [新增] AC-100
+
+Tests/
+└── ChiakiTests/
+    └── Video/
+        └── VideoShaderConstantsTests.swift  # [新增] AC-100
+```
+
+### 18.8 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-097 | `VideoUniforms` + `MetalVideoRenderer` | 配置字段接入 Shader Uniforms |
+| AC-098 | Metal Shader | `edrIntensity` 作为乘数应用 |
+| AC-099 | Metal Shader | `gamutMappingEnabled` 控制色域映射 |
+| AC-100 | `VideoShaderConstants` + Tests | CPU 端常量与测试 |
+
+---
+
+## 19. MainActor 边界规范化设计 [增量]
+
+> **变更来源**: F-029 MainActor 边界规范化 (INS-050)
+> **关联需求**: AC-101 ~ AC-103
+> **设计版本**: v1.8.0
+
+### 19.1 影响分析
+
+#### 背景
+
+项目中作为 UI 环境对象的 `@Observable` Store 类（如 `SettingsStore`、`HostStore`）目前没有整体标注 `@MainActor`。虽然单例 `shared` 属性已标注，但类本身的方法和属性可能被后台线程访问，导致 Observation 框架或 UI 的未定义行为。
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `SettingsStore` | 修改 | 整体标注 `@MainActor` |
+| `HostStore` | 修改 | 整体标注 `@MainActor` |
+| 其他 Observable Store | 审查 | 评估是否需要 `@MainActor` |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| 添加 `@MainActor` | ⚠️ 源码兼容 | 现有调用方可能需要 `await` 或 `MainActor.run` |
+| 运行时行为 | ✅ 兼容 | 确保线程安全，不影响功能 |
+
+### 19.2 SettingsStore 标注 (AC-101)
+
+```swift
+/// 设置存储，管理 UserDefaults 持久化
+/// @requirement F-029
+/// @satisfies AC-101
+@MainActor
+@Observable
+class SettingsStore {
+    static let shared = SettingsStore()
+
+    var streamSettings: StreamSettings {
+        didSet { saveSettings() }
+    }
+
+    var useRemoteProfile: Bool {
+        didSet { userDefaults.set(useRemoteProfile, forKey: "use_remote_profile") }
+    }
+
+    // ... 其他属性 ...
+
+    private let userDefaults: UserDefaults
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        // 初始化逻辑 ...
+    }
+
+    // 所有方法自动在 MainActor 上执行
+    func updateResolution(_ resolution: StreamSettings.Resolution) { ... }
+    func updateFrameRate(_ frameRate: StreamSettings.FrameRate) { ... }
+    // ...
+}
+```
+
+### 19.3 HostStore 标注 (AC-102)
+
+```swift
+/// 主机存储，管理 PlayStation 主机持久化
+/// @requirement F-029
+/// @satisfies AC-102
+@MainActor
+@Observable
+final class HostStore {
+    static let shared = HostStore()
+
+    private(set) var hosts: [ConsoleHost] = []
+
+    var visibleRegisteredHosts: [ConsoleHost] { ... }
+    var registeredHosts: [ConsoleHost] { ... }
+    var hiddenHosts: [ConsoleHost] { ... }
+
+    private let userDefaults: UserDefaults
+    private let hostsKey = "chiaki.savedHosts"
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        loadHosts()
+    }
+
+    // CRUD 操作自动在 MainActor 上执行
+    func addHost(_ host: ConsoleHost) { ... }
+    func updateHost(_ host: ConsoleHost) { ... }
+    func removeHost(_ host: ConsoleHost) { ... }
+    // ...
+}
+```
+
+### 19.4 其他 Observable Store 审查 (AC-103)
+
+需要审查的 Store 类：
+
+| 类名 | 当前状态 | 建议操作 | 理由 |
+|------|----------|----------|------|
+| `SettingsStore` | 无 `@MainActor` | ✅ 标注 | Environment 对象，UI 直接绑定 |
+| `HostStore` | 无 `@MainActor` | ✅ 标注 | Environment 对象，UI 直接绑定 |
+| `ControllerManager` | 已有 `@MainActor` | ✅ 保持 | - |
+| `NetworkMonitor` | 使用 `nonisolated` | ⚠️ 审查 | 回调可能在后台，需确保状态更新在 MainActor |
+| `DiscoveryService` | 无 `@MainActor` | ⚠️ 审查 | 回调来自 libchiaki，需要 dispatch |
+
+#### NetworkMonitor 修正模式
+
+```swift
+/// 网络监控器
+/// @satisfies AC-103
+@Observable
+final class NetworkMonitor {
+    @MainActor static let shared = NetworkMonitor()
+
+    @MainActor private(set) var isConnected: Bool = true
+    @MainActor private(set) var connectionType: ConnectionType = .unknown
+
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "network.monitor")
+
+    nonisolated init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            // 确保状态更新在 MainActor
+            Task { @MainActor in
+                self?.isConnected = path.status == .satisfied
+                self?.connectionType = self?.mapConnectionType(path) ?? .unknown
+            }
+        }
+        monitor.start(queue: queue)
+    }
+
+    @MainActor
+    private func mapConnectionType(_ path: NWPath) -> ConnectionType {
+        // ...
+    }
+}
+```
+
+### 19.5 迁移指南
+
+对于现有调用方，可能需要以下调整：
+
+```swift
+// 场景 1: 从非 MainActor 上下文访问 Store
+// 修改前（可能警告或运行时问题）
+func fetchAndUpdateSettings() {
+    let settings = SettingsStore.shared.streamSettings  // ⚠️
+}
+
+// 修改后
+func fetchAndUpdateSettings() async {
+    let settings = await MainActor.run {
+        SettingsStore.shared.streamSettings
+    }
+}
+
+// 或使用 Task
+func fetchAndUpdateSettings() {
+    Task { @MainActor in
+        let settings = SettingsStore.shared.streamSettings
+        // ...
+    }
+}
+
+// 场景 2: 在 async 函数中
+@MainActor
+func updateUI() async {
+    // 已在 MainActor 上，无需修改
+    let settings = SettingsStore.shared.streamSettings
+}
+```
+
+### 19.6 代码结构变更
+
+```
+Chiaki/
+├── Core/
+│   └── Storage/
+│       ├── SettingsStore.swift    # [修改] AC-101 - 添加 @MainActor
+│       └── HostStore.swift        # [修改] AC-102 - 添加 @MainActor
+│
+│   └── Network/
+│       └── NetworkMonitor.swift   # [修改] AC-103 - MainActor 状态更新
+```
+
+### 19.7 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-101 | `SettingsStore` | 整体标注 `@MainActor` |
+| AC-102 | `HostStore` | 整体标注 `@MainActor` |
+| AC-103 | 其他 Store 审查 | `NetworkMonitor` 等确保 MainActor 状态更新 |
+
+---
+
+## 20. 日志输出规范化设计 [增量]
+
+> **变更来源**: F-030 日志输出规范化 (INS-051)
+> **关联需求**: AC-104 ~ AC-106
+> **设计版本**: v1.8.0
+
+### 20.1 影响分析
+
+#### 背景
+
+`ChiakiSessionWrapper` 及其他 Bridge 层文件中存在大量 debug `print` 语句，这些在 release 版本中会产生噪声和性能损耗。需要统一走 Logger 系统，并用 `#if DEBUG` 保护 verbose 日志。
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `ChiakiSessionWrapper` | 修改 | `print` → `Logger` |
+| `ChiakiDiscovery` | 审查 | 检查 debug 输出 |
+| `ChiakiRegist` | 审查 | 检查 debug 输出 |
+| `VideoDecoderBridge` | 审查 | 检查 debug 输出 |
+| `AudioPlayerBridge` | 审查 | 检查 debug 输出 |
+
+#### 兼容性评估
+
+| 变更 | 向后兼容 | 说明 |
+|------|----------|------|
+| `print` → `Logger` | ✅ 兼容 | 纯重构，不影响功能 |
+| `#if DEBUG` 保护 | ✅ 兼容 | Release 版本行为更优 |
+
+### 20.2 日志规范
+
+#### 日志级别使用规范
+
+| 级别 | 用途 | DEBUG 保护 |
+|------|------|-----------|
+| `logError` | 错误，影响功能 | ❌ 不需要 |
+| `logWarning` | 警告，可能影响体验 | ❌ 不需要 |
+| `logInfo` | 关键状态变化 | ❌ 不需要 |
+| `logDebug` | 调试信息，频繁调用 | ✅ 建议 |
+| `logVerbose` | 详细追踪，高频 | ✅ 必须 |
+
+#### DEBUG 保护模式
+
+```swift
+// 模式 1: 使用 logDebug/logVerbose（内部已有条件检查）
+// 这是推荐的方式，Logger 内部会根据 levelMask 过滤
+logDebug("Session callback received: \(eventType)")
+
+// 模式 2: 显式 #if DEBUG（用于避免参数计算开销）
+#if DEBUG
+logVerbose("Frame details: size=\(frame.size), pts=\(frame.pts), data=\(frame.data.hexDump)")
+#endif
+
+// 模式 3: 避免在 Release 中计算昂贵参数
+#if DEBUG
+let debugInfo = expensiveDebugComputation()
+logDebug("Debug info: \(debugInfo)")
+#endif
+```
+
+### 20.3 ChiakiSessionWrapper 日志替换 (AC-104)
+
+```swift
+// 修改前
+print("🎮 Session callback setup complete")
+print("📺 Video callback: \(width)x\(height), format=\(format)")
+print("🔊 Audio callback: \(channels)ch, \(sampleRate)Hz")
+
+// 修改后
+/// @requirement F-030
+/// @satisfies AC-104
+extension ChiakiSessionWrapper {
+    private func setupCallbacks() {
+        // 使用 Logger.session
+        Logger.session.info("Session callback setup complete")
+
+        // 详细日志使用 DEBUG 保护
+        #if DEBUG
+        Logger.session.debug("Video callback configured: \(width)x\(height), format=\(format)")
+        Logger.session.debug("Audio callback configured: \(channels)ch, \(sampleRate)Hz")
+        #endif
+    }
+
+    private func handleVideoData(_ data: UnsafePointer<UInt8>, length: Int) {
+        // 高频回调使用 verbose
+        #if DEBUG
+        logVerbose("Video data received: \(length) bytes")
+        #endif
+
+        // 错误情况总是记录
+        guard length > 0 else {
+            Logger.video.warning("Empty video data received")
+            return
+        }
+
+        // 处理逻辑...
+    }
+}
+```
+
+### 20.4 DEBUG 保护审查 (AC-105)
+
+需要添加 `#if DEBUG` 保护的位置：
+
+```swift
+// ChiakiSessionWrapper.swift
+#if DEBUG
+Logger.session.debug("Event: \(eventType), data: \(eventData)")
+#endif
+
+// VideoDecoderBridge.swift
+#if DEBUG
+Logger.video.debug("NAL unit: type=\(nalType), size=\(nalSize)")
+Logger.video.debug("Decode latency: \(latencyMs)ms")
+#endif
+
+// AudioPlayerBridge.swift
+#if DEBUG
+Logger.audio.debug("Audio buffer: \(bufferSize) samples, latency=\(latency)ms")
+#endif
+```
+
+### 20.5 Bridge 层日志审查清单 (AC-106)
+
+| 文件 | 审查项 | 状态 |
+|------|--------|------|
+| `ChiakiSession.swift` | 替换 `print`，添加 DEBUG 保护 | 待完成 |
+| `ChiakiDiscovery.swift` | 检查发现回调日志 | 待完成 |
+| `ChiakiRegist.swift` | 检查注册流程日志 | 待完成 |
+| `ChiakiLogBridge.swift` | 确保 libchiaki 日志正确转发 | 已完成 |
+| `VideoDecoderBridge.swift` | 高频解码日志 DEBUG 保护 | 待完成 |
+| `VideoToolboxDecoder.swift` | 解码错误日志保留 | 待完成 |
+| `AudioPlayerBridge.swift` | 高频音频日志 DEBUG 保护 | 待完成 |
+
+### 20.6 日志输出对比
+
+```
+=== Release 版本（优化后）===
+[INFO] [Session] Connected to PlayStation 5
+[INFO] [Session] Streaming started
+[WARNING] [Video] Frame decode delayed: 45ms
+[ERROR] [Network] Connection lost
+
+=== Debug 版本 ===
+[INFO] [Session] Connected to PlayStation 5
+[DEBUG] [Session] Event: CHIAKI_EVENT_CONNECTED, data: 0x...
+[DEBUG] [Session] Video callback configured: 1920x1080, format=P010
+[DEBUG] [Session] Audio callback configured: 2ch, 48000Hz
+[INFO] [Session] Streaming started
+[VERBOSE] [Video] NAL unit: type=5, size=12345
+[VERBOSE] [Video] Decode latency: 8.5ms
+[DEBUG] [Audio] Buffer: 1024 samples, latency=21ms
+[WARNING] [Video] Frame decode delayed: 45ms
+[ERROR] [Network] Connection lost
+```
+
+### 20.7 代码结构变更
+
+```
+Chiaki/
+├── Core/
+│   └── Bridge/
+│       ├── ChiakiSession.swift        # [修改] AC-104 - print → Logger
+│       ├── ChiakiDiscovery.swift      # [审查] AC-106
+│       ├── ChiakiRegist.swift         # [审查] AC-106
+│       └── ChiakiLogBridge.swift      # [无变更] 已正确实现
+│
+│   └── Video/
+│       ├── VideoDecoderBridge.swift   # [审查] AC-105, AC-106
+│       └── VideoToolboxDecoder.swift  # [审查] AC-106
+│
+│   └── Audio/
+│       └── AudioPlayerBridge.swift    # [审查] AC-105, AC-106
+```
+
+### 20.8 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-104 | `ChiakiSessionWrapper` | `print` → `Logger` |
+| AC-105 | Bridge 层 | verbose 日志 `#if DEBUG` 保护 |
+| AC-106 | 所有 Bridge 文件 | 统一日志输出方式审查 |
+
+---
+
+## 设计变更记录
+
+### v1.8.0 (2026-02-04)
+
+**变更来源**: F-028 HDR 配置完全落地 (INS-048), F-029 MainActor 边界规范化 (INS-050), F-030 日志输出规范化 (INS-051)
+
+**新增模块**:
+- `VideoShaderConstants` - CPU 端 Shader 常量定义（关联 AC-100）
+- `VideoShaderConstantsTests` - Shader 常量单元测试（关联 AC-100）
+
+**修改模块**:
+- `VideoUniforms` - 新增 `edrIntensity`、`gamutMappingEnabled` 字段（关联 AC-097）
+- `MetalVideoRenderer` - 同步 HDRConfiguration 新字段到 Uniforms（关联 AC-097, AC-098, AC-099）
+- `VideoShaders.metal` (运行时源) - 动态色域映射和 EDR 强度（关联 AC-098, AC-099）
+- `SettingsStore` - 添加 `@MainActor` 标注（关联 AC-101）
+- `HostStore` - 添加 `@MainActor` 标注（关联 AC-102）
+- `NetworkMonitor` - 确保状态更新在 MainActor（关联 AC-103）
+- `ChiakiSessionWrapper` - `print` → `Logger`，DEBUG 保护（关联 AC-104, AC-105）
+- Bridge 层文件 - 统一日志输出方式（关联 AC-106）
+
+**破坏性变更**:
+- `SettingsStore` 和 `HostStore` 添加 `@MainActor` 后，从非 MainActor 上下文访问需要 `await`
+
+**迁移说明**:
+1. 现有直接访问 Store 属性的代码，如在后台线程中，需改用 `await MainActor.run { ... }`
+2. 视图层代码无需修改，SwiftUI 自动在 MainActor 上执行
+3. `VideoUniforms` 结构大小增加 8 字节，但对齐未变
