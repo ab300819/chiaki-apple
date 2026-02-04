@@ -23,8 +23,9 @@ final class OpusDecoderBridge {
     /// Callback for decoded PCM frames
     /// - Parameters:
     ///   - samples: Pointer to Int16 PCM samples (interleaved stereo)
-    ///   - samplesCount: Total number of samples (frames × channels)
-    typealias FrameCallback = (_ samples: UnsafePointer<Int16>, _ samplesCount: Int) -> Void
+    ///   - frameCount: Number of frames (per-channel sample count, NOT total samples)
+    ///                 Total samples in buffer = frameCount × channels
+    typealias FrameCallback = (_ samples: UnsafePointer<Int16>, _ frameCount: Int) -> Void
 
     // MARK: - Properties
 

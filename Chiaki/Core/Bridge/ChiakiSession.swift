@@ -373,11 +373,10 @@ final class ChiakiSessionWrapper {
                 logInfo("ChiakiSessionWrapper: Audio configured - \(channels)ch, \(rate)Hz")
             },
             frame: { [weak self] samples, samplesCount in
-                // samplesCount is total samples (frames × channels)
-                // AudioPlayer.receiveAudio expects frameCount (samples / channels)
-                let channels = max(1, Int(self?.audioPlayerBridge?.channelCount ?? 2))
-                let frameCount = samplesCount / channels
-                self?.audioPlayerBridge?.receiveAudio(samples: samples, frameCount: frameCount)
+                // Note: opus_decode returns frame count (per-channel samples), NOT total samples
+                // So samplesCount is already the frameCount we need
+                // AudioPlayer.receiveAudio(frameCount:) will multiply by channels internally
+                self?.audioPlayerBridge?.receiveAudio(samples: samples, frameCount: samplesCount)
             }
         )
 
