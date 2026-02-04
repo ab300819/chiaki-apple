@@ -61,9 +61,9 @@ struct HostListView: View {
         .toolbar {
             #if !os(tvOS)
             ToolbarItem(placement: .navigation) {
-                Button(action: { 
+                Button(action: {
                     HapticFeedback.button()
-                    viewModel.toggleDiscovery() 
+                    viewModel.toggleDiscovery()
                 }) {
                     Label(
                         viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery,
@@ -73,10 +73,22 @@ struct HostListView: View {
                 .help(viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery)
             }
             #endif
+            #if os(macOS)
+            // macOS: Delete selected hosts (use Cmd+Click to multi-select in list)
+            ToolbarItem(placement: .destructiveAction) {
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    Label(String(localized: "hostList.deleteSelected \(selectedHostIds.count)"), systemImage: "trash")
+                }
+                .disabled(selectedHostIds.isEmpty)
+                .help(String(localized: "hostList.deleteSelectedHelp"))
+            }
+            #endif
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { 
+                Button(action: {
                     HapticFeedback.button()
-                    navigationManager.showAddHostSheet = true 
+                    navigationManager.showAddHostSheet = true
                 }) {
                     Label(L10n.HostList.addHost, systemImage: "plus")
                 }
