@@ -1496,20 +1496,27 @@ jobs:
 | AC-054 | 日志覆盖验证 | 日志覆盖 | `Chiaki/Core/Bridge/ChiakiSession.swift`<br>`Chiaki/Core/Video/VideoToolboxDecoder.swift`<br>`Chiaki/Core/Audio/AudioPlayer.swift`<br>`Chiaki/Core/Controllers/ControllerManager.swift`<br>`Chiaki/Core/Bridge/ChiakiDiscovery.swift`<br>`Chiaki/Domain/Services/PSNService.swift`<br>`Chiaki/Core/Network/NetworkMonitor.swift` | (Manual validation) |
 | AC-055 | UT-010.1~5, E2E-006.3 | 单元+E2E | `Chiaki/Features/Streaming/StreamingControlsView.swift` | `ChiakiTests/StreamingFocusTests.swift` |
 | AC-056 | UT-011.1~4 | 单元测试 | `Chiaki/Shared/Styles/FocusableButtonStyle.swift` | `ChiakiTests/FocusableButtonStyleTests.swift` |
-| AC-057 | IT-007.1~3 | 集成测试 | - | - |
-| AC-058 | E2E-006.1~6 | E2E | - | - |
-| AC-059 | UT-012.1~6 | 单元测试 | - | - |
-| AC-060 | UT-010.4~5 | 单元测试 | - | - |
-| AC-061 | UT-013.1~5 | 单元测试 | - | - |
-| AC-062 | UT-014.1~4 | 单元测试 | - | - |
-| AC-063 | UT-015.1~6, IT-008.1~3 | 单元+集成 | - | - |
-| AC-064 | UT-016.1~6, E2E-007.1~3 | 单元+E2E | - | - |
-| AC-065 | UT-017.1~6, IT-009.1~5, E2E-008.1~4 | 单元+集成+E2E | ✅ 12 | HostQuickActionTests |
-| AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 | ✅ 8+5 | VolumeShortcutTests, VolumeOSDIntegrationTests |
-| AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E | ✅ 10 | GamepadNumPadTests |
-| AC-068 | UT-020.1~6 | 单元测试 | - | - |
+| AC-057 | FocusTrapIntegrationTests | 集成测试 | `Chiaki/Features/Streaming/StreamingView.swift` | `ChiakiTests/FocusTrapIntegrationTests.swift` |
+| AC-058 | E2E-006.1~6 | E2E | `Chiaki/Features/Streaming/StreamingView.swift` | - |
+| AC-059 | ControllerShortcutDetectorTests | 单元测试 | `Chiaki/Core/Controllers/ControllerShortcutDetector.swift` | `ChiakiTests/ControllerShortcutDetectorTests.swift` |
+| AC-060 | StreamingFocusTests | 单元测试 | `Chiaki/Features/Streaming/StreamingViewModel.swift`<br>`Chiaki/Features/Streaming/StreamingControlsView.swift` | `ChiakiTests/StreamingFocusTests.swift` |
+| AC-061 | AdaptiveTriggerTests | 单元测试 | `Chiaki/Core/Controllers/AdaptiveTriggerEffect.swift`<br>`Chiaki/Core/Controllers/ControllerManager.swift` | `ChiakiTests/AdaptiveTriggerTests.swift` |
+| AC-062 | TouchPointTests | 单元测试 | `Chiaki/Core/Bridge/ChiakiTypes.swift`<br>`Chiaki/Core/Controllers/ControllerManager.swift` | `ChiakiTests/TouchPointTests.swift` |
+| AC-063 | HapticsManagerTests | 单元测试 | `Chiaki/Core/Controllers/HapticsManager.swift`<br>`Chiaki/Core/Controllers/ControllerManager.swift` | `ChiakiTests/HapticsManagerTests.swift` |
+| AC-064 | BatteryInfoTests | 单元测试 | `Chiaki/Core/Controllers/ControllerManager.swift`<br>`Chiaki/Features/Streaming/ControllerBatteryIndicator.swift` | `ChiakiTests/BatteryInfoTests.swift` |
+| AC-065 | HostQuickActionTests | 单元测试 | `Chiaki/Features/HostList/HostQuickActionBar.swift`<br>`Chiaki/Features/HostList/HostListView.swift`<br>`Chiaki/Features/HostList/TVHostCardView.swift` | `ChiakiTests/HostQuickActionTests.swift` |
+| AC-066 | VolumeShortcutTests, VolumeOSDIntegrationTests | 单元+集成 | `Chiaki/Core/Controllers/ControllerShortcutDetector.swift`<br>`Chiaki/Features/Streaming/StreamingViewModel.swift`<br>`Chiaki/Features/Streaming/VolumeOSD.swift`<br>`Chiaki/Features/Streaming/VolumeAdjuster.swift` | `ChiakiTests/VolumeShortcutTests.swift`<br>`ChiakiTests/VolumeOSDIntegrationTests.swift` |
+| AC-067 | GamepadNumPadTests | 单元测试 | `Chiaki/Features/Common/GamepadNumPad.swift`<br>`Chiaki/Features/HostList/ConsolePinView.swift` | `ChiakiTests/GamepadNumPadTests.swift` |
+| AC-068 | QuickSettingsSectionTests | 单元测试 | `Chiaki/Features/Streaming/QuickSettingsSection.swift`<br>`Chiaki/Features/Streaming/StreamingControlsView.swift` | `ChiakiTests/QuickSettingsSectionTests.swift` |
+| AC-069 | - | 设计规范 | `Chiaki/Utilities/ChiakiTheme.swift`<br>`Chiaki/Features/HostList/HostRowView.swift`<br>`Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift` | - |
+| AC-070 | - | 设计规范 | `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift`<br>`Chiaki/Features/Streaming/StreamingControlsView.swift` | - |
+| AC-071 | TouchableSliderTests | 单元测试 | `Chiaki/Features/Streaming/TouchableSlider.swift` | `ChiakiTests/TouchableSliderTests.swift` |
+| AC-072 | HapticFeedbackTests | 单元测试 | `Chiaki/Utilities/HapticFeedback.swift` | `ChiakiTests/HapticFeedbackTests.swift` |
+| AC-073 | VirtualControllerAccessibilityTests | 单元测试 | - | `ChiakiTests/VirtualControllerAccessibilityTests.swift` |
+| AC-074 | VirtualButtonLongPressTests | 单元测试 | `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift`<br>`Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` | `ChiakiTests/VirtualButtonLongPressTests.swift` |
+| AC-075 | EdgeVolumeGestureTests | 单元测试 | `Chiaki/Features/Streaming/EdgeVolumeGesture.swift`<br>`Chiaki/Features/Streaming/StreamingViewModel.swift` | `ChiakiTests/EdgeVolumeGestureTests.swift` |
 | AC-080 | UT-027.1~6 | 单元测试 | - | - |
-| AC-081 | UT-028.1~4, IT-011.1~4 | 单元+集成 | - | - |
+| AC-081 | EDRHeadroomMonitorTests | 单元测试 | `Chiaki/Core/Video/EDRHeadroomMonitor.swift` | `ChiakiTests/EDRHeadroomMonitorTests.swift` |
 | AC-082 | IT-011.4, E2E-011.2 | 集成+E2E | - | - |
 | AC-083 | UT-029.1~5 | 单元测试 | `Chiaki/Core/Video/HDRMetadataCache.swift` | `ChiakiTests/HDRMetadataCacheTests.swift` |
 | AC-084 | UT-030.1~5 | 单元测试 | - | - |
@@ -1568,6 +1575,23 @@ jobs:
 | `VolumeShortcutTests.swift` | 8 | UT-018.1~6, AC-066 | `ChiakiTests/VolumeShortcutTests.swift` |
 | `VolumeOSDIntegrationTests.swift` | 5 | IT-010.1~4, AC-066 | `ChiakiTests/VolumeOSDIntegrationTests.swift` |
 | `GamepadNumPadTests.swift` | 10 | UT-019.1~8, AC-067 | `ChiakiTests/GamepadNumPadTests.swift` |
+| `QuickSettingsSectionTests.swift` | 6 | UT-020.1~6, AC-068 | `ChiakiTests/QuickSettingsSectionTests.swift` |
+| `TouchableSliderTests.swift` | 2 | AC-071 | `ChiakiTests/TouchableSliderTests.swift` |
+| `HapticFeedbackTests.swift` | 4 | AC-072 | `ChiakiTests/HapticFeedbackTests.swift` |
+| `VirtualControllerAccessibilityTests.swift` | 3 | AC-073 | `ChiakiTests/VirtualControllerAccessibilityTests.swift` |
+| `VirtualButtonLongPressTests.swift` | 7 | AC-074 | `ChiakiTests/VirtualButtonLongPressTests.swift` |
+| `EdgeVolumeGestureTests.swift` | 5 | AC-075 | `ChiakiTests/EdgeVolumeGestureTests.swift` |
+| `FocusableButtonStyleTests.swift` | 4 | UT-011.1~4, AC-056 | `ChiakiTests/FocusableButtonStyleTests.swift` |
+| `FocusTrapIntegrationTests.swift` | 4 | IT-007.1~3, AC-057 | `ChiakiTests/FocusTrapIntegrationTests.swift` |
+| `ControllerShortcutDetectorTests.swift` | 7 | UT-012.1~6, AC-059 | `ChiakiTests/ControllerShortcutDetectorTests.swift` |
+| `AdaptiveTriggerTests.swift` | 5 | UT-013.1~5, AC-061 | `ChiakiTests/AdaptiveTriggerTests.swift` |
+| `TouchPointTests.swift` | 4 | UT-014.1~4, AC-062 | `ChiakiTests/TouchPointTests.swift` |
+| `HapticsManagerTests.swift` | 12 | UT-015.1~6, AC-063 | `ChiakiTests/HapticsManagerTests.swift` |
+| `BatteryInfoTests.swift` | 6 | UT-016.1~6, AC-064 | `ChiakiTests/BatteryInfoTests.swift` |
+| `HostQuickActionTests.swift` | 6 | UT-017.1~6, AC-065 | `ChiakiTests/HostQuickActionTests.swift` |
+| `HDRMetadataCacheTests.swift` | 6 | UT-029.1~5, AC-083 | `ChiakiTests/HDRMetadataCacheTests.swift` |
+| `HDRConfigurationTests.swift` | 12 | UT-032.1~6, AC-088 | `ChiakiTests/HDRConfigurationTests.swift` |
+| `EDRHeadroomMonitorTests.swift` | 5 | UT-028.1~4, AC-081 | `ChiakiTests/EDRHeadroomMonitorTests.swift` |
 
 #### UT-001 ChiakiSession 实现状态
 

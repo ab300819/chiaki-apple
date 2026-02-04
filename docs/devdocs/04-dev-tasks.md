@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 8% (2/24 任务完成)
+> **完成率**: 12% (3/24 任务完成)
 
 ## M12 任务概览
 
@@ -37,7 +37,7 @@
 |------|------|--------|----------|------|------|
 | **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ✅ |
 | **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ⏳ |
+| **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ⏳ |
 | **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ⏳ |
 | **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ⏳ |
@@ -134,7 +134,7 @@ swift test --filter HDRMetadataCacheTests
 
 ---
 
-### T-149: HDR: EDRHeadroomMonitor 动态监听 ⏳
+### T-149: HDR: EDRHeadroomMonitor 动态监听 ✅
 
 **目标**: 实现 EDR Headroom 动态监听，支持 macOS 和 iOS。
 
@@ -146,16 +146,19 @@ swift test --filter HDRMetadataCacheTests
 
 **依赖**: T-147
 
+**完成提交**: `f02af86` feat(video): add EDRHeadroomMonitor dynamic headroom tracking (T-149)
+
 **涉及文件**:
 - `Chiaki/Core/Video/EDRHeadroomMonitor.swift` (新建)
+- `ChiakiTests/EDRHeadroomMonitorTests.swift` (新建)
 
 **验收标准**:
-- [ ] macOS: 监听 `NSScreen.maximumExtendedDynamicRangeColorComponentValue`
-- [ ] iOS 16+: 使用 `UIScreen.currentEDRHeadroom`
-- [ ] 初始值 ≥ 1.0
-- [ ] 值变化平滑过渡（避免突变）
-- [ ] 追踪最大可用 Headroom
-- [ ] 正确清理 observer/displayLink
+- [x] macOS: 监听 `NSScreen.maximumExtendedDynamicRangeColorComponentValue`
+- [x] iOS 16+: 使用 `UIScreen.currentEDRHeadroom`
+- [x] 初始值 ≥ 1.0
+- [x] 值变化平滑过渡（避免突变）
+- [x] 追踪最大可用 Headroom
+- [x] 正确清理 observer/displayLink
 
 **测试方法**:
 ```bash
@@ -163,9 +166,9 @@ swift test --filter EDRHeadroomMonitorTests
 ```
 
 **Review 要点**:
-- [ ] 平台条件编译正确 (`#if os(macOS)`)
-- [ ] DisplayLink 正确配置帧率
-- [ ] 内存管理（deinit 清理）
+- [x] 平台条件编译正确 (`#if os(macOS)`)
+- [x] DisplayLink 正确配置帧率
+- [x] 内存管理（deinit 清理）
 
 ---
 
