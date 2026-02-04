@@ -179,6 +179,7 @@ final class ChiakiSessionWrapper {
     // Video/Audio bridges
     private var videoDecoderBridge: VideoDecoderBridge?
     private var audioPlayerBridge: AudioPlayerBridge?
+    private var opusDecoder: OpusDecoderBridge?
     private var streamStatistics: StreamStatistics?
 
     // Configuration
@@ -362,11 +363,26 @@ final class ChiakiSessionWrapper {
         print("[DEBUG] video_sample_cb AFTER: \(String(describing: session.pointee.video_sample_cb))")
         print("[DEBUG] === CALLBACK SETUP END ===")
 
-        // Setup audio sink
-        var audioSink = ChiakiAudioSink()
-        audioSink.user = selfPointer
-        audioSink.header_cb = audioHeaderCallback
-        audioSink.frame_cb = audioFrameCallback
+        // Setup Opus decoder and audio sink
+        // The Opus decoder decodes compressed audio from PS4/PS5 to PCM Int16
+        // @verifies BUG-005 - 音频解码修复
+        opusDecoder = OpusDecoderBridge(log: chiakiLog)
+        opusDecoder?.setCallbacks(
+            settings: { [weak self] channels, rate in
+                self?.audioPlayerBridge?.configure(sampleRate: Double(rate), channelCount: channels)
+                logInfo("ChiakiSessionWrapper: Audio configured - \(channels)ch, \(rate)Hz")
+            },
+            frame: { [weak self] samples, samplesCount in
+                // samplesCount is total samples (frames × channels)
+                // AudioPlayer.receiveAudio expects frameCount (samples / channels)
+                let channels = max(1, Int(self?.audioPlayerBridge?.channelCount ?? 2))
+                let frameCount = samplesCount / channels
+                self?.audioPlayerBridge?.receiveAudio(samples: samples, frameCount: frameCount)
+            }
+        )
+
+        // Use Opus decoder's sink instead of direct raw audio sink
+        var audioSink = opusDecoder!.getAudioSink()
         chiaki_session_set_audio_sink(session, &audioSink)
 
         // Update state
@@ -407,6 +423,7 @@ final class ChiakiSessionWrapper {
         self.session = nil
 
         // Cleanup bridges
+        opusDecoder = nil  // Release Opus decoder
         audioPlayerBridge?.shutdown()
         streamStatistics?.sessionEnded()
 
@@ -721,26 +738,10 @@ final class ChiakiSessionWrapper {
     }
 
     // MARK: - Audio Handling
-
-    fileprivate func handleAudioHeader(_ header: ChiakiAudioHeader) {
-        // Configure audio player with stream parameters
-        audioPlayerBridge?.configure(
-            sampleRate: Double(header.rate),
-            channelCount: UInt32(header.channels)
-        )
-
-        logInfo("ChiakiSessionWrapper: Audio header - \(header.channels)ch, \(header.rate)Hz, frameSize: \(header.frame_size)")
-    }
-
-    fileprivate func handleAudioFrame(buf: UnsafePointer<UInt8>, bufSize: Int) {
-        // libchiaki delivers PCM Int16 frames to the audio sink callback.
-        // Frame count must respect the negotiated channel count from the audio header.
-        let int16Ptr = buf.withMemoryRebound(to: Int16.self, capacity: bufSize / 2) { $0 }
-        let channels = max(1, Int(audioPlayerBridge?.channelCount ?? 2))
-        let frameCount = (bufSize / MemoryLayout<Int16>.size) / channels
-
-        audioPlayerBridge?.receiveAudio(samples: int16Ptr, frameCount: frameCount)
-    }
+    // Note: Audio callbacks are now handled by OpusDecoderBridge
+    // The old handleAudioHeader/handleAudioFrame methods have been removed
+    // as OpusDecoderBridge handles Opus→PCM decoding internally
+    // @verifies BUG-005 - 音频解码修复
 }
 
 // MARK: - C Callbacks (must use @convention(c) for C interop)
@@ -771,19 +772,9 @@ private let videoSampleCallback: ChiakiVideoSampleCallback = { buf, bufSize, fra
     return session.handleVideoSample(buf: buf, bufSize: Int(bufSize), framesLost: framesLost, frameRecovered: frameRecovered)
 }
 
-private let audioHeaderCallback: ChiakiAudioSinkHeader = { header, userData in
-    guard let header = header, let userData = userData else { return }
-
-    let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
-    session.handleAudioHeader(header.pointee)
-}
-
-private let audioFrameCallback: ChiakiAudioSinkFrame = { buf, bufSize, userData in
-    guard let buf = buf, let userData = userData else { return }
-
-    let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
-    session.handleAudioFrame(buf: buf, bufSize: Int(bufSize))
-}
+// Note: audioHeaderCallback and audioFrameCallback have been removed
+// Audio is now handled by OpusDecoderBridge which decodes Opus→PCM internally
+// @verifies BUG-005 - 音频解码修复
 
 private let chiakiLogCallback: ChiakiLogCb = { level, msg, userData in
     guard let msg = msg else { return }

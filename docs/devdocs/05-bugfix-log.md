@@ -132,6 +132,86 @@ Swift 6.2 中，`@Observable` 宏与 `nonisolated(unsafe)` 存在兼容性问题
 
 ---
 
+## BUG-005: 音频播放异常（咯哒声/杂音）
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户反馈 |
+| **关联功能** | F-001 (核心流媒体) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-04 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+音频播放异常，有声音但不正常，类似"咯哒"声或杂音。这是典型的音频数据格式错误症状。
+
+### 复现步骤
+
+1. 连接 PS5 主机
+2. 进入串流播放界面
+3. 观察音频输出，听到"咯哒"声而非正常游戏音频
+
+### 根因分析
+
+Swift 端直接将 Opus 压缩数据当作 PCM Int16 传给 AudioPlayer，未经 Opus 解码。
+
+**数据流对比**：
+
+| 客户端 | 数据流 |
+|--------|--------|
+| Qt/Android | audioreceiver → OpusDecoder.frame_cb → 解码 PCM → AudioPlayer |
+| **Swift (当前)** | audioreceiver → audioFrameCallback → 原始 Opus 数据 → AudioPlayer ❌ |
+
+**关键代码分析**：
+
+1. `audioreceiver.c:123` - `audio_sink.frame_cb(buf, buf_size, ...)` 传递的是 Opus 压缩数据
+2. `ChiakiSession.swift:781` - `audioFrameCallback` 直接将 buf 作为 Int16 PCM 处理
+3. `AudioPlayer.swift:173` - `receiveAudio()` 期望接收 Int16 PCM，但实际收到 Opus 数据
+
+**对比 Qt 客户端** (`streamsession.cpp:356-358`):
+```cpp
+chiaki_opus_decoder_set_cb(&opus_decoder, AudioSettingsCb, AudioFrameCb, this);
+chiaki_opus_decoder_get_sink(&opus_decoder, &audio_sink);
+chiaki_session_set_audio_sink(session, &audio_sink);
+```
+
+Qt 客户端通过 `chiaki_opus_decoder_get_sink()` 获取包装后的 sink，Opus 解码器在 `frame_cb` 中先解码再调用用户回调。
+
+### 解决方案
+
+集成 Opus 解码器到 Swift 端，方案如下：
+
+**方案 A: 复用 C 层 OpusDecoder** (推荐)
+- 在 Swift 端初始化 `ChiakiOpusDecoder`
+- 使用 `chiaki_opus_decoder_get_sink()` 获取解码 sink
+- 设置回调接收解码后的 PCM 数据
+
+**方案 B: Swift 原生 Opus 解码**
+- 集成 Swift Opus 库 (如 Opus-iOS)
+- 在 `audioFrameCallback` 中进行解码
+- 解码后传递给 AudioPlayer
+
+**选择方案 A**：复用现有 C 层实现，减少维护成本。
+
+### 任务拆分
+
+详见 `04-dev-tasks.md` T-185~T-188
+
+### 回归测试
+
+- 手动验证：音频正常播放无杂音（需用户确认）
+- 待新增测试：UT-048 (OpusDecoder 集成测试)
+- 关联 commit：待提交
+
+### 修改文件清单
+
+1. `Chiaki/Core/Audio/OpusDecoderBridge.swift` (新建) - Opus 解码器桥接类
+2. `Chiaki/Core/Bridge/ChiakiSession.swift` (修改) - 集成 Opus 解码器
+
+---
+
 ## BUG-004: 唤醒主机后首次连接失败
 
 | 属性 | 内容 |

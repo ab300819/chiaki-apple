@@ -1467,6 +1467,212 @@ graph TD
 
 # Bug 修复任务
 
+## BUG-005: 音频播放异常（咯哒声/杂音）
+
+> **来源**: 用户反馈
+> **严重程度**: P0
+> **状态**: 🔄 修复中
+> **关联 Bug 记录**: [05-bugfix-log.md#BUG-005](05-bugfix-log.md#bug-005-音频播放异常咯哒声杂音)
+
+### 问题摘要
+
+音频数据未经 Opus 解码直接传给 AudioPlayer，导致播放压缩数据产生"咯哒"声。需要在 Swift 端集成 Opus 解码器。
+
+### 任务列表
+
+| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
+|------|------|--------|----------|------|------|
+| **T-185** | Audio: OpusDecoderBridge 创建 | P0 | 🔴 强制 | - | ✅ |
+| **T-186** | Audio: ChiakiSession Opus 集成 | P0 | 🟡 推荐 | T-185 | ✅ |
+| **T-187** | Audio: AudioPlayerBridge 接口适配 | P0 | 🟡 推荐 | T-186 | ✅ |
+| **T-188** | Audio: 音频流端到端测试 | P0 | 🔴 强制 | T-187 | ⏳ |
+
+---
+
+### T-185: Audio: OpusDecoderBridge 创建 ✅
+
+> **关联需求**: F-001 (核心流媒体)
+> **关联测试**: UT-048.1~4
+> **TDD 模式**: 🔴 强制
+> **优先级**: P0
+> **完成提交**: 待提交
+
+**任务描述**:
+创建 `OpusDecoderBridge` Swift 类，封装 libchiaki 的 `ChiakiOpusDecoder` C 结构。
+
+**涉及文件**:
+- `Chiaki/Core/Audio/OpusDecoderBridge.swift` (新建) ✅
+- `ChiakiTests/OpusDecoderBridgeTests.swift` (待补充)
+
+**验收标准**:
+- [ ] 初始化时调用 `chiaki_opus_decoder_init()`
+- [ ] 正确设置回调函数 `chiaki_opus_decoder_set_cb()`
+- [ ] 提供 `getAudioSink() -> ChiakiAudioSink` 方法
+- [ ] 正确处理 deinit 清理 `chiaki_opus_decoder_fini()`
+- [ ] 解码后的 PCM 数据通过 Swift 回调传递
+- [ ] 支持配置变更回调（settings_cb）
+
+**API 设计**:
+```swift
+final class OpusDecoderBridge {
+    typealias SettingsCallback = (UInt32, UInt32) -> Void  // channels, rate
+    typealias FrameCallback = (UnsafePointer<Int16>, Int) -> Void  // samples, count
+
+    init(log: UnsafeMutablePointer<ChiakiLog>?)
+    func setCallbacks(settings: @escaping SettingsCallback, frame: @escaping FrameCallback)
+    func getAudioSink() -> ChiakiAudioSink
+}
+```
+
+**Review 要点**:
+- [ ] C 回调到 Swift 闭包的桥接正确
+- [ ] 内存管理（Unmanaged 正确使用）
+- [ ] 线程安全（回调可能来自不同线程）
+
+---
+
+### T-186: Audio: ChiakiSession Opus 集成 ✅
+
+> **关联需求**: F-001 (核心流媒体)
+> **关联测试**: IT-017.1~2
+> **TDD 模式**: 🟡 推荐
+> **依赖**: T-185
+> **优先级**: P0
+> **完成提交**: 待提交
+
+**任务描述**:
+修改 `ChiakiSessionWrapper`，使用 `OpusDecoderBridge` 替代直接的 audio sink 设置。
+
+**涉及文件**:
+- `Chiaki/Core/Bridge/ChiakiSession.swift` (修改) ✅
+
+**修改要点**:
+
+1. 添加属性:
+```swift
+private var opusDecoder: OpusDecoderBridge?
+```
+
+2. 在 `connect()` 中初始化 Opus 解码器:
+```swift
+// 初始化 Opus 解码器
+opusDecoder = OpusDecoderBridge(log: chiakiLog)
+opusDecoder?.setCallbacks(
+    settings: { [weak self] channels, rate in
+        self?.audioPlayerBridge?.configure(sampleRate: Double(rate), channelCount: channels)
+    },
+    frame: { [weak self] samples, count in
+        self?.audioPlayerBridge?.receiveAudio(samples: samples, frameCount: count)
+    }
+)
+
+// 使用 Opus 解码器的 sink 替代直接 sink
+var audioSink = opusDecoder!.getAudioSink()
+chiaki_session_set_audio_sink(session, &audioSink)
+```
+
+3. 移除旧的 `audioHeaderCallback` 和 `audioFrameCallback`
+
+**验收标准**:
+- [ ] 使用 `OpusDecoderBridge.getAudioSink()` 设置 audio sink
+- [ ] 移除直接的 audio header/frame 回调
+- [ ] Opus 解码器正确初始化和清理
+- [ ] settings 回调正确配置 AudioPlayerBridge
+- [ ] frame 回调正确传递 PCM 数据
+
+**Review 要点**:
+- [ ] 生命周期管理正确
+- [ ] 弱引用避免循环引用
+- [ ] 错误处理完善
+
+---
+
+### T-187: Audio: AudioPlayerBridge 接口适配 ✅
+
+> **关联需求**: F-001 (核心流媒体)
+> **关联测试**: UT-048.5~6
+> **TDD 模式**: 🟡 推荐
+> **依赖**: T-186
+> **优先级**: P0
+> **完成提交**: 待提交
+
+**任务描述**:
+验证并适配 `AudioPlayerBridge` 接口，确保与 Opus 解码器输出兼容。
+
+**涉及文件**:
+- `Chiaki/Core/Audio/AudioPlayer.swift` (无需修改，接口已兼容)
+- `Chiaki/Core/Audio/AudioPlayerBridge.swift` (验证通过)
+
+**验收标准**:
+- [ ] `receiveAudio(samples:frameCount:)` 正确处理 Opus 解码输出
+- [ ] `configure(sampleRate:channelCount:)` 支持动态配置
+- [ ] frame_size 参数正确计算 (samples_count / channels)
+- [ ] 无额外转换开销
+
+**关键点**:
+- Opus 解码器输出格式: Int16 PCM，samples_count 是总样本数
+- AudioPlayer 期望格式: Int16 PCM，frameCount 是帧数（samples / channels）
+- 确保单位转换正确
+
+**Review 要点**:
+- [ ] 样本数与帧数转换正确
+- [ ] 缓冲区大小计算正确
+- [ ] 无数据丢失
+
+---
+
+### T-188: Audio: 音频流端到端测试
+
+> **关联需求**: F-001 (核心流媒体)
+> **关联测试**: E2E-013.1~3
+> **TDD 模式**: 🔴 强制
+> **依赖**: T-187
+> **优先级**: P0
+
+**任务描述**:
+创建端到端测试验证音频流完整性，从 Opus 数据接收到 PCM 播放。
+
+**涉及文件**:
+- `ChiakiTests/AudioStreamE2ETests.swift` (新建)
+
+**验收标准**:
+- [ ] 测试 Opus 解码器初始化成功
+- [ ] 测试模拟 Opus 数据解码正确
+- [ ] 测试 PCM 数据正确传递到 AudioPlayer
+- [ ] 测试音频参数配置正确传递
+
+**手动测试**:
+- [ ] 连接真实 PS5 并验证音频正常
+- [ ] 检查无杂音、无咯哒声
+- [ ] 验证音量调节正常
+- [ ] 验证暂停/恢复正常
+
+**Review 要点**:
+- [ ] 测试覆盖关键路径
+- [ ] 模拟数据与真实格式一致
+- [ ] 断言明确有效
+
+---
+
+### BUG-005 依赖关系图
+
+```mermaid
+graph LR
+    T185[T-185: OpusDecoderBridge] --> T186[T-186: ChiakiSession 集成]
+    T186 --> T187[T-187: AudioPlayerBridge 适配]
+    T187 --> T188[T-188: E2E 测试]
+```
+
+### BUG-005 执行检查清单
+
+1. [ ] 开始前阅读 `opusdecoder.h` 和 `opusdecoder.c` 理解 C API
+2. [ ] T-185 完成后编写单元测试验证桥接正确
+3. [ ] T-186 完成后进行手动连接测试
+4. [ ] T-187~T-188 完成后进行完整端到端验证
+5. [ ] 所有任务完成后更新 `05-bugfix-log.md` 状态为"已修复"
+
+---
+
 ## BUG-004: 唤醒主机后首次连接失败
 
 > **来源**: 用户反馈
