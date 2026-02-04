@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 67% (16/24 任务完成)
+> **完成率**: 71% (17/24 任务完成)
 
 ## M12 任务概览
 
@@ -51,7 +51,7 @@
 | **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ✅ |
 | **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ✅ |
 | **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ✅ |
-| **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ⏳ |
+| **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ✅ |
 | **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ⏳ |
 | **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ⏳ |
 | **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ⏳ |
@@ -646,28 +646,31 @@ swift test --filter PSNServicingTests
 
 ---
 
-### T-163: VM: AccountSettingsViewModel ⏳
+### T-163: VM: AccountSettingsViewModel ✅
 
 **目标**: 创建 AccountSettingsViewModel 封装 PSN 操作。
 
 **关联需求**: F-027 | AC-091
 
-**测试用例**: UT-036.1~5, IT-013.1
+**测试用例**: UT-036.1~6, IT-013.1
 
 **TDD 模式**: 🔴 强制
 
 **依赖**: T-162
 
+**完成提交**: `b1bda8a` feat(viewmodel): add AccountSettingsViewModel for PSN operations (T-163)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/ViewModels/AccountSettingsViewModel.swift` (新建)
+- `ChiakiTests/AccountSettingsViewModelTests.swift` (新建)
 
 **验收标准**:
-- [ ] `@Observable` 类
-- [ ] 通过构造函数注入 `PSNServicing`
-- [ ] 暴露 `account`, `isSignedIn`, `isRefreshing`, `errorMessage` 状态
-- [ ] 实现 `signOut()` 方法
-- [ ] 实现 `refreshToken() async` 方法
-- [ ] 实现 `getLoginURL() -> URL` 方法
+- [x] `@Observable` 类
+- [x] 通过构造函数注入 `PSNServicing`
+- [x] 暴露 `account`, `isSignedIn`, `isRefreshing`, `errorMessage` 状态
+- [x] 实现 `signOut()` 方法
+- [x] 实现 `refreshToken() async` 方法
+- [x] 实现 `getLoginURL() -> URL` 方法
 
 **测试方法**:
 ```bash
@@ -675,9 +678,9 @@ swift test --filter AccountSettingsViewModelTests
 ```
 
 **Review 要点**:
-- [ ] 依赖注入正确
-- [ ] 错误处理完善
-- [ ] 状态更新在主线程
+- [x] 依赖注入正确
+- [x] 错误处理完善
+- [x] 状态更新在主线程
 
 ---
 
