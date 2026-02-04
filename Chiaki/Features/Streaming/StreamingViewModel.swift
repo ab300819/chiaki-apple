@@ -298,8 +298,21 @@ final class StreamingViewModel {
     }
 
     /// Wake up host and then connect
+    /// @satisfies BUG-004 - 唤醒后首次连接失败修复
     private func wakeAndConnect(settings: StreamSettings, isRemote: Bool) async {
+        // Track if we started discovery (so we can stop it later if needed)
+        let wasDiscovering = HostManager.shared.isDiscovering
+
         do {
+            // Ensure discovery service is running to detect host state changes
+            // This is critical: without discovery, host state won't update after wake-up
+            if !wasDiscovering {
+                Logger.session.info("Starting discovery service for wake-up detection")
+                HostManager.shared.startDiscovery()
+                // Give discovery a moment to initialize
+                try await Task.sleep(nanoseconds: 200_000_000) // 200ms
+            }
+
             // Send wake-up signal
             try await HostManager.shared.wakeUp(host)
             Logger.session.info("Wake-up signal sent to \(host.nickname), waiting for host to come online")

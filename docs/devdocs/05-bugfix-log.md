@@ -140,8 +140,8 @@ Swift 6.2 中，`@Observable` 宏与 `nonisolated(unsafe)` 存在兼容性问题
 | **关联功能** | F-003 (串流会话管理) |
 | **Issue** | N/A |
 | **严重程度** | P1 |
-| **修复日期** | - |
-| **状态** | 🔍 待修复 |
+| **修复日期** | 2026-02-04 |
+| **状态** | ✅ 已修复 |
 
 ### 问题描述
 
@@ -156,7 +156,7 @@ Swift 6.2 中，`@Observable` 宏与 `nonisolated(unsafe)` 存在兼容性问题
 5. 返回主机列表，再次点击进入串流
 6. 连接成功
 
-### 根因分析（初步）
+### 根因分析
 
 `StreamingViewModel.wakeAndConnect()` 唤醒主机后，轮询 `HostManager.shared.host(byId:)` 检查主机状态。但：
 
@@ -167,12 +167,18 @@ Swift 6.2 中，`@Observable` 宏与 `nonisolated(unsafe)` 存在兼容性问题
 
 ### 解决方案
 
-待开发任务 T-184 实现。需要：
-1. 在 `wakeAndConnect` 中确保发现服务正在运行
-2. 或者使用主动探测替代被动发现
+在 `wakeAndConnect()` 方法开始时检查并启动发现服务：
+
+1. 检查 `HostManager.shared.isDiscovering` 状态
+2. 如果发现服务未运行，调用 `startDiscovery()` 启动
+3. 等待 200ms 让发现服务初始化
+4. 然后发送唤醒信号并开始轮询
+
+修改文件：`Chiaki/Features/Streaming/StreamingViewModel.swift`
 
 ### 回归测试
 
-- 待定
+- 手动验证：唤醒主机后首次连接成功
+- 关联 commit：T-184
 
 ---
