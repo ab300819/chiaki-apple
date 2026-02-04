@@ -252,11 +252,19 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     /// Notify that the view needs to be redrawn
     private func triggerRedraw() {
-        #if os(macOS)
-        mtkView?.needsDisplay = true
-        #else
-        mtkView?.setNeedsDisplay()
-        #endif
+        guard let view = mtkView else { return }
+        let redraw = {
+            #if os(macOS)
+            view.needsDisplay = true
+            #else
+            view.setNeedsDisplay()
+            #endif
+        }
+        if Thread.isMainThread {
+            redraw()
+        } else {
+            DispatchQueue.main.async(execute: redraw)
+        }
     }
 
     // MARK: - Initialization

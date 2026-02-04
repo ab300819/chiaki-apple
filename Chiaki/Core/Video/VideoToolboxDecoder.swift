@@ -183,13 +183,15 @@ final class VideoToolboxDecoder {
         }
         decodeLock.unlock()
 
-        // Create CMBlockBuffer
+        // Create CMBlockBuffer.
+        // IMPORTANT: libchiaki callback buffers and intermediate Data buffers may be short-lived.
+        // Since decoding is asynchronous, we must copy bytes into an owned CMBlockBuffer.
         var blockBuffer: CMBlockBuffer?
         var status = CMBlockBufferCreateWithMemoryBlock(
             allocator: kCFAllocatorDefault,
-            memoryBlock: UnsafeMutableRawPointer(mutating: data),
+            memoryBlock: nil,
             blockLength: size,
-            blockAllocator: kCFAllocatorNull,
+            blockAllocator: kCFAllocatorDefault,
             customBlockSource: nil,
             offsetToData: 0,
             dataLength: size,
@@ -203,16 +205,33 @@ final class VideoToolboxDecoder {
             return
         }
 
+        status = CMBlockBufferReplaceDataBytes(
+            with: data,
+            blockBuffer: buffer,
+            offsetIntoDestination: 0,
+            dataLength: size
+        )
+        guard status == kCMBlockBufferNoErr else {
+            droppedFrameCount += 1
+            logWarning("VideoToolboxDecoder: Failed to copy data into block buffer: \(status)")
+            return
+        }
+
         // Create CMSampleBuffer
         var sampleBuffer: CMSampleBuffer?
         var sampleSize = size
+        var timing = CMSampleTimingInfo(
+            duration: .invalid,
+            presentationTimeStamp: CMTime(value: CMTimeValue(timestamp), timescale: 90000),
+            decodeTimeStamp: .invalid
+        )
         status = CMSampleBufferCreateReady(
             allocator: kCFAllocatorDefault,
             dataBuffer: buffer,
             formatDescription: formatDesc,
             sampleCount: 1,
-            sampleTimingEntryCount: 0,
-            sampleTimingArray: nil,
+            sampleTimingEntryCount: 1,
+            sampleTimingArray: &timing,
             sampleSizeEntryCount: 1,
             sampleSizeArray: &sampleSize,
             sampleBufferOut: &sampleBuffer
@@ -237,7 +256,7 @@ final class VideoToolboxDecoder {
             session,
             sampleBuffer: sample,
             flags: decodeFlags,
-            frameRefcon: UnsafeMutableRawPointer(bitPattern: UInt(timestamp)),
+            frameRefcon: UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: timestamp)),
             infoFlagsOut: &infoFlags
         )
 
@@ -450,6 +469,10 @@ final class VideoDecoderBridge {
     /// Video dimensions
     private(set) var width: Int32 = 1920
     private(set) var height: Int32 = 1080
+    
+    /// 90kHz timestamp tracking (generated when upstream doesn't provide timestamps)
+    private var currentPTS90k: UInt64 = 0
+    private var ptsIncrement90k: UInt64 = 1500 // default ~60fps (90000/60)
 
     /// Decode time callback
     /// [satisfies] AC-085
@@ -485,7 +508,11 @@ final class VideoDecoderBridge {
 
         if let fps = fps {
             renderer?.updateRenderingPolicy(fps: fps)
+            if fps > 0 {
+                ptsIncrement90k = max(1, UInt64(90000 / fps))
+            }
         }
+        currentPTS90k = 0
 
         // Reset pending parameter sets
         pendingSPS = nil
@@ -525,8 +552,18 @@ final class VideoDecoderBridge {
         initLock.lock()
         defer { initLock.unlock() }
 
-        // Parse NAL units from Annex-B stream
-        parseNALUnits(data, size: size, timestamp: timestamp)
+        // Parse NAL units from Annex-B stream.
+        // Upstream callback currently doesn't provide a real timestamp; generate one so
+        // VideoToolbox + downstream stats have stable ordering.
+        let effectiveTimestamp: UInt64
+        if timestamp != 0 {
+            effectiveTimestamp = timestamp
+        } else {
+            currentPTS90k &+= ptsIncrement90k
+            effectiveTimestamp = currentPTS90k
+        }
+
+        parseNALUnits(data, size: size, timestamp: effectiveTimestamp)
     }
 
     // MARK: - NAL Unit Parsing
@@ -537,6 +574,7 @@ final class VideoDecoderBridge {
         var offset = 0
         var nalStart = -1
         var nalType: UInt8 = 0
+        var accessUnitAVCC = Data()
 
         // Find NAL units by scanning for start codes (00 00 00 01 or 00 00 01)
         while offset < size {
@@ -551,7 +589,7 @@ final class VideoDecoderBridge {
                 // Process previous NAL unit if exists
                 if nalStart >= 0 {
                     let nalSize = offset - nalStart
-                    processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp)
+                    processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp, accessUnitAVCC: &accessUnitAVCC)
                 }
 
                 // Start of new NAL unit
@@ -578,23 +616,32 @@ final class VideoDecoderBridge {
         // Process last NAL unit
         if nalStart >= 0 && nalStart < size {
             let nalSize = size - nalStart
-            processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp)
+            processNALUnit(data.advanced(by: nalStart), size: nalSize, type: nalType, timestamp: timestamp, accessUnitAVCC: &accessUnitAVCC)
+        }
+
+        // Forward a single access unit to VideoToolbox (AVCC format: [len][nal]...[len][nal])
+        if !accessUnitAVCC.isEmpty, let decoder {
+            accessUnitAVCC.withUnsafeBytes { ptr in
+                if let baseAddress = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) {
+                    decoder.decodeFrame(baseAddress, size: accessUnitAVCC.count, timestamp: timestamp)
+                }
+            }
         }
     }
 
     /// Process a single NAL unit based on its type
-    private func processNALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+    private func processNALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64, accessUnitAVCC: inout Data) {
         guard size > 0 else { return }
 
         if codec.isH265 {
-            processH265NALUnit(data, size: size, type: type, timestamp: timestamp)
+            processH265NALUnit(data, size: size, type: type, timestamp: timestamp, accessUnitAVCC: &accessUnitAVCC)
         } else {
-            processH264NALUnit(data, size: size, type: type, timestamp: timestamp)
+            processH264NALUnit(data, size: size, type: type, timestamp: timestamp, accessUnitAVCC: &accessUnitAVCC)
         }
     }
 
     /// Process H.265 NAL unit
-    private func processH265NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+    private func processH265NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64, accessUnitAVCC: inout Data) {
         switch type {
         case 32: // VPS
             logInfo("VideoDecoderBridge: Received VPS (\(size) bytes)")
@@ -612,25 +659,15 @@ final class VideoDecoderBridge {
             tryInitializeDecoder()
 
         default:
-            // Video frame data - forward to decoder
-            if decoder != nil {
-                // Convert to AVCC format (4-byte length prefix instead of start code)
-                var avccData = Data(capacity: size + 4)
-                var lengthBE = UInt32(size).bigEndian
-                avccData.append(Data(bytes: &lengthBE, count: 4))
-                avccData.append(Data(bytes: data, count: size))
-
-                avccData.withUnsafeBytes { ptr in
-                    if let baseAddress = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) {
-                        decoder?.decodeFrame(baseAddress, size: avccData.count, timestamp: timestamp)
-                    }
-                }
-            }
+            // Frame payload (Accumulate to a single access unit in AVCC format)
+            var lengthBE = UInt32(size).bigEndian
+            accessUnitAVCC.append(Data(bytes: &lengthBE, count: 4))
+            accessUnitAVCC.append(Data(bytes: data, count: size))
         }
     }
 
     /// Process H.264 NAL unit
-    private func processH264NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64) {
+    private func processH264NALUnit(_ data: UnsafePointer<UInt8>, size: Int, type: UInt8, timestamp: UInt64, accessUnitAVCC: inout Data) {
         switch type {
         case 7: // SPS
             logInfo("VideoDecoderBridge: Received SPS (\(size) bytes)")
@@ -643,20 +680,10 @@ final class VideoDecoderBridge {
             tryInitializeDecoder()
 
         default:
-            // Video frame data - forward to decoder
-            if decoder != nil {
-                // Convert to AVCC format (4-byte length prefix instead of start code)
-                var avccData = Data(capacity: size + 4)
-                var lengthBE = UInt32(size).bigEndian
-                avccData.append(Data(bytes: &lengthBE, count: 4))
-                avccData.append(Data(bytes: data, count: size))
-
-                avccData.withUnsafeBytes { ptr in
-                    if let baseAddress = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) {
-                        decoder?.decodeFrame(baseAddress, size: avccData.count, timestamp: timestamp)
-                    }
-                }
-            }
+            // Frame payload (Accumulate to a single access unit in AVCC format)
+            var lengthBE = UInt32(size).bigEndian
+            accessUnitAVCC.append(Data(bytes: &lengthBE, count: 4))
+            accessUnitAVCC.append(Data(bytes: data, count: size))
         }
     }
 

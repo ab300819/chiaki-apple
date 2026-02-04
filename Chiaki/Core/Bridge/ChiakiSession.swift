@@ -733,10 +733,11 @@ final class ChiakiSessionWrapper {
     }
 
     fileprivate func handleAudioFrame(buf: UnsafePointer<UInt8>, bufSize: Int) {
-        // Audio data is Opus encoded, needs decoding
-        // For now, assume it's already decoded PCM Int16
+        // libchiaki delivers PCM Int16 frames to the audio sink callback.
+        // Frame count must respect the negotiated channel count from the audio header.
         let int16Ptr = buf.withMemoryRebound(to: Int16.self, capacity: bufSize / 2) { $0 }
-        let frameCount = bufSize / 2 / 2  // bufSize / sizeof(Int16) / channels
+        let channels = max(1, Int(audioPlayerBridge?.channelCount ?? 2))
+        let frameCount = (bufSize / MemoryLayout<Int16>.size) / channels
 
         audioPlayerBridge?.receiveAudio(samples: int16Ptr, frameCount: frameCount)
     }

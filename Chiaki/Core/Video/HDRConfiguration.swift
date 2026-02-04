@@ -158,7 +158,7 @@ struct HDRConfiguration: Codable, Equatable, Sendable {
         enabled: true,
         edrIntensity: 1.0,
         colorSpace: .bt2020,
-        colorRange: .full,
+        colorRange: .video,
         tonemapMode: .passthrough,
         gamutMappingEnabled: true
     )
@@ -173,7 +173,7 @@ struct HDRConfiguration: Codable, Equatable, Sendable {
             enabled: true,
             edrIntensity: 1.0,
             colorSpace: colorSpace,
-            colorRange: .full,
+            colorRange: .video,
             tonemapMode: .passthrough,
             gamutMappingEnabled: colorSpace == .bt2020
         )
