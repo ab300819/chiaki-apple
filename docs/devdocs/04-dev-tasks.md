@@ -1,7 +1,8 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
 > **状态更新**: 2026-02-04
-> **当前里程碑**: M12 (HDR 渲染优化、渲染模块解耦、UI 层 MVVM 重构)
+> **当前里程碑**: M13 (HDR 配置完全落地、MainActor 边界规范化、日志输出规范化)
+> **M12 状态**: 100% 完成 (24/24)
 > **M11 归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (35 任务)
 
 ---
@@ -992,7 +993,472 @@ graph TD
 
 ## M12 执行检查清单
 
-1. [ ] 开始前确保 M11 所有任务已完成（除 T-115 App Icon）
-2. [ ] 建议执行顺序：T-147 → T-159/T-160 → T-148~T-152 → T-156 → T-161~T-165 → T-153~T-158 → T-166~T-170
+1. [x] 开始前确保 M11 所有任务已完成（除 T-115 App Icon）
+2. [x] 建议执行顺序：T-147 → T-159/T-160 → T-148~T-152 → T-156 → T-161~T-165 → T-153~T-158 → T-166~T-170
+3. [x] 核心逻辑任务（🔴 强制 TDD）必须先写测试
+4. [x] 每个任务完成后运行 `/devdocs-sync --trace` 更新追溯
+
+---
+
+# 开发任务 (M13)
+
+> **状态更新**: 2026-02-04
+> **阶段目标**: HDR 配置完全落地、MainActor 边界规范化、日志输出规范化
+> **完成率**: 0% (0/13 任务完成)
+> **来源**: F-028~F-030 (REVIEW_SUMMARY 审查 → INS-048, INS-050, INS-051)
+
+## M13 任务概览
+
+| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
+|------|------|--------|----------|------|------|
+| **T-171** | HDR: VideoUniforms 扩展 | P0 | 🔴 强制 | - | ⏳ |
+| **T-172** | HDR: VideoShaderConstants CPU 验证 | P0 | 🔴 强制 | - | ⏳ |
+| **T-173** | HDR: MetalVideoRenderer 配置同步 | P0 | 🟡 推荐 | T-171 | ⏳ |
+| **T-174** | HDR: Shader 动态分支 (edrIntensity/gamutMapping) | P0 | 🟡 推荐 | T-171, T-173 | ⏳ |
+| **T-175** | MainActor: SettingsStore 标注 | P0 | 🔴 强制 | - | ⏳ |
+| **T-176** | MainActor: HostStore 标注 | P0 | 🔴 强制 | - | ⏳ |
+| **T-177** | MainActor: NetworkMonitor 状态隔离 | P1 | 🟡 推荐 | T-175, T-176 | ⏳ |
+| **T-178** | Logging: ChiakiSessionWrapper Logger 替换 | P1 | 🟢 可选 | - | ⏳ |
+| **T-179** | Logging: VideoDecoderBridge DEBUG 保护 | P1 | 🟢 可选 | T-178 | ⏳ |
+| **T-180** | Logging: AudioPlayerBridge DEBUG 保护 | P1 | 🟢 可选 | T-178 | ⏳ |
+| **T-181** | Logging: 其他 Bridge 层审查 | P2 | 🟢 可选 | T-178~T-180 | ⏳ |
+| **T-182** | Test: VideoShaderConstants 单元测试 | P0 | 🔴 强制 | T-172 | ⏳ |
+| **T-183** | Test: MainActor 边界集成测试 | P1 | 🔴 强制 | T-175~T-177 | ⏳ |
+
+## M13 任务详情
+
+---
+
+### T-171: HDR: VideoUniforms 扩展
+
+> **关联需求**: F-028, AC-097
+> **关联测试**: UT-042.1~4
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+扩展 `VideoUniforms` 结构，添加 `edrIntensity` 和 `gamutMappingEnabled` 字段，使 HDRConfiguration 的配置能够传递到 Shader。
+
+**涉及文件**:
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 VideoUniforms)
+
+**验收标准**:
+- [ ] `VideoUniforms` 包含 `edrIntensity: Float` 字段（默认 1.0）
+- [ ] `VideoUniforms` 包含 `gamutMappingEnabled: UInt32` 字段（默认 1）
+- [ ] 结构大小保持 16 字节对齐
+- [ ] `VideoUniforms.default` 返回正确默认值
+
+**测试方法**: UT-042.1~4 单元测试
+
+**Review 要点**:
+- [ ] 字段类型与 Shader 匹配（Float/UInt32）
+- [ ] 对齐填充正确
+- [ ] 默认值合理
+
+---
+
+### T-172: HDR: VideoShaderConstants CPU 验证
+
+> **关联需求**: F-028, AC-100
+> **关联测试**: UT-044.1~10
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+创建 `VideoShaderConstants.swift`，定义 CPU 端 Shader 常量（PQ EOTF、色域映射矩阵、ACES 参数），用于验证 GPU Shader 行为一致性。
+
+**涉及文件**:
+- `Chiaki/Core/Video/VideoShaderConstants.swift` (新建)
+
+**验收标准**:
+- [ ] 定义 PQ EOTF 常量（m1, m2, c1, c2, c3）
+- [ ] 定义 `rec2020ToP3Matrix` 色域映射矩阵
+- [ ] 定义 YUV→RGB 矩阵（BT.709, BT.2020）
+- [ ] 实现 `pqEOTF(_:)` CPU 端函数
+- [ ] 实现 `applyGamutMapping(_:)` CPU 端函数
+- [ ] 实现 `acesTonemap(_:)` CPU 端函数
+
+**测试方法**: UT-044.1~10 单元测试（先写测试）
+
+**Review 要点**:
+- [ ] 常量值与 Shader 源码一致
+- [ ] 矩阵列主序正确
+- [ ] 函数实现与 Shader 逻辑一致
+
+---
+
+### T-173: HDR: MetalVideoRenderer 配置同步
+
+> **关联需求**: F-028, AC-097, AC-098, AC-099
+> **关联测试**: UT-043.1~4, IT-015.1~2
+> **TDD 模式**: 🟡 推荐
+
+**任务描述**:
+修改 `MetalVideoRenderer` 的 `hdrConfiguration` 设置器，同步 `edrIntensity` 和 `gamutMappingEnabled` 到 Uniforms。添加独立的 setter 方法用于实时预览。
+
+**涉及文件**:
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改)
+
+**验收标准**:
+- [ ] `hdrConfiguration` didSet 同步 `edrIntensity`
+- [ ] `hdrConfiguration` didSet 同步 `gamutMappingEnabled`
+- [ ] 添加 `setEDRIntensity(_:)` 方法（clamp 到 0.5~2.0）
+- [ ] 添加 `setGamutMappingEnabled(_:)` 方法
+- [ ] 添加只读属性暴露当前值（用于测试）
+
+**测试方法**: UT-043.1~4 单元测试, IT-015.1~2 集成测试
+
+**Review 要点**:
+- [ ] 边界 clamp 正确
+- [ ] triggerRedraw 调用正确
+- [ ] 线程安全（frameLock 使用）
+
+---
+
+### T-174: HDR: Shader 动态分支 (edrIntensity/gamutMapping)
+
+> **关联需求**: F-028, AC-098, AC-099
+> **关联测试**: IT-015.1~2, E2E-012.1
+> **TDD 模式**: 🟡 推荐
+
+**任务描述**:
+修改 `MetalVideoRenderer` 中的运行时 Shader 源码，根据 `gamutMappingEnabled` 条件执行色域映射，根据 `edrIntensity` 调整 EDR 输出强度。
+
+**涉及文件**:
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 shaderSource)
+
+**验收标准**:
+- [ ] Shader VideoUniforms 结构与 Swift 一致
+- [ ] `gamutMappingEnabled == 1` 时执行 `applyGamutMapping()`
+- [ ] EDR 输出乘以 `uniforms.edrIntensity`
+- [ ] BGRA fragment shader 同步更新
+
+**测试方法**: IT-015.1~2 集成测试, E2E-012.1 手动验证
+
+**Review 要点**:
+- [ ] Shader 结构与 Swift 对齐
+- [ ] 条件分支逻辑正确
+- [ ] 无性能回退（分支在 GPU 上高效）
+
+---
+
+### T-175: MainActor: SettingsStore 标注
+
+> **关联需求**: F-029, AC-101
+> **关联测试**: UT-045.1~3, IT-016.1
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+为 `SettingsStore` 类整体添加 `@MainActor` 标注，确保所有属性和方法在主线程执行。
+
+**涉及文件**:
+- `Chiaki/Core/Storage/SettingsStore.swift` (修改)
+
+**验收标准**:
+- [ ] `SettingsStore` 类声明添加 `@MainActor`
+- [ ] `static let shared` 保持 `@MainActor`
+- [ ] 所有公开方法可在 MainActor 上调用
+- [ ] 编译无警告
+
+**测试方法**: UT-045.1~3 单元测试, IT-016.1 集成测试
+
+**Review 要点**:
+- [ ] 类级别标注正确
+- [ ] 无遗漏的 nonisolated 方法
+- [ ] 调用方迁移检查
+
+---
+
+### T-176: MainActor: HostStore 标注
+
+> **关联需求**: F-029, AC-102
+> **关联测试**: UT-046.1~3, IT-016.2
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+为 `HostStore` 类整体添加 `@MainActor` 标注，确保所有属性和方法在主线程执行。
+
+**涉及文件**:
+- `Chiaki/Core/Storage/HostStore.swift` (修改)
+
+**验收标准**:
+- [ ] `HostStore` 类声明添加 `@MainActor`
+- [ ] `static let shared` 保持 `@MainActor`
+- [ ] CRUD 方法可在 MainActor 上调用
+- [ ] 编译无警告
+
+**测试方法**: UT-046.1~3 单元测试, IT-016.2 集成测试
+
+**Review 要点**:
+- [ ] 类级别标注正确
+- [ ] Logger 调用兼容
+- [ ] 调用方迁移检查
+
+---
+
+### T-177: MainActor: NetworkMonitor 状态隔离
+
+> **关联需求**: F-029, AC-103
+> **关联测试**: IT-016.3
+> **TDD 模式**: 🟡 推荐
+
+**任务描述**:
+审查 `NetworkMonitor`，确保状态属性（isConnected, connectionType）的更新在 MainActor 上执行。
+
+**涉及文件**:
+- `Chiaki/Core/Network/NetworkMonitor.swift` (修改)
+
+**验收标准**:
+- [ ] `isConnected` 属性标注 `@MainActor`
+- [ ] `connectionType` 属性标注 `@MainActor`
+- [ ] `pathUpdateHandler` 回调使用 `Task { @MainActor in }` 包装
+- [ ] 编译无警告
+
+**测试方法**: IT-016.3 集成测试
+
+**Review 要点**:
+- [ ] 属性隔离正确
+- [ ] 回调线程切换正确
+- [ ] 无数据竞争
+
+---
+
+### T-178: Logging: ChiakiSessionWrapper Logger 替换
+
+> **关联需求**: F-030, AC-104
+> **关联测试**: UT-047.1~2, CR-002
+> **TDD 模式**: 🟢 可选
+
+**任务描述**:
+将 `ChiakiSessionWrapper` 中的所有 `print()` 调用替换为 `Logger` 系统调用，使用正确的日志级别。
+
+**涉及文件**:
+- `Chiaki/Core/Bridge/ChiakiSession.swift` (修改)
+
+**验收标准**:
+- [ ] 无裸 `print()` 调用
+- [ ] 错误使用 `Logger.session.error()`
+- [ ] 警告使用 `Logger.session.warning()`
+- [ ] 信息使用 `Logger.session.info()`
+- [ ] 调试使用 `Logger.session.debug()` 或 `logDebug()`
+
+**测试方法**: UT-047.1~2, CR-002 代码审查
+
+**Review 要点**:
+- [ ] 日志级别选择正确
+- [ ] 无信息泄露（敏感数据）
+- [ ] 格式一致
+
+---
+
+### T-179: Logging: VideoDecoderBridge DEBUG 保护
+
+> **关联需求**: F-030, AC-105
+> **关联测试**: UT-047.3~4, CR-003
+> **TDD 模式**: 🟢 可选
+
+**任务描述**:
+审查 `VideoDecoderBridge` 和 `VideoToolboxDecoder`，为高频日志（如帧解码信息）添加 `#if DEBUG` 保护。
+
+**涉及文件**:
+- `Chiaki/Core/Video/VideoDecoderBridge.swift` (修改)
+- `Chiaki/Core/Video/VideoToolboxDecoder.swift` (修改)
+
+**验收标准**:
+- [ ] 帧级日志使用 `#if DEBUG` 保护
+- [ ] `logVerbose()` 调用有 DEBUG 保护
+- [ ] 错误日志保留（不受 DEBUG 限制）
+- [ ] Release 构建无 verbose 输出
+
+**测试方法**: UT-047.3~4, CR-003 代码审查
+
+**Review 要点**:
+- [ ] 保护范围正确
+- [ ] 不影响错误追踪
+- [ ] 编译期过滤
+
+---
+
+### T-180: Logging: AudioPlayerBridge DEBUG 保护
+
+> **关联需求**: F-030, AC-105
+> **关联测试**: CR-003
+> **TDD 模式**: 🟢 可选
+
+**任务描述**:
+审查 `AudioPlayerBridge`，为高频日志（如音频缓冲区信息）添加 `#if DEBUG` 保护。
+
+**涉及文件**:
+- `Chiaki/Core/Audio/AudioPlayerBridge.swift` (修改)
+
+**验收标准**:
+- [ ] 缓冲区级日志使用 `#if DEBUG` 保护
+- [ ] 错误日志保留
+- [ ] Release 构建无 verbose 输出
+
+**测试方法**: CR-003 代码审查
+
+**Review 要点**:
+- [ ] 保护范围正确
+- [ ] 不影响错误追踪
+
+---
+
+### T-181: Logging: 其他 Bridge 层审查
+
+> **关联需求**: F-030, AC-106
+> **关联测试**: CR-004
+> **TDD 模式**: 🟢 可选
+
+**任务描述**:
+审查其他 Bridge 层文件（ChiakiDiscovery, ChiakiRegist），统一日志输出方式。
+
+**涉及文件**:
+- `Chiaki/Core/Bridge/ChiakiDiscovery.swift` (审查/修改)
+- `Chiaki/Core/Bridge/ChiakiRegist.swift` (审查/修改)
+
+**验收标准**:
+- [ ] 无裸 `print()` 调用
+- [ ] 使用 `Logger.discovery` / `Logger.regist` 类别
+- [ ] 日志级别正确
+
+**测试方法**: CR-004 代码审查, 自动化脚本
+
+**Review 要点**:
+- [ ] 日志类别正确
+- [ ] 一致的格式
+
+---
+
+### T-182: Test: VideoShaderConstants 单元测试
+
+> **关联需求**: F-028, AC-100
+> **关联测试**: UT-044.1~10
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+为 `VideoShaderConstants` 编写完整的单元测试，验证 PQ EOTF、色域映射、ACES Tone Mapping 的正确性。
+
+**涉及文件**:
+- `Tests/ChiakiTests/Video/VideoShaderConstantsTests.swift` (新建)
+
+**验收标准**:
+- [ ] testPQEOTF_Black: 输入 0.0 → 输出 0.0
+- [ ] testPQEOTF_SDRWhite: 输入 0.508 → ~0.0203
+- [ ] testPQEOTF_Peak: 输入 1.0 → ~1.0
+- [ ] testGamutMapping_White: 白点保持不变
+- [ ] testGamutMapping_NoNegatives: 无负值输出
+- [ ] testACES_Black: 输入 0 → 输出 0
+- [ ] testACES_Clamp: 高输入 clamp 到 1.0
+- [ ] testACES_SDRRange: 中灰合理响应
+- [ ] testBT709_WhitePoint: Y=1,U=0,V=0 → 白色
+- [ ] testRec2020ToP3Matrix: 矩阵值正确
+
+**测试方法**: `xcodebuild test` 运行单元测试
+
+**Review 要点**:
+- [ ] 测试覆盖所有关键函数
+- [ ] 精度要求合理（accuracy 参数）
+- [ ] 边界条件覆盖
+
+---
+
+### T-183: Test: MainActor 边界集成测试
+
+> **关联需求**: F-029, AC-101, AC-102, AC-103
+> **关联测试**: IT-016.1~3
+> **TDD 模式**: 🔴 强制
+
+**任务描述**:
+编写集成测试验证 `@MainActor` 标注的有效性，包括后台线程访问和状态更新隔离。
+
+**涉及文件**:
+- `Tests/ChiakiTests/Storage/MainActorBoundaryTests.swift` (新建)
+
+**验收标准**:
+- [ ] testBackgroundAccessToSettingsStore: 后台访问需要 MainActor.run
+- [ ] testBackgroundAccessToHostStore: 后台访问需要 MainActor.run
+- [ ] testNetworkMonitorStateUpdateOnMainActor: 状态更新在 MainActor
+
+**测试方法**: `xcodebuild test` 运行集成测试
+
+**Review 要点**:
+- [ ] 测试异步边界正确
+- [ ] expectation 超时合理
+- [ ] 覆盖关键场景
+
+---
+
+## M13 依赖关系图
+
+```mermaid
+graph TD
+    %% F-028 HDR 配置完全落地
+    subgraph F028[F-028 HDR 配置完全落地]
+        T171[T-171: VideoUniforms 扩展]
+        T172[T-172: VideoShaderConstants CPU 验证]
+        T173[T-173: MetalVideoRenderer 配置同步]
+        T174[T-174: Shader 动态分支]
+        T182[T-182: VideoShaderConstants 单元测试]
+
+        T171 --> T173
+        T172 --> T182
+        T173 --> T174
+        T171 --> T174
+    end
+
+    %% F-029 MainActor 边界规范化
+    subgraph F029[F-029 MainActor 边界规范化]
+        T175[T-175: SettingsStore 标注]
+        T176[T-176: HostStore 标注]
+        T177[T-177: NetworkMonitor 状态隔离]
+        T183[T-183: MainActor 边界集成测试]
+
+        T175 --> T177
+        T176 --> T177
+        T175 --> T183
+        T176 --> T183
+        T177 --> T183
+    end
+
+    %% F-030 日志输出规范化
+    subgraph F030[F-030 日志输出规范化]
+        T178[T-178: ChiakiSessionWrapper Logger]
+        T179[T-179: VideoDecoderBridge DEBUG]
+        T180[T-180: AudioPlayerBridge DEBUG]
+        T181[T-181: 其他 Bridge 审查]
+
+        T178 --> T179
+        T178 --> T180
+        T179 --> T181
+        T180 --> T181
+    end
+```
+
+## M13 执行检查清单
+
+1. [ ] 开始前确保 M12 所有任务已完成
+2. [ ] 建议执行顺序：
+   - **Phase 1**: T-171, T-172 (无依赖，可并行)
+   - **Phase 2**: T-175, T-176, T-178 (无依赖，可并行)
+   - **Phase 3**: T-173, T-182 (依赖 Phase 1)
+   - **Phase 4**: T-174, T-177, T-179, T-180 (依赖 Phase 2/3)
+   - **Phase 5**: T-181, T-183 (依赖 Phase 4)
 3. [ ] 核心逻辑任务（🔴 强制 TDD）必须先写测试
 4. [ ] 每个任务完成后运行 `/devdocs-sync --trace` 更新追溯
+5. [ ] T-178~T-181 完成后运行 `check_logging_compliance.sh` 验证
+
+---
+
+## M13 需求追溯汇总
+
+| AC 编号 | 验收标准 | 任务 | 测试 |
+|---------|----------|------|------|
+| AC-097 | Shader 动态分支 | T-171, T-173, T-174 | UT-042, UT-043, IT-015 |
+| AC-098 | EDR 强度应用 | T-173, T-174 | UT-043, IT-015, E2E-012 |
+| AC-099 | 色域映射开关 | T-173, T-174 | UT-043, IT-015, E2E-012 |
+| AC-100 | 单元测试覆盖 | T-172, T-182 | UT-044 |
+| AC-101 | SettingsStore 标注 | T-175 | UT-045, IT-016 |
+| AC-102 | HostStore 标注 | T-176 | UT-046, IT-016 |
+| AC-103 | 其他 Store 审查 | T-177 | IT-016, CR-001 |
+| AC-104 | Logger 统一 | T-178 | UT-047, CR-002 |
+| AC-105 | DEBUG 保护 | T-179, T-180 | UT-047, CR-003 |
+| AC-106 | Bridge 层审查 | T-181 | CR-004 |
