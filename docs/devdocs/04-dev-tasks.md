@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 54% (13/24 任务完成)
+> **完成率**: 67% (16/24 任务完成)
 
 ## M12 任务概览
 
@@ -48,9 +48,9 @@
 | **T-157** | Render: MetalVideoRenderer 协议实现 | P0 | 🔴 强制 | T-156, T-153 | ✅ |
 | **T-158** | Render: VideoStreamView.Coordinator 分离 | P1 | 🟡 推荐 | T-157 | ✅ |
 | **T-159** | Protocol: PinManaging 协议定义 | P0 | 🔴 强制 | - | ✅ |
-| **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ⏳ |
-| **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ⏳ |
-| **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ⏳ |
+| **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ✅ |
+| **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ✅ |
+| **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ✅ |
 | **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ⏳ |
 | **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ⏳ |
 | **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ⏳ |
@@ -539,7 +539,7 @@ swift test --filter PinManagingTests
 
 ---
 
-### T-160: Protocol: PSNServicing 协议定义 ⏳
+### T-160: Protocol: PSNServicing 协议定义 ✅
 
 **目标**: 定义 PSNServicing 协议，抽象 PSN 服务逻辑。
 
@@ -551,16 +551,19 @@ swift test --filter PinManagingTests
 
 **依赖**: -
 
+**完成提交**: `d081981` feat(protocol): define PSNServicing protocol abstraction (T-160, T-162)
+
 **涉及文件**:
 - `Chiaki/Shared/Protocols/PSNServicing.swift` (新建)
+- `ChiakiTests/PSNServicingTests.swift` (新建)
 
 **验收标准**:
-- [ ] 协议定义 `account: PSNAccount?` 属性
-- [ ] 协议定义 `isSignedIn: Bool` 属性
-- [ ] 协议定义 `authState: PSNAuthState` 属性
-- [ ] 协议定义 `signOut()` 方法
-- [ ] 协议定义 `manualRefresh() async throws` 方法
-- [ ] 协议定义 `startOAuthLogin() -> URL` 方法
+- [x] 协议定义 `account: PSNAccount?` 属性
+- [x] 协议定义 `isSignedIn: Bool` 属性
+- [x] 协议定义 `authState: PSNAuthState` 属性
+- [x] 协议定义 `signOut()` 方法
+- [x] 协议定义 `manualRefresh() async throws` 方法
+- [x] 协议定义 `startOAuthLogin() -> URL` 方法
 
 **测试方法**:
 ```bash
@@ -568,12 +571,12 @@ swift test --filter PSNServicingTests
 ```
 
 **Review 要点**:
-- [ ] 方法签名与现有 PSNService 一致
-- [ ] async 方法正确标记
+- [x] 方法签名与现有 PSNService 一致
+- [x] async 方法正确标记
 
 ---
 
-### T-161: Protocol: ConsolePinManager 协议实现 ⏳
+### T-161: Protocol: ConsolePinManager 协议实现 ✅
 
 **目标**: 让 ConsolePinManager 实现 PinManaging 协议。
 
@@ -585,13 +588,17 @@ swift test --filter PSNServicingTests
 
 **依赖**: T-159
 
+**完成提交**: `3c05c37` feat(protocol): define PinManaging protocol abstraction (T-159)
+
+**实现说明**: 与 T-159 合并完成，ConsolePinManager 通过扩展声明遵守 PinManaging 协议
+
 **涉及文件**:
 - `Chiaki/Core/Storage/ConsolePinManager.swift` (修改)
 
 **验收标准**:
-- [ ] `ConsolePinManager` 实现 `PinManaging` 协议
-- [ ] 所有协议方法已有实现（扩展声明即可）
-- [ ] 现有调用方无需修改
+- [x] `ConsolePinManager` 实现 `PinManaging` 协议
+- [x] 所有协议方法已有实现（扩展声明即可）
+- [x] 现有调用方无需修改
 
 **测试方法**:
 ```bash
@@ -599,12 +606,12 @@ swift test --filter PinManagingTests
 ```
 
 **Review 要点**:
-- [ ] 无破坏性变更
-- [ ] 协议扩展位置合理
+- [x] 无破坏性变更
+- [x] 协议扩展位置合理
 
 ---
 
-### T-162: Protocol: PSNService 协议实现 ⏳
+### T-162: Protocol: PSNService 协议实现 ✅
 
 **目标**: 让 PSNService 实现 PSNServicing 协议。
 
@@ -616,13 +623,17 @@ swift test --filter PinManagingTests
 
 **依赖**: T-160
 
+**完成提交**: `d081981` feat(protocol): define PSNServicing protocol abstraction (T-160, T-162)
+
+**实现说明**: 与 T-160 合并完成，PSNService 通过扩展声明遵守 PSNServicing 协议，桥接现有 API
+
 **涉及文件**:
-- `Chiaki/Domain/Services/PSNService.swift` (修改)
+- `Chiaki/Shared/Protocols/PSNServicing.swift` (扩展)
 
 **验收标准**:
-- [ ] `PSNService` 实现 `PSNServicing` 协议
-- [ ] 所有协议方法已有实现（扩展声明即可）
-- [ ] 现有调用方无需修改
+- [x] `PSNService` 实现 `PSNServicing` 协议
+- [x] 所有协议方法已有实现（扩展声明即可）
+- [x] 现有调用方无需修改
 
 **测试方法**:
 ```bash
@@ -630,8 +641,8 @@ swift test --filter PSNServicingTests
 ```
 
 **Review 要点**:
-- [ ] 无破坏性变更
-- [ ] 协议扩展位置合理
+- [x] 无破坏性变更
+- [x] 协议扩展位置合理
 
 ---
 
