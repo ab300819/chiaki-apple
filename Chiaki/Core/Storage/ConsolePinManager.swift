@@ -8,7 +8,7 @@
 import Foundation
 
 /// Manages 4-digit PIN codes for console access security
-final class ConsolePinManager {
+final class ConsolePinManager: @unchecked Sendable {
     // MARK: - Singleton
 
     static let shared = ConsolePinManager()
@@ -91,6 +91,18 @@ final class ConsolePinManager {
         hasPin(for: host)
     }
 
+    /// Get the PIN for a specific host, if present
+    /// - Parameter host: The console host
+    /// - Returns: Stored PIN or nil if not found
+    func getPin(for host: ConsoleHost) -> String? {
+        let key = pinKey(for: host)
+        do {
+            return try keychain.loadString(key: key)
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - Private Methods
 
     private func pinKey(for host: ConsoleHost) -> String {
@@ -101,3 +113,7 @@ final class ConsolePinManager {
         pin.count == 4 && pin.allSatisfy { $0.isNumber }
     }
 }
+
+/// @requirement F-027 - UI 层 MVVM 合规重构
+/// @satisfies AC-095 - 协议抽象: PinManaging
+extension ConsolePinManager: PinManaging {}
