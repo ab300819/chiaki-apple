@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 37% (9/24 任务完成)
+> **完成率**: 50% (12/24 任务完成)
 
 ## M12 任务概览
 
@@ -44,9 +44,9 @@
 | **T-153** | HDR: MetalVideoRenderer 集成 | P0 | 🟡 推荐 | T-148, T-149, T-152 | ✅ |
 | **T-154** | HDR: VideoStreamView EDR 集成 | P0 | 🟢 可选 | T-149, T-153 | ✅ |
 | **T-155** | Stats: 渲染性能指标扩展 | P1 | 🔴 强制 | T-153 | ✅ |
-| **T-156** | Render: VideoRenderer 协议抽象 | P0 | 🔴 强制 | T-147 | ⏳ |
-| **T-157** | Render: MetalVideoRenderer 协议实现 | P0 | 🔴 强制 | T-156, T-153 | ⏳ |
-| **T-158** | Render: VideoStreamView.Coordinator 分离 | P1 | 🟡 推荐 | T-157 | ⏳ |
+| **T-156** | Render: VideoRenderer 协议抽象 | P0 | 🔴 强制 | T-147 | ✅ |
+| **T-157** | Render: MetalVideoRenderer 协议实现 | P0 | 🔴 强制 | T-156, T-153 | ✅ |
+| **T-158** | Render: VideoStreamView.Coordinator 分离 | P1 | 🟡 推荐 | T-157 | ✅ |
 | **T-159** | Protocol: PinManaging 协议定义 | P0 | 🔴 强制 | - | ⏳ |
 | **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ⏳ |
 | **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ⏳ |
@@ -388,7 +388,7 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 ---
 
-### T-156: Render: VideoRenderer 协议抽象 ⏳
+### T-156: Render: VideoRenderer 协议抽象 ✅
 
 **目标**: 定义 VideoRenderer 协议，实现渲染器抽象。
 
@@ -400,29 +400,33 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 **依赖**: T-147
 
+**完成提交**: 待提交
+
 **涉及文件**:
-- `Chiaki/Core/Video/VideoRenderer.swift` (新建)
+- `Chiaki/Core/Video/VideoRenderer.swift` (修改)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改)
+- `ChiakiTests/VideoRendererTests.swift` (新建)
 
 **验收标准**:
-- [ ] 协议定义 `submitFrame(_:)` 方法
-- [ ] 协议定义 `render(to:descriptor:)` 方法
-- [ ] 协议定义 `displayMode`, `zoomFactor`, `hdrConfiguration`, `edrHeadroom` 属性
-- [ ] 协议定义 `setBrightness`, `setContrast`, `setSaturation` 方法
-- [ ] 协议定义 `frameSize`, `hasFrame` 查询属性
-- [ ] 定义 `VideoDisplayMode`, `TonemapMode` 枚举
+- [x] 协议定义 `submitFrame(_:)` 方法
+- [x] 协议定义 `render(to:descriptor:)` 方法
+- [x] 协议定义 `displayMode`, `zoomFactor`, `hdrConfiguration`, `edrHeadroom` 属性
+- [x] 协议定义 `setBrightness`, `setContrast`, `setSaturation` 方法
+- [x] 协议定义 `frameSize`, `hasFrame` 查询属性
+- [x] 定义 `VideoDisplayMode`, `TonemapMode` 枚举
 
 **测试方法**:
 ```bash
-swift test --filter VideoRendererTests
+xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererProtocolTests
 ```
 
 **Review 要点**:
-- [ ] 协议足够抽象，不暴露 Metal 细节
-- [ ] Sendable 合规
+- [x] 协议足够抽象，不暴露 Metal 细节
+- [x] Sendable 合规
 
 ---
 
-### T-157: Render: MetalVideoRenderer 协议实现 ⏳
+### T-157: Render: MetalVideoRenderer 协议实现 ✅
 
 **目标**: 重构 MetalVideoRenderer 以实现 VideoRenderer 协议。
 
@@ -434,28 +438,30 @@ swift test --filter VideoRendererTests
 
 **依赖**: T-156, T-153
 
+**完成提交**: 待提交 (与 T-156, T-158 合并提交)
+
 **涉及文件**:
 - `Chiaki/Core/Video/MetalVideoRenderer.swift` (重构)
 
 **验收标准**:
-- [ ] `MetalVideoRenderer` 实现 `VideoRenderer` 协议
-- [ ] **移除** `MTKViewDelegate` 实现
-- [ ] 所有协议方法正确实现
-- [ ] 通过依赖注入接收 `HDRConfiguration`
-- [ ] `edrHeadroom` 可从外部设置
+- [x] `MetalVideoRenderer` 实现 `VideoRenderer` 协议
+- [x] **移除** `MTKViewDelegate` 实现
+- [x] 所有协议方法正确实现
+- [x] 通过依赖注入接收 `HDRConfiguration`
+- [x] `edrHeadroom` 可从外部设置
 
 **测试方法**:
 ```bash
-swift test --filter VideoRendererTests
+xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererProtocolTests
 ```
 
 **Review 要点**:
-- [ ] 不再直接实现 MTKViewDelegate
-- [ ] 无破坏性变更（Coordinator 将接管 delegate）
+- [x] 不再直接实现 MTKViewDelegate
+- [x] 无破坏性变更（MTKViewDelegateBridge 接管 delegate）
 
 ---
 
-### T-158: Render: VideoStreamView.Coordinator 分离 ⏳
+### T-158: Render: VideoStreamView.Coordinator 分离 ✅
 
 **目标**: 将 MTKViewDelegate 实现移至 VideoStreamView.Coordinator。
 
@@ -467,24 +473,31 @@ swift test --filter VideoRendererTests
 
 **依赖**: T-157
 
+**完成提交**: 待提交 (与 T-156, T-157 合并提交)
+
 **涉及文件**:
-- `Chiaki/Features/Streaming/VideoStreamView.swift` (重构)
+- `Chiaki/Core/Video/VideoStreamView.swift` (重构)
 
 **验收标准**:
-- [ ] `VideoStreamView.Coordinator` 实现 `MTKViewDelegate`
-- [ ] Coordinator 持有 `VideoRenderer` 引用
-- [ ] `draw(in:)` 调用 `renderer.render(to:descriptor:)`
-- [ ] `mtkView(_:drawableSizeWillChange:)` 正确处理
-- [ ] View 通过 Coordinator 与 Renderer 交互
+- [x] `MTKViewDelegateBridge` 实现 `MTKViewDelegate` (替代原 Coordinator 设计)
+- [x] Bridge/Coordinator 持有 `VideoRenderer` 引用
+- [x] `draw(in:)` 调用 `renderer.render(to:descriptor:)`
+- [x] `mtkView(_:drawableSizeWillChange:)` 正确处理
+- [x] View 通过 Coordinator 与 Renderer 交互
+
+**实现说明**:
+- 使用 `MTKViewDelegateBridge` 类实现 MTKViewDelegate
+- 通过 `VideoStreamView.Coordinator` 持有 bridge 引用防止提前释放
+- VRR 逻辑从 MetalVideoRenderer 移至 Bridge
 
 **测试方法**:
 ```bash
-swift test --filter CoordinatorIntegrationTests
+xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererTests
 ```
 
 **Review 要点**:
-- [ ] Coordinator 生命周期正确
-- [ ] 无循环引用
+- [x] Bridge/Coordinator 生命周期正确
+- [x] 无循环引用 (使用 weak 引用)
 
 ---
 
