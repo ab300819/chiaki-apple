@@ -40,3 +40,94 @@
 - 编译验证：Metal 着色器编译通过。
 
 ---
+
+## BUG-002: RegistrationView 缺少 hostManager 参数导致编译失败
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 编译失败 |
+| **关联功能** | F-027 (UI 层 MVVM 重构) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-04 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+M12 重构中 `RegistrationView` 的初始化签名从 `init(initialAddress:)` 变更为 `init(hostManager:initialAddress:)`，但 `HostListView` 中的调用未同步更新，导致编译失败。
+
+### 复现步骤
+
+1. 执行 `xcodebuild -scheme Chiaki build`
+2. 编译失败，错误信息：`missing argument for parameter 'hostManager' in call`
+3. 错误位置：`HostListView.swift:75`
+
+### 根因分析
+
+在 F-027 MVVM 重构过程中，`RegistrationView` 改为通过构造函数注入 `HostManager` 依赖（替代直接使用 `HostManager.shared`），但遗漏了更新 `HostListView` 中的调用点。
+
+### 解决方案
+
+1. 将 `HostListViewModel.hostManager` 从 `private` 改为 `internal`，使视图可以访问
+2. 更新 `HostListView` 中 `RegistrationView` 的调用，传入 `viewModel.hostManager`
+
+### 回归测试
+
+- 编译验证：`xcodebuild build` 成功
+- 关联测试：UT-047 (RegistrationView 初始化测试)
+
+### 经验教训
+
+重构 API 签名时，应使用 IDE 的"Find Usages"功能确保所有调用点都已更新，或在 CI 中启用增量编译验证。
+
+---
+
+## BUG-003: nonisolated(unsafe) 在 @Observable 类中产生编译警告
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 编译警告 |
+| **关联功能** | F-025 (HDR 渲染管线优化) |
+| **Issue** | N/A |
+| **严重程度** | P2 |
+| **修复日期** | 2026-02-04 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+`EDRHeadroomMonitor` 类中使用 `nonisolated(unsafe)` 标注的属性产生编译警告：`'nonisolated(unsafe)' has no effect on property, consider using 'nonisolated'`。
+
+### 复现步骤
+
+1. 执行 `xcodebuild -scheme Chiaki build`
+2. 观察到警告：
+   - `EDRHeadroomMonitor.swift:40:5: warning: 'nonisolated(unsafe)' has no effect on property 'displayLink'`
+   - `EDRHeadroomMonitor.swift:41:5: warning: 'nonisolated(unsafe)' has no effect on property 'observation'`
+
+### 根因分析
+
+Swift 6.2 中，`@Observable` 宏与 `nonisolated(unsafe)` 存在兼容性问题：
+1. `nonisolated(unsafe)` 在 `@Observable @MainActor` 类的存储属性上被认为"无效"
+2. 直接使用 `nonisolated` 会导致错误：`'nonisolated' cannot be applied to mutable stored properties`
+3. 移除标注会导致 `deinit` 无法访问这些属性（`deinit` 是 nonisolated 上下文）
+
+### 解决方案
+
+将需要在 `deinit` 中清理的资源（`CADisplayLink`、`NSKeyValueObservation`）移到独立的辅助类 `EDRMonitorResources` 中：
+
+1. 创建 `private final class EDRMonitorResources: @unchecked Sendable`
+2. 在辅助类的 `deinit` 中执行资源清理
+3. `EDRHeadroomMonitor` 持有 `let resources = EDRMonitorResources()`
+
+这种模式避免了 `@Observable` 宏与 `nonisolated` 的冲突。
+
+### 回归测试
+
+- 编译验证：`xcodebuild build` 成功且无警告
+- 功能验证：EDR headroom 监控功能正常
+
+### 经验教训
+
+在 `@Observable @MainActor` 类中需要 `deinit` 清理的资源，应使用独立的辅助类持有，而不是直接使用 `nonisolated(unsafe)` 标注。
+
+---

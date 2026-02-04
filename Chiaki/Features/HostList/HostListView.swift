@@ -72,7 +72,7 @@ struct HostListView: View {
             AddHostView(viewModel: viewModel)
         }
         .sheet(item: $registeringHost) { host in
-            RegistrationView(initialAddress: host.address)
+            RegistrationView(hostManager: viewModel.hostManager, initialAddress: host.address)
         }
         .sheet(item: $settingPinHost) { host in
             ConsolePinView(host: host) { pin in

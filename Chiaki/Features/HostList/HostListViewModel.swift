@@ -43,7 +43,8 @@ final class HostListViewModel {
     private var isInitialized = false
 
     /// Safe accessor for host manager (force unwraps after initialization)
-    private var hostManager: HostManager {
+    /// Public for use by views that need to pass HostManager to subviews (e.g., RegistrationView)
+    var hostManager: HostManager {
         guard let manager = _hostManager else {
             fatalError("HostListViewModel used before initialization. Call initializeIfNeeded() first.")
         }
