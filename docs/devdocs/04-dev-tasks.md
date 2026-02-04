@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 79% (19/24 任务完成)
+> **完成率**: 100% (24/24 任务完成)
 
 ## M12 任务概览
 
@@ -54,11 +54,11 @@
 | **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ✅ |
 | **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ✅ |
 | **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ✅ |
-| **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ⏳ |
-| **T-167** | View: VideoSettingsView 重构 | P1 | 🟢 可选 | T-164 | ⏳ |
-| **T-168** | View: ConsolesSettingsView 重构 | P1 | 🟢 可选 | T-165 | ⏳ |
-| **T-169** | View: HostListView Singleton 解耦 | P0 | 🟢 可选 | T-161, T-165 | ⏳ |
-| **T-170** | View: StreamingView/ControllerSettingsView 解耦 | P1 | 🟢 可选 | T-161 | ⏳ |
+| **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ✅ |
+| **T-167** | View: VideoSettingsView 重构 | P1 | 🟢 可选 | T-164 | ✅ |
+| **T-168** | View: ConsolesSettingsView 重构 | P1 | 🟢 可选 | T-165 | ✅ |
+| **T-169** | View: HostListView Singleton 解耦 | P0 | 🟢 可选 | T-161, T-165 | ✅ |
+| **T-170** | View: StreamingView/ControllerSettingsView 解耦 | P1 | 🟢 可选 | T-161 | ✅ |
 
 ---
 
@@ -758,7 +758,7 @@ swift test --filter ConsolesSettingsViewModelTests
 
 ---
 
-### T-166: View: AccountSettingsView 重构 ⏳
+### T-166: View: AccountSettingsView 重构 ✅
 
 **目标**: 重构 AccountSettingsView 使用 ViewModel。
 
@@ -770,24 +770,26 @@ swift test --filter ConsolesSettingsViewModelTests
 
 **依赖**: T-163
 
+**完成提交**: `1361575` refactor(view): use AccountSettingsViewModel in AccountSettingsView (T-166)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/AccountSettingsView.swift` (重构)
 
 **验收标准**:
-- [ ] **移除** `@State private var psnService = PSNService.shared`
-- [ ] 使用 `@State private var viewModel = AccountSettingsViewModel()`
-- [ ] 所有 PSN 操作通过 viewModel 调用
-- [ ] UI 绑定 viewModel 状态
+- [x] **移除** `@State private var psnService = PSNService.shared`
+- [x] 使用 `@State private var viewModel = AccountSettingsViewModel()`
+- [x] 所有 PSN 操作通过 viewModel 调用
+- [x] UI 绑定 viewModel 状态
 
 **测试方法**: 代码审查 + 手动测试
 
 **Review 要点**:
-- [ ] 无直接 Service 访问
-- [ ] 错误提示正确显示
+- [x] 无直接 Service 访问
+- [x] 错误提示正确显示
 
 ---
 
-### T-167: View: VideoSettingsView 重构 ⏳
+### T-167: View: VideoSettingsView 重构 ✅
 
 **目标**: 重构 VideoSettingsView 使用 ViewModel。
 
@@ -799,24 +801,26 @@ swift test --filter ConsolesSettingsViewModelTests
 
 **依赖**: T-164
 
+**完成提交**: `079b998` refactor(view): use VideoSettingsViewModel in VideoSettingsView (T-167)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/VideoSettingsView.swift` (重构)
 
 **验收标准**:
-- [ ] **移除** 复杂的 Binding 计算属性
-- [ ] 使用 `VideoSettingsViewModel`
-- [ ] UI 绑定 viewModel 属性
-- [ ] HDR 设置逻辑简化
+- [x] **移除** 复杂的 Binding 计算属性 (hdrPeakModeBinding, hdrPeakNitsBinding)
+- [x] 使用 `VideoSettingsViewModel`
+- [x] UI 绑定 viewModel 属性 (hdrEnabled, hdrPeakMode, hdrPeakNits)
+- [x] HDR 设置逻辑简化
 
 **测试方法**: 代码审查 + 手动测试
 
 **Review 要点**:
-- [ ] Binding 简化
-- [ ] 设置变更正确保存
+- [x] Binding 简化
+- [x] 设置变更正确保存
 
 ---
 
-### T-168: View: ConsolesSettingsView 重构 ⏳
+### T-168: View: ConsolesSettingsView 重构 ✅
 
 **目标**: 重构 ConsolesSettingsView 使用 ViewModel。
 
@@ -828,23 +832,25 @@ swift test --filter ConsolesSettingsViewModelTests
 
 **依赖**: T-165
 
+**完成提交**: `4360f31` refactor(view): use ConsolesSettingsViewModel in ConsolesSettingsView (T-168)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/ConsolesSettingsView.swift` (重构)
 
 **验收标准**:
-- [ ] **移除** 直接 `hostStore.removeHost(host)` 调用
-- [ ] 使用 `ConsolesSettingsViewModel`
-- [ ] 所有主机操作通过 viewModel 调用
+- [x] **移除** 直接 `hostStore.removeHost(host)` 调用
+- [x] 使用 `ConsolesSettingsViewModel`
+- [x] 所有主机操作通过 viewModel 调用
 
 **测试方法**: 代码审查 + 手动测试
 
 **Review 要点**:
-- [ ] 无直接 Store 修改
-- [ ] PIN 操作正确代理
+- [x] 无直接 Store 修改
+- [x] PIN 操作正确代理 (viewModel.removeHost 自动清除 PIN)
 
 ---
 
-### T-169: View: HostListView Singleton 解耦 ⏳
+### T-169: View: HostListView Singleton 解耦 ✅
 
 **目标**: 移除 HostListView 中的直接 Manager 访问。
 
@@ -856,25 +862,27 @@ swift test --filter ConsolesSettingsViewModelTests
 
 **依赖**: T-161, T-165
 
+**完成提交**: `4259fc9` refactor(view): decouple HostListView from singletons (T-169)
+
 **涉及文件**:
 - `Chiaki/Features/HostList/HostListView.swift` (修改)
 - `Chiaki/Features/HostList/HostListViewModel.swift` (扩展)
 
 **验收标准**:
-- [ ] **移除** 直接 `HostManager.shared` 访问
-- [ ] **移除** 直接 `ConsolePinManager.shared` 访问
-- [ ] 通过 HostListViewModel 代理 PIN 操作
-- [ ] 所有 Manager 调用通过 ViewModel
+- [x] **移除** 直接 `HostManager.shared` 访问 (RegistrationView 调用)
+- [x] **移除** 直接 `ConsolePinManager.shared` 访问
+- [x] 通过 HostListViewModel 代理 PIN 操作 (hasPin, setPin, clearPin)
+- [x] 所有 Manager 调用通过 ViewModel
 
 **测试方法**: 代码审查 + IT-014.1
 
 **Review 要点**:
-- [ ] 无 `.shared` 直接访问
-- [ ] ViewModel 正确扩展
+- [x] 无 `.shared` 直接访问
+- [x] ViewModel 正确扩展 (添加 PinManaging 依赖和 PIN 代理方法)
 
 ---
 
-### T-170: View: StreamingView/ControllerSettingsView 解耦 ⏳
+### T-170: View: StreamingView/ControllerSettingsView 解耦 ✅
 
 **目标**: 移除其他 View 中的直接 Manager 访问。
 
@@ -886,20 +894,27 @@ swift test --filter ConsolesSettingsViewModelTests
 
 **依赖**: T-161
 
+**完成提交**: `08744e3` refactor(view): decouple StreamingView and ControllerSettingsView from singletons (T-170)
+
 **涉及文件**:
 - `Chiaki/Features/Streaming/StreamingView.swift` (修改)
+- `Chiaki/Features/Streaming/StreamingViewModel.swift` (扩展)
 - `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
 
 **验收标准**:
-- [ ] StreamingView **移除** 直接 `ConsolePinManager.shared` 访问
-- [ ] ControllerSettingsView **移除** 直接 `ControllerManager.shared` 访问
-- [ ] 通过 ViewModel 或 Environment 注入依赖
+- [x] StreamingView **移除** 直接 `ConsolePinManager.shared` 访问
+- [x] ControllerSettingsView **移除** 直接 `ControllerManager.shared` 访问
+- [x] 通过 ViewModel 或 Environment 注入依赖
+
+**实现说明**:
+- StreamingViewModel 添加 PinManaging 依赖和 requiresPinEntry 计算属性
+- ControllerSettingsView 通过 @Environment(ControllerManager.self) 注入
 
 **测试方法**: 代码审查 + IT-014.3
 
 **Review 要点**:
-- [ ] 无 `.shared` 直接访问
-- [ ] 依赖注入方式合理
+- [x] 无 `.shared` 直接访问
+- [x] 依赖注入方式合理
 
 ---
 
