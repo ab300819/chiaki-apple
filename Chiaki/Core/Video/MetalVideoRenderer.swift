@@ -11,26 +11,10 @@ import MetalKit
 import CoreVideo
 import simd
 
-// MARK: - Video Display Mode
-
-/// Video display modes matching chiaki-ng GUI options
-enum VideoDisplayMode: Int, CaseIterable {
-    case normal = 0    // Maintain aspect ratio, letterbox/pillarbox
-    case stretch = 1   // Stretch to fill screen
-    case zoom = 2      // Zoom to fill, crop edges
-
-    var displayName: String {
-        switch self {
-        case .normal: return "Normal"
-        case .stretch: return "Stretch"
-        case .zoom: return "Zoom"
-        }
-    }
-}
-
 // MARK: - Video Uniforms
 
 /// Uniforms passed to Metal shaders
+
 /// [requirement] F-025
 /// [satisfies] AC-081, AC-084
 struct VideoUniforms {
@@ -74,7 +58,7 @@ struct VideoVertex {
 // MARK: - Metal Video Renderer
 
 /// High-performance video renderer using Metal with CVPixelBuffer zero-copy support
-final class MetalVideoRenderer: NSObject {
+final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     // MARK: - Properties
 
     /// Metal device
@@ -200,23 +184,31 @@ final class MetalVideoRenderer: NSObject {
     /// Dropped frame counter
     private(set) var droppedFrameCount: UInt64 = 0
 
+    /// Whether a frame has been submitted and is ready for rendering
+    /// [satisfies] AC-086
+    var hasFrame: Bool {
+        frameLock.lock()
+        let result = isBiplanar ? (currentTextureY != nil && currentTextureUV != nil) : (currentTextureBGRA != nil)
+        frameLock.unlock()
+        return result
+    }
+
+    /// Current frame size (dimensions of the last submitted frame)
+    /// [satisfies] AC-086
+    var frameSize: CGSize {
+        videoSize
+    }
+
     /// Weak reference to the view for power management
     weak var mtkView: MTKView?
 
-    /// Flag to indicate if a new frame has been submitted and needs rendering
-    private var needsRedraw = false
-
-    /// Counter for idle frames (no new content)
-    private var idleFrameCount: Int = 0
-
-    /// Threshold for switching to paused mode (e.g., 2 seconds at 60fps)
-    private let idleThreshold: Int = 120
-
+    /// VRR (Variable Refresh Rate) enabled flag
     var vrrEnabled: Bool = true
 
     /// Current target frame rate
     private var targetFPS: Int = 60
 
+    /// Callback triggered when a frame is submitted (used by MTKViewDelegateBridge for VRR)
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
 
     /// Render time callback (ms)
@@ -260,10 +252,6 @@ final class MetalVideoRenderer: NSObject {
 
     /// Notify that the view needs to be redrawn
     private func triggerRedraw() {
-        frameLock.lock()
-        needsRedraw = true
-        frameLock.unlock()
-
         #if os(macOS)
         mtkView?.needsDisplay = true
         #else
@@ -554,17 +542,13 @@ final class MetalVideoRenderer: NSObject {
         }
 
         frameCount += 1
-        needsRedraw = true
-        idleFrameCount = 0
         updateTransform()
+
+        // Notify bridge that a new frame is available (for VRR handling)
         onFrameSubmitted?(pixelBuffer)
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, let view = self.mtkView else { return }
-            if view.isPaused {
-                view.isPaused = false
-            }
-        }
+        // Request redraw
+        triggerRedraw()
     }
 
     private func createBiplanarTextures(from pixelBuffer: CVPixelBuffer, cache: CVMetalTextureCache, is10Bit: Bool) {
@@ -650,8 +634,20 @@ final class MetalVideoRenderer: NSObject {
 
     // MARK: - Rendering
 
-    /// Render the current frame to a drawable
-    func render(to drawable: CAMetalDrawable, renderPassDescriptor: MTLRenderPassDescriptor) {
+    /// Render the current frame to a view (protocol conformance)
+    /// - Parameters:
+    ///   - view: The MTKView to render to
+    ///   - descriptor: Optional render pass descriptor (uses view's current if nil)
+    /// [satisfies] AC-086
+    func render(to view: MTKView, descriptor: MTLRenderPassDescriptor?) {
+        guard let drawable = view.currentDrawable else { return }
+        let passDescriptor = descriptor ?? view.currentRenderPassDescriptor
+        guard let renderPassDescriptor = passDescriptor else { return }
+        render(to: drawable, renderPassDescriptor: renderPassDescriptor)
+    }
+
+    /// Render the current frame to a drawable (internal implementation)
+    private func render(to drawable: CAMetalDrawable, renderPassDescriptor: MTLRenderPassDescriptor) {
         frameLock.lock()
         let hasFrame = isBiplanar ? (currentTextureY != nil && currentTextureUV != nil) : (currentTextureBGRA != nil)
         let biplanar = isBiplanar
@@ -1094,47 +1090,5 @@ final class MetalVideoRenderer: NSObject {
     """
 }
 
-// MARK: - MTKViewDelegate Extension
-
-extension MetalVideoRenderer: MTKViewDelegate {
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        updateViewSize(size)
-    }
-
-    func draw(in view: MTKView) {
-        frameLock.lock()
-        if !needsRedraw {
-            idleFrameCount += 1
-            
-            if vrrEnabled && idleFrameCount > 5 && view.preferredFramesPerSecond > 10 {
-                view.preferredFramesPerSecond = 10
-            }
-            
-            if idleFrameCount > idleThreshold && !view.isPaused {
-                view.isPaused = true
-                logDebug("🔋 VRR: Paused rendering after \(idleThreshold) idle frames")
-            }
-            frameLock.unlock()
-            return
-        }
-
-        if view.isPaused {
-            logDebug("🔋 VRR: Resumed rendering (new frame received)")
-        }
-
-        needsRedraw = false
-        idleFrameCount = 0
-        
-        if vrrEnabled && view.preferredFramesPerSecond != targetFPS {
-            view.preferredFramesPerSecond = targetFPS
-        }
-        
-        frameLock.unlock()
-
-        guard let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor else {
-            return
-        }
-        render(to: drawable, renderPassDescriptor: renderPassDescriptor)
-    }
-}
+// Note: MTKViewDelegate is now implemented by MTKViewDelegateBridge in VideoStreamView.swift
+// This allows VideoRenderer protocol to remain independent of Metal framework details
