@@ -19,7 +19,8 @@ struct HostListView: View {
     @State private var settingPinHost: ConsoleHost?
     @State private var showDeleteConfirmation = false
     @State private var indexSetToDelete: IndexSet?
-    @State private var selectedHostId: ConsoleHost.ID?
+    @State private var selectedHostIds: Set<ConsoleHost.ID> = []
+    @State private var isEditMode = false
     @FocusState private var focusedHost: ConsoleHost.ID?
 
     var body: some View {
@@ -34,12 +35,25 @@ struct HostListView: View {
         .confirmationDialog(L10n.HostList.deleteConfirmTitle, isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
             Button(L10n.Common.delete, role: .destructive) {
                 if let indexSet = indexSetToDelete {
+                    // Single delete via swipe
                     viewModel.deleteHost(at: indexSet)
+                    indexSetToDelete = nil
+                } else if !selectedHostIds.isEmpty {
+                    // Batch delete via selection
+                    viewModel.deleteHosts(ids: selectedHostIds)
+                    selectedHostIds.removeAll()
+                    isEditMode = false
                 }
             }
-            Button(L10n.Common.cancel, role: .cancel) {}
+            Button(L10n.Common.cancel, role: .cancel) {
+                indexSetToDelete = nil
+            }
         } message: {
-            Text(L10n.HostList.deleteConfirmMessage)
+            if selectedHostIds.count > 1 {
+                Text(String(localized: "hostList.deleteMultipleConfirmMessage \(selectedHostIds.count)"))
+            } else {
+                Text(L10n.HostList.deleteConfirmMessage)
+            }
         }
         .navigationDestination(for: ConsoleHost.self) { host in
             StreamingView(host: host)
@@ -93,7 +107,7 @@ struct HostListView: View {
         }
         .onChange(of: navigationManager.wakeUpSelectedHostTrigger) { _, newValue in
             if newValue {
-                if let selectedId = selectedHostId, let host = viewModel.host(byId: selectedId) {
+                if let selectedId = selectedHostIds.first, let host = viewModel.host(byId: selectedId) {
                     viewModel.wakeUp(host)
                 }
                 navigationManager.wakeUpSelectedHostTrigger = false
@@ -208,7 +222,7 @@ struct HostListView: View {
     #endif
 
     private var iOSBody: some View {
-        List(selection: $selectedHostId) {
+        List(selection: $selectedHostIds) {
             if viewModel.isLoading {
                 HStack {
                     Spacer()
@@ -249,9 +263,9 @@ struct HostListView: View {
                             }
                         }
                     } else {
-                        Button(action: { 
+                        Button(action: {
                             HapticFeedback.button()
-                            registeringHost = host 
+                            registeringHost = host
                         }) {
                             HostRowView(host: host) {
                                 viewModel.wakeUp(host)
@@ -266,10 +280,38 @@ struct HostListView: View {
                 }
             }
         }
+        #if os(iOS)
+        .environment(\.editMode, .constant(isEditMode ? .active : .inactive))
+        #endif
         .refreshable {
             await viewModel.refresh()
         }
         .navigationTitle(L10n.HostList.title)
+        #if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if !viewModel.hosts.isEmpty {
+                    Button(isEditMode ? String(localized: "common.done") : String(localized: "common.edit")) {
+                        withAnimation {
+                            isEditMode.toggle()
+                            if !isEditMode {
+                                selectedHostIds.removeAll()
+                            }
+                        }
+                    }
+                }
+            }
+            ToolbarItem(placement: .bottomBar) {
+                if isEditMode && !selectedHostIds.isEmpty {
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Label(String(localized: "hostList.deleteSelected \(selectedHostIds.count)"), systemImage: "trash")
+                    }
+                }
+            }
+        }
+        #endif
     }
 
     private var emptyStateView: some View {

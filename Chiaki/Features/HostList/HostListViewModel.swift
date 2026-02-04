@@ -119,6 +119,14 @@ final class HostListViewModel {
         }
     }
 
+    /// Delete hosts by IDs (batch delete)
+    /// @satisfies INS-052 - 主机列表批量删除
+    func deleteHosts(ids: Set<UUID>) {
+        for id in ids {
+            hostManager.removeHost(id: id)
+        }
+    }
+
     /// Remove a specific host
     func removeHost(_ host: ConsoleHost) {
         hostManager.removeHost(host)
