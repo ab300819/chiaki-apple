@@ -12,6 +12,7 @@ import Foundation
 import VideoToolbox
 import CoreVideo
 import CoreMedia
+import QuartzCore
 
 // MARK: - Decoder Error
 
@@ -55,9 +56,17 @@ final class VideoToolboxDecoder {
     /// Decoded frame output callback
     var onFrameDecoded: ((CVPixelBuffer, CMTime) -> Void)?
 
+    /// Decode time callback (ms)
+    /// [satisfies] AC-085
+    var onDecodeTimeRecorded: ((Double) -> Void)?
+
     /// Decode statistics
     private(set) var decodedFrameCount: UInt64 = 0
     private(set) var droppedFrameCount: UInt64 = 0
+
+    // Decode timing tracking (timestamp -> startTime)
+    private var decodeStartTimes: [UInt64: CFTimeInterval] = [:]
+    private let timingLock = NSLock()
 
     // Frame reorder buffer (for B-frames)
     private var frameReorderBuffer: [(CVPixelBuffer, CMTime)] = []
@@ -219,6 +228,11 @@ final class VideoToolboxDecoder {
         let decodeFlags: VTDecodeFrameFlags = [._EnableAsynchronousDecompression]
         var infoFlags: VTDecodeInfoFlags = []
 
+        // [satisfies] AC-085
+        timingLock.lock()
+        decodeStartTimes[timestamp] = CACurrentMediaTime()
+        timingLock.unlock()
+
         let decodeStatus = VTDecompressionSessionDecodeFrame(
             session,
             sampleBuffer: sample,
@@ -343,7 +357,17 @@ final class VideoToolboxDecoder {
     }
 
     /// Handle decoded frame output (frame reordering)
-    fileprivate func handleDecodedFrame(_ pixelBuffer: CVPixelBuffer, presentationTime: CMTime) {
+    fileprivate func handleDecodedFrame(_ pixelBuffer: CVPixelBuffer, presentationTime: CMTime, timestampValue: UInt64? = nil) {
+        // [satisfies] AC-085
+        if let pts = timestampValue {
+            timingLock.lock()
+            if let startTime = decodeStartTimes.removeValue(forKey: pts) {
+                let durationMs = (CACurrentMediaTime() - startTime) * 1000.0
+                onDecodeTimeRecorded?(durationMs)
+            }
+            timingLock.unlock()
+        }
+
         outputQueue.async { [weak self] in
             guard let self = self else { return }
 
@@ -392,14 +416,17 @@ private func decompressionOutputCallback(
 
     // Recover timestamp from frameRefcon
     let timestamp: CMTime
+    let pts: UInt64?
     if let refcon = sourceFrameRefCon {
-        let pts = UInt64(UInt(bitPattern: refcon))
-        timestamp = CMTime(value: CMTimeValue(pts), timescale: 90000)
+        let ptsVal = UInt64(UInt(bitPattern: refcon))
+        pts = ptsVal
+        timestamp = CMTime(value: CMTimeValue(ptsVal), timescale: 90000)
     } else {
+        pts = nil
         timestamp = presentationTimeStamp
     }
 
-    decoder.handleDecodedFrame(pixelBuffer, presentationTime: timestamp)
+    decoder.handleDecodedFrame(pixelBuffer, presentationTime: timestamp, timestampValue: pts)
 }
 
 // MARK: - Video Decoder Bridge
@@ -424,7 +451,12 @@ final class VideoDecoderBridge {
     private(set) var width: Int32 = 1920
     private(set) var height: Int32 = 1080
 
+    /// Decode time callback
+    /// [satisfies] AC-085
+    var onDecodeTimeRecorded: ((Double) -> Void)?
+
     // MARK: - Initialization
+
 
     init() {
         logInfo("VideoDecoderBridge: Created")
@@ -660,6 +692,11 @@ final class VideoDecoderBridge {
             // Connect decoded frames to renderer
             decoder?.onFrameDecoded = { [weak self] pixelBuffer, _ in
                 self?.renderer?.submitFrame(pixelBuffer)
+            }
+            
+            // [satisfies] AC-085
+            decoder?.onDecodeTimeRecorded = { [weak self] durationMs in
+                self?.onDecodeTimeRecorded?(durationMs)
             }
         }
 

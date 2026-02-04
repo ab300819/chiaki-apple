@@ -201,6 +201,13 @@ final class StreamingViewModel {
         session.setAudioPlayerBridge(audioPlayerBridge)
         session.setStreamStatistics(statistics)
 
+        // [satisfies] AC-085
+        videoDecoderBridge.onDecodeTimeRecorded = { [weak self] durationMs in
+            Task { @MainActor [weak self] in
+                self?.statsManager.recordDecodeTime(durationMs)
+            }
+        }
+
         // Handle session state changes
         session.onStateChanged = { [weak self] newState in
             Task { @MainActor in
@@ -230,6 +237,13 @@ final class StreamingViewModel {
 
         renderer.onFrameSubmitted = { [weak self] pixelBuffer in
             self?.pipManager.enqueue(pixelBuffer)
+        }
+        
+        // [satisfies] AC-085
+        renderer.onRenderTimeRecorded = { [weak self] durationMs in
+            Task { @MainActor [weak self] in
+                self?.statsManager.recordRenderTime(durationMs)
+            }
         }
     }
 

@@ -42,6 +42,12 @@ struct StreamingOverlay: View {
                     droppedFrames: stats.droppedFrames,
                     recoveredFrames: stats.recoveredFrames
                 )
+                
+                // Performance Metrics
+                // [satisfies] AC-085
+                if stats.decodeTimeMs > 0 {
+                    PerformanceStatsItem(stats: stats)
+                }
 
                 #if os(iOS)
                 if pipManager.isPiPSupported {
@@ -222,6 +228,51 @@ private struct HDRBadge: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 3))
         #endif
+    }
+}
+
+// MARK: - Performance Stats Item
+
+private struct PerformanceStatsItem: View {
+    let stats: StreamStatsManager
+
+    var body: some View {
+        HStack(spacing: 8) {
+            #if os(tvOS)
+            Image(systemName: "cpu")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(String(format: "D: %.1fms R: %.1fms", stats.decodeTimeMs, stats.renderTimeMs))
+                    .font(.system(size: 16, design: .monospaced))
+                    .foregroundStyle(.primary)
+                Text(String(format: "P95: %.0fms P99: %.0fms", stats.p95LatencyMs, stats.p99LatencyMs))
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            #else
+            Image(systemName: "cpu")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(String(format: "D:%.1fms R:%.1fms", stats.decodeTimeMs, stats.renderTimeMs))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.primary)
+                Text(String(format: "P95:%.0fms P99:%.0fms", stats.p95LatencyMs, stats.p99LatencyMs))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            #endif
+        }
+        .padding(.leading, 8)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.white.opacity(0.1))
+                .frame(width: 1)
+                .padding(.vertical, 4)
+        }
     }
 }
 

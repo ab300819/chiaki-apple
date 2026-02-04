@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 //  StreamStatsManagerTests.swift
 //  ChiakiTests
 //
-//  Unit tests for StreamStatsManager (UT-11.1)
+//  Unit tests for StreamStatsManager performance metrics extension (UT-031)
 //
 
 import Testing
@@ -17,18 +18,47 @@ struct StreamStatsManagerTests {
      * @testcase UT-11.1
      */
     @Test func testStatsUpdateFromSession() {
-        // 由于依赖 libchiaki，我们通常需要一个 MockStatistics 或直接测试逻辑
-        // 这里验证 StatsManager 的属性是否能被正确初始化和更新
         let stats = StreamStatistics()
         let manager = StreamStatsManager(statistics: stats)
         
         #expect(manager.bitrate == 0)
         #expect(manager.latency == 0)
+    }
+
+    /**
+     * @verifies AC-085 - 渲染性能指标扩展
+     * @testcase UT-031.1
+     */
+    @Test func testPerformanceRecording() {
+        let stats = StreamStatistics()
+        let manager = StreamStatsManager(statistics: stats)
         
-        // 模拟数据更新 (这里暗示 StreamStatsManager 应该持有 statistics 引用)
-        // 实际开发中，StatsManager 会调用 session.updateStatistics()
-        // 然后从 statistics 获取数据
+        manager.recordDecodeTime(12.5)
+        #expect(manager.decodeTimeMs == 12.5)
         
-        #expect(true)
+        manager.recordRenderTime(8.2)
+        #expect(manager.renderTimeMs == 8.2)
+    }
+
+    /**
+     * @verifies AC-085 - 百分位计算
+     * @testcase UT-031.2
+     */
+    @Test func testLatencyPercentiles() {
+        let stats = StreamStatistics()
+        let manager = StreamStatsManager(statistics: stats)
+        
+        // Submit 100 samples from 1 to 100
+        for i in 1...100 {
+            manager.addLatencySample(Double(i))
+        }
+        
+        // P95 of [1...100] should be 96 (index 95 in 0-based sorted array)
+        #expect(manager.p95LatencyMs == 96.0)
+        
+        // P99 of [1...100] should be 100 (index 99 in 0-based sorted array)
+        #expect(manager.p99LatencyMs == 100.0)
+        
+        #expect(manager.p99LatencyMs >= manager.p95LatencyMs)
     }
 }

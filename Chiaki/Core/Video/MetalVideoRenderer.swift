@@ -219,6 +219,10 @@ final class MetalVideoRenderer: NSObject {
 
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
 
+    /// Render time callback (ms)
+    /// [satisfies] AC-085
+    var onRenderTimeRecorded: ((Double) -> Void)?
+
     /// @requirement F-017 - 能效管理与渲染优化
     /// @satisfies AC-046 - 渲染能效优化
     func updateRenderingPolicy(fps: Int? = nil) {
@@ -664,6 +668,13 @@ final class MetalVideoRenderer: NSObject {
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
         commandBuffer.label = "Video Render Command Buffer"
+
+        // [satisfies] AC-085
+        let renderStartTime = CACurrentMediaTime()
+        commandBuffer.addCompletedHandler { [weak self] _ in
+            let durationMs = (CACurrentMediaTime() - renderStartTime) * 1000.0
+            self?.onRenderTimeRecorded?(durationMs)
+        }
 
         // Update uniforms
         if let uniformsBuffer = uniformsBuffer {

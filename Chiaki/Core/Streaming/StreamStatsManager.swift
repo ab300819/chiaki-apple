@@ -30,6 +30,19 @@ final class StreamStatsManager {
     var connectionQuality: ConnectionQuality = .unknown
     var isHDR: Bool = false
     
+    // MARK: - Performance Metrics
+    // [requirement] F-025
+    // [satisfies] AC-085
+    var decodeTimeMs: Double = 0
+    var renderTimeMs: Double = 0
+    var p95LatencyMs: Double = 0
+    var p99LatencyMs: Double = 0
+    
+    // MARK: - Private Storage
+    
+    private var latencySamples: [Double] = []
+    private let maxSampleSize = 100
+    
     // MARK: - Dependencies
     
     private let statistics: StreamStatistics
@@ -54,6 +67,9 @@ final class StreamStatsManager {
         currentFrameRate = statistics.currentFrameRate
         latency = statistics.networkLatency
         
+        // [satisfies] AC-085
+        updateLatencyPercentiles(currentLatency: latency)
+        
         // Use libchiaki bitrate if available, fallback to measured bitrate
         if statistics.libchiakiBitrate > 0 {
             bitrate = statistics.libchiakiBitrate
@@ -74,5 +90,56 @@ final class StreamStatsManager {
             logInfo("StreamStatsManager: isHDR changed from \(isHDR) to \(newIsHDR)")
         }
         isHDR = newIsHDR
+    }
+    
+    // MARK: - Performance Recording
+    
+    /**
+     * 记录解码耗时
+     * @satisfies AC-085
+     */
+    func recordDecodeTime(_ timeMs: Double) {
+        decodeTimeMs = timeMs
+    }
+    
+    /**
+     * 记录渲染耗时
+     * @satisfies AC-085
+     */
+    func recordRenderTime(_ timeMs: Double) {
+        renderTimeMs = timeMs
+    }
+
+    /**
+     * 手动添加延迟样本（主要用于测试或非标准延迟统计）
+     * @satisfies AC-085
+     */
+    func addLatencySample(_ sample: Double) {
+        updateLatencyPercentiles(currentLatency: sample)
+    }
+    
+    // MARK: - Private Helpers
+    
+    private func updateLatencyPercentiles(currentLatency: Double) {
+        // Skip zero samples (initial state)
+        guard currentLatency > 0 else { return }
+        
+        latencySamples.append(currentLatency)
+        if latencySamples.count > maxSampleSize {
+            latencySamples.removeFirst()
+        }
+        
+        let sorted = latencySamples.sorted()
+        let count = sorted.count
+        
+        if count > 0 {
+            // P95 calculation: Take the value at the 95th percentile index
+            let p95Index = min(count - 1, Int(Double(count) * 0.95))
+            p95LatencyMs = sorted[p95Index]
+            
+            // P99 calculation: Take the value at the 99th percentile index
+            let p99Index = min(count - 1, Int(Double(count) * 0.99))
+            p99LatencyMs = sorted[p99Index]
+        }
     }
 }
