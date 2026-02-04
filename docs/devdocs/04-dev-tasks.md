@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 21% (5/24 任务完成)
+> **完成率**: 25% (6/24 任务完成)
 
 ## M12 任务概览
 
@@ -40,7 +40,7 @@
 | **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ✅ |
-| **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ⏳ |
+| **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ✅ |
 | **T-153** | HDR: MetalVideoRenderer 集成 | P0 | 🟡 推荐 | T-148, T-149, T-152 | ⏳ |
 | **T-154** | HDR: VideoStreamView EDR 集成 | P0 | 🟢 可选 | T-149, T-153 | ⏳ |
 | **T-155** | Stats: 渲染性能指标扩展 | P1 | 🔴 强制 | T-153 | ⏳ |
@@ -248,7 +248,7 @@ swift test --filter TonemappingTests
 
 ---
 
-### T-152: HDR: Shader Uniform 扩展 ⏳
+### T-152: HDR: Shader Uniform 扩展 ✅
 
 **目标**: 扩展 Shader Uniform 结构以支持新的 HDR 参数。
 
@@ -260,15 +260,17 @@ swift test --filter TonemappingTests
 
 **依赖**: T-150, T-151
 
+**完成提交**: `cb61b66` feat(video): extend shader uniforms with HDR parameters (T-152)
+
 **涉及文件**:
-- `Chiaki/Core/Video/VideoShaders.metal` (修改 `VideoUniforms`)
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (对应 Swift 结构)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader 及 Swift 结构)
+- `ChiakiTests/HDRIntegrationTests.swift` (新建)
 
 **验收标准**:
-- [ ] `VideoUniforms` 新增 `edrHeadroom: Float`
-- [ ] `VideoUniforms` 新增 `tonemapMode: UInt32`
-- [ ] Swift 侧 `VideoUniforms` 与 Metal 侧内存布局一致
-- [ ] Fragment Shader 根据 uniforms 选择处理路径
+- [x] `VideoUniforms` 新增 `edrHeadroom: Float`
+- [x] `VideoUniforms` 新增 `tonemapMode: UInt32`
+- [x] Swift 侧 `VideoUniforms` 与 Metal 侧内存布局一致 (112 bytes, 16-byte aligned)
+- [x] Fragment Shader 根据 uniforms 选择处理路径
 
 **测试方法**:
 ```bash
@@ -276,8 +278,8 @@ swift test --filter HDRIntegrationTests
 ```
 
 **Review 要点**:
-- [ ] 内存对齐正确
-- [ ] 默认值与现有行为兼容
+- [x] 内存对齐正确 (添加 `_padding` 确保 16 字节对齐)
+- [x] 默认值与现有行为兼容
 
 ---
 
