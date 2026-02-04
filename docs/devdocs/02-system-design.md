@@ -4816,3 +4816,1273 @@ Chiaki/Utilities/
 **破坏性变更**: 无
 
 **迁移说明**: 无需迁移，纯增量功能。所有变更向后兼容，现有代码可逐步迁移至新的尺寸常量。
+
+---
+
+## 15. HDR 渲染管线优化 (F-025)
+
+> **变更来源**: F-025 HDR 渲染管线优化
+> **关联洞察**: INS-034 ~ INS-038 (GPT/Gemini 方案对比分析)
+
+### 15.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `MetalVideoRenderer` | 修改 | 新增色域映射、EDR Headroom 支持 |
+| `VideoShaders.metal` | 修改 | 新增 Rec.2020→P3 矩阵、Tone Mapping |
+| `VideoStreamView` | 修改 | EDR Headroom 监听与传递 |
+| `StreamStatsManager` | 修改 | 新增渲染性能指标 |
+| `HDRConfiguration` | 新增 | 统一 HDR 配置结构 |
+
+#### 受影响的接口
+
+| 接口 | 变更类型 | 向后兼容 | 说明 |
+|------|----------|----------|------|
+| `MetalVideoRenderer.edrHeadroom` | 新增 | ✅ | 动态 EDR 缩放因子 |
+| `MetalVideoRenderer.tonemapMode` | 新增 | ✅ | Tone Mapping 模式 |
+| `VideoUniforms` (Shader) | 修改 | ✅ | 新增 edrHeadroom、tonemapMode 字段 |
+
+### 15.2 色域映射设计 (AC-080)
+
+#### 15.2.1 Rec.2020 → Display P3 转换矩阵
+
+```metal
+// VideoShaders.metal - 新增色域映射常量
+
+// Rec.2020 → Display P3 色域映射矩阵
+// 用于将 HDR 内容从 Rec.2020 色彩空间转换到 Apple Display P3
+constant float3x3 kRec2020_to_P3_Matrix = float3x3(
+    float3( 1.2249,  -0.2247,  -0.0002),
+    float3(-0.0420,   1.0419,   0.0001),
+    float3(-0.0197,  -0.0786,   1.0983)
+);
+
+// 应用色域映射（在 PQ EOTF 后、EDR 缩放前调用）
+float3 applyGamutMapping(float3 linearRGB) {
+    // 软裁剪：超出色域的颜色平滑压缩而非硬裁剪
+    float3 mapped = kRec2020_to_P3_Matrix * linearRGB;
+    // 负值软裁剪（保留色调）
+    return max(mapped, 0.0);
+}
+```
+
+#### 15.2.2 Shader 集成位置
+
+```metal
+// videoBiplanarFragmentShader 修改
+
+// 在 pqEOTF 后添加色域映射
+if (uniforms.colorSpace == 2u) {  // BT.2020 HDR
+    rgb = clamp(rgb, 0.0, 1.0);
+    rgb = pqEOTF(rgb);
+
+    // [新增] Rec.2020 → P3 色域映射
+    rgb = applyGamutMapping(rgb);
+
+    // EDR 缩放（使用动态 Headroom）
+    rgb = rgb * uniforms.edrHeadroom;
+    // ...
+}
+```
+
+### 15.3 动态 EDR Headroom 设计 (AC-081, AC-082)
+
+#### 15.3.1 EDR Headroom 监听
+
+```swift
+// EDRHeadroomMonitor.swift (新增)
+import Foundation
+
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
+
+/// EDR Headroom 监听器
+/// 关联: AC-081
+@Observable
+final class EDRHeadroomMonitor {
+    /// 当前 EDR Headroom 值 (1.0 = SDR, >1.0 = HDR capable)
+    private(set) var currentHeadroom: Float = 1.0
+
+    /// 最大可用 Headroom
+    private(set) var maxHeadroom: Float = 1.0
+
+    private var displayLink: CADisplayLink?
+    private var observation: NSKeyValueObservation?
+
+    init() {
+        startMonitoring()
+    }
+
+    private func startMonitoring() {
+        #if os(macOS)
+        // macOS: 监听 NSScreen.maximumExtendedDynamicRangeColorComponentValue
+        observation = NSScreen.main?.observe(\.maximumExtendedDynamicRangeColorComponentValue) { [weak self] screen, _ in
+            self?.updateHeadroom(Float(screen.maximumExtendedDynamicRangeColorComponentValue))
+        }
+        if let screen = NSScreen.main {
+            updateHeadroom(Float(screen.maximumExtendedDynamicRangeColorComponentValue))
+        }
+        #else
+        // iOS 16+: 使用 UIScreen.currentEDRHeadroom
+        if #available(iOS 16.0, tvOS 16.0, *) {
+            // 使用 DisplayLink 定期更新（Headroom 会随亮度变化）
+            displayLink = CADisplayLink(target: self, selector: #selector(updateFromDisplayLink))
+            displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 1, maximum: 10, preferred: 5)
+            displayLink?.add(to: .main, forMode: .common)
+        }
+        #endif
+    }
+
+    @objc private func updateFromDisplayLink() {
+        #if os(iOS) || os(tvOS)
+        if #available(iOS 16.0, tvOS 16.0, *) {
+            updateHeadroom(Float(UIScreen.main.currentEDRHeadroom))
+        }
+        #endif
+    }
+
+    private func updateHeadroom(_ value: Float) {
+        // 平滑过渡，避免突变
+        let smoothed = currentHeadroom * 0.9 + value * 0.1
+        currentHeadroom = smoothed
+        maxHeadroom = max(maxHeadroom, value)
+    }
+
+    deinit {
+        displayLink?.invalidate()
+        observation?.invalidate()
+    }
+}
+```
+
+#### 15.3.2 Headroom 传递到 Shader
+
+```swift
+// MetalVideoRenderer.swift - 修改
+
+/// 更新 Shader Uniforms
+private func updateUniforms(edrHeadroom: Float) {
+    var uniforms = VideoUniforms()
+    uniforms.transform = transformMatrix
+    uniforms.brightness = brightness
+    uniforms.contrast = contrast
+    uniforms.saturation = saturation
+    uniforms.colorSpace = colorSpace.rawValue
+    uniforms.colorRange = colorRange.rawValue
+
+    // [新增] 动态 EDR Headroom
+    // 关联: AC-082
+    uniforms.edrHeadroom = edrHeadroom * edrIntensity  // edrIntensity 来自用户设置
+    uniforms.tonemapMode = tonemapMode.rawValue
+
+    uniformBuffer.contents().copyMemory(from: &uniforms, byteCount: MemoryLayout<VideoUniforms>.size)
+}
+```
+
+#### 15.3.3 Shader Uniform 扩展
+
+```metal
+// VideoShaders.metal - VideoUniforms 修改
+
+struct VideoUniforms {
+    float4x4 transform;
+    float2 textureSizeY;
+    float2 textureSizeUV;
+    float brightness;
+    float contrast;
+    float saturation;
+    uint colorSpace;
+    uint colorRange;
+
+    // [新增] HDR 相关
+    float edrHeadroom;   // AC-081: 动态 EDR Headroom (含用户调整因子)
+    uint tonemapMode;    // AC-084: 0 = passthrough, 1 = ACES
+};
+```
+
+### 15.4 HDR 元数据抖动抑制 (AC-083)
+
+```swift
+// HDRMetadataCache.swift (新增)
+
+/// HDR 元数据缓存，抑制频繁切换
+/// 关联: AC-083
+final class HDRMetadataCache {
+    /// 当前确认的 HDR 状态
+    private(set) var confirmedHDR: Bool = false
+
+    /// HDR 检测计数器（需要连续 N 帧确认）
+    private var hdrDetectionCount: Int = 0
+    private var sdrDetectionCount: Int = 0
+
+    /// 确认阈值（连续帧数）
+    private let confirmationThreshold = 5
+
+    /// 更新检测状态
+    func update(isHDRFrame: Bool) -> Bool {
+        if isHDRFrame {
+            hdrDetectionCount += 1
+            sdrDetectionCount = 0
+            if hdrDetectionCount >= confirmationThreshold {
+                confirmedHDR = true
+            }
+        } else {
+            sdrDetectionCount += 1
+            hdrDetectionCount = 0
+            if sdrDetectionCount >= confirmationThreshold {
+                confirmedHDR = false
+            }
+        }
+        return confirmedHDR
+    }
+
+    /// 重置缓存
+    func reset() {
+        confirmedHDR = false
+        hdrDetectionCount = 0
+        sdrDetectionCount = 0
+    }
+}
+```
+
+### 15.5 Tone Mapping 降级路径 (AC-084)
+
+```metal
+// VideoShaders.metal - ACES Tone Mapping 实现
+
+// ACES Filmic Tone Mapping
+// 用于 HDR→SDR 降级（不支持 EDR 的设备）
+float3 acesTonemap(float3 x) {
+    // ACES 拟合参数
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+// 在 Fragment Shader 中使用
+if (uniforms.colorSpace == 2u) {  // BT.2020 HDR
+    rgb = pqEOTF(rgb);
+    rgb = applyGamutMapping(rgb);
+
+    if (uniforms.tonemapMode == 1u) {
+        // ACES Tone Mapping（SDR 输出）
+        rgb = acesTonemap(rgb);
+    } else {
+        // EDR Passthrough
+        rgb = rgb * uniforms.edrHeadroom;
+    }
+}
+```
+
+### 15.6 渲染性能指标扩展 (AC-085)
+
+```swift
+// StreamStatsManager.swift - 扩展
+
+extension StreamStatsManager {
+    // [新增] 渲染性能指标
+    // 关联: AC-085
+
+    /// 解码耗时 (ms)
+    @Published private(set) var decodeTimeMs: Double = 0
+
+    /// 渲染耗时 (ms)
+    @Published private(set) var renderTimeMs: Double = 0
+
+    /// P95 帧延迟 (ms)
+    @Published private(set) var p95LatencyMs: Double = 0
+
+    /// P99 帧延迟 (ms)
+    @Published private(set) var p99LatencyMs: Double = 0
+
+    // 延迟采样窗口
+    private var latencySamples: [Double] = []
+    private let sampleWindowSize = 100
+
+    /// 记录解码耗时
+    func recordDecodeTime(_ timeMs: Double) {
+        decodeTimeMs = timeMs
+    }
+
+    /// 记录渲染耗时
+    func recordRenderTime(_ timeMs: Double) {
+        renderTimeMs = timeMs
+
+        // 计算总帧延迟
+        let totalLatency = decodeTimeMs + renderTimeMs
+        latencySamples.append(totalLatency)
+
+        // 保持窗口大小
+        if latencySamples.count > sampleWindowSize {
+            latencySamples.removeFirst()
+        }
+
+        // 计算百分位
+        updatePercentiles()
+    }
+
+    private func updatePercentiles() {
+        guard latencySamples.count >= 10 else { return }
+
+        let sorted = latencySamples.sorted()
+        let p95Index = Int(Double(sorted.count) * 0.95)
+        let p99Index = Int(Double(sorted.count) * 0.99)
+
+        p95LatencyMs = sorted[min(p95Index, sorted.count - 1)]
+        p99LatencyMs = sorted[min(p99Index, sorted.count - 1)]
+    }
+}
+```
+
+### 15.7 核心接口汇总
+
+| 接口/类 | 方法/属性 | 关联 | 说明 |
+|---------|-----------|------|------|
+| `EDRHeadroomMonitor` | `currentHeadroom: Float` | AC-081 | 当前 EDR Headroom |
+| `EDRHeadroomMonitor` | `maxHeadroom: Float` | AC-081 | 最大可用 Headroom |
+| `MetalVideoRenderer` | `edrHeadroom: Float` | AC-082 | 设置 EDR 缩放因子 |
+| `MetalVideoRenderer` | `tonemapMode: TonemapMode` | AC-084 | Tone Mapping 模式 |
+| `HDRMetadataCache` | `update(isHDRFrame:) -> Bool` | AC-083 | 抖动抑制 |
+| `StreamStatsManager` | `decodeTimeMs`, `renderTimeMs` | AC-085 | 性能指标 |
+| `StreamStatsManager` | `p95LatencyMs`, `p99LatencyMs` | AC-085 | 延迟百分位 |
+
+### 15.8 目录结构更新
+
+```
+Chiaki/Core/Video/
+├── MetalVideoRenderer.swift   # [修改] AC-080, AC-082, AC-084
+├── VideoShaders.metal         # [修改] AC-080, AC-084 (已重命名为 .txt 仅文档用)
+├── VideoStreamView.swift      # [修改] AC-081 - EDR 监听集成
+├── EDRHeadroomMonitor.swift   # [新增] AC-081
+├── HDRMetadataCache.swift     # [新增] AC-083
+└── HDRConfiguration.swift     # [新增] 统一配置结构
+
+Chiaki/Features/Streaming/
+├── StreamStatsManager.swift   # [修改] AC-085
+└── StreamingOverlay.swift     # [修改] 显示新增指标
+```
+
+---
+
+## 16. 渲染模块解耦重构 (F-026)
+
+> **变更来源**: F-026 渲染模块解耦重构
+> **关联洞察**: INS-039 ~ INS-041 (架构审查)
+
+### 16.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `MetalVideoRenderer` | 重构 | 移除 MTKViewDelegate，实现 VideoRenderer 协议 |
+| `VideoStreamView` | 重构 | Coordinator 实现 MTKViewDelegate |
+| `VideoRenderer` 协议 | 新增 | 渲染器抽象接口 |
+| `HDRConfiguration` | 新增 | 统一 HDR 配置结构 |
+
+#### 受影响的接口
+
+| 接口 | 变更类型 | 向后兼容 | 说明 |
+|------|----------|----------|------|
+| `MetalVideoRenderer: MTKViewDelegate` | 移除 | ⚠️ 内部重构 | Delegate 移至 Coordinator |
+| `VideoRenderer` 协议 | 新增 | ✅ | 新抽象层 |
+| `HDRConfiguration` | 新增 | ✅ | 配置结构 |
+
+### 16.2 VideoRenderer 协议设计 (AC-086)
+
+```swift
+// VideoRenderer.swift (新增)
+
+import CoreVideo
+import Metal
+
+/// 视频显示模式
+enum VideoDisplayMode: Int, Sendable {
+    case fit = 0        // 适应窗口，保持比例
+    case fill = 1       // 填充窗口，可能裁剪
+    case stretch = 2    // 拉伸填充
+}
+
+/// Tone Mapping 模式
+enum TonemapMode: UInt32, Sendable {
+    case passthrough = 0   // EDR 直通
+    case aces = 1          // ACES Filmic
+}
+
+/// 视频渲染器协议
+/// 定义纯渲染接口，与 UI 框架解耦
+/// 关联: AC-086
+protocol VideoRenderer: AnyObject, Sendable {
+    // MARK: - 帧提交
+
+    /// 提交视频帧用于渲染
+    func submitFrame(_ pixelBuffer: CVPixelBuffer)
+
+    /// 渲染到指定 drawable
+    func render(to drawable: CAMetalDrawable, descriptor: MTLRenderPassDescriptor)
+
+    // MARK: - 显示控制
+
+    /// 显示模式
+    var displayMode: VideoDisplayMode { get set }
+
+    /// 缩放因子 (1.0 = 无缩放)
+    var zoomFactor: Float { get set }
+
+    // MARK: - HDR 配置
+
+    /// HDR 配置
+    var hdrConfiguration: HDRConfiguration { get set }
+
+    /// 动态 EDR Headroom (来自系统)
+    var edrHeadroom: Float { get set }
+
+    // MARK: - 色彩调整
+
+    /// 亮度 (0.0 - 2.0, 默认 1.0)
+    func setBrightness(_ value: Float)
+
+    /// 对比度 (0.0 - 2.0, 默认 1.0)
+    func setContrast(_ value: Float)
+
+    /// 饱和度 (0.0 - 2.0, 默认 1.0)
+    func setSaturation(_ value: Float)
+
+    // MARK: - 状态查询
+
+    /// 当前帧尺寸
+    var frameSize: CGSize { get }
+
+    /// 是否有待渲染帧
+    var hasFrame: Bool { get }
+}
+```
+
+### 16.3 HDRConfiguration 统一结构 (AC-088)
+
+```swift
+// HDRConfiguration.swift (新增)
+
+/// 色彩空间
+enum VideoColorSpace: UInt32, Sendable, Codable {
+    case bt709 = 0     // HD (SDR 默认)
+    case bt601 = 1     // SD
+    case bt2020 = 2    // HDR / Wide Color Gamut
+}
+
+/// 色彩范围
+enum VideoColorRange: UInt32, Sendable, Codable {
+    case limited = 0   // 16-235 (Video Range)
+    case full = 1      // 0-255 (Full Range)
+}
+
+/// HDR 配置结构
+/// 统一管理 HDR 相关设置
+/// 关联: AC-088
+struct HDRConfiguration: Sendable, Codable, Equatable {
+    /// HDR 是否启用
+    var enabled: Bool = false
+
+    /// 用户 EDR 强度调整 (0.5 - 2.0, 默认 1.0)
+    var edrIntensity: Float = 1.0
+
+    /// 色彩空间
+    var colorSpace: VideoColorSpace = .bt709
+
+    /// 色彩范围
+    var colorRange: VideoColorRange = .limited
+
+    /// Tone Mapping 模式
+    var tonemapMode: TonemapMode = .passthrough
+
+    /// 是否启用色域映射 (Rec.2020 → P3)
+    var gamutMappingEnabled: Bool = true
+
+    // MARK: - 便捷属性
+
+    /// 是否为 HDR 模式 (BT.2020)
+    var isHDR: Bool {
+        enabled && colorSpace == .bt2020
+    }
+
+    /// 创建 SDR 默认配置
+    static var sdr: HDRConfiguration {
+        HDRConfiguration(enabled: false, colorSpace: .bt709)
+    }
+
+    /// 创建 HDR 默认配置
+    static var hdr: HDRConfiguration {
+        HDRConfiguration(enabled: true, colorSpace: .bt2020, tonemapMode: .passthrough)
+    }
+}
+```
+
+### 16.4 MTKViewDelegate 分离到 Coordinator (AC-087)
+
+```swift
+// VideoStreamView.swift - 重构
+
+import SwiftUI
+import MetalKit
+
+/// 视频流 SwiftUI 视图
+/// 关联: AC-087 - MTKViewDelegate 分离到 Coordinator
+struct VideoStreamView: NSViewRepresentable {  // macOS
+    let renderer: VideoRenderer
+    let edrMonitor: EDRHeadroomMonitor
+
+    @Binding var hdrConfiguration: HDRConfiguration
+
+    func makeNSView(context: Context) -> MTKView {
+        let mtkView = MTKView()
+        mtkView.device = MTLCreateSystemDefaultDevice()
+        mtkView.delegate = context.coordinator
+        mtkView.enableSetNeedsDisplay = false
+        mtkView.isPaused = false
+        mtkView.preferredFramesPerSecond = 60
+
+        // HDR 配置
+        if hdrConfiguration.isHDR {
+            mtkView.colorPixelFormat = .rgba16Float
+            mtkView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
+        } else {
+            mtkView.colorPixelFormat = .bgra8Unorm
+        }
+
+        return mtkView
+    }
+
+    func updateNSView(_ nsView: MTKView, context: Context) {
+        // 更新 HDR 配置
+        renderer.hdrConfiguration = hdrConfiguration
+        renderer.edrHeadroom = edrMonitor.currentHeadroom * hdrConfiguration.edrIntensity
+
+        // 动态切换像素格式
+        if hdrConfiguration.isHDR && nsView.colorPixelFormat != .rgba16Float {
+            nsView.colorPixelFormat = .rgba16Float
+            nsView.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
+        } else if !hdrConfiguration.isHDR && nsView.colorPixelFormat != .bgra8Unorm {
+            nsView.colorPixelFormat = .bgra8Unorm
+            nsView.colorspace = nil
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(renderer: renderer)
+    }
+
+    // MARK: - Coordinator
+
+    /// MTKViewDelegate 实现
+    /// 关联: AC-087
+    class Coordinator: NSObject, MTKViewDelegate {
+        let renderer: VideoRenderer
+
+        init(renderer: VideoRenderer) {
+            self.renderer = renderer
+        }
+
+        func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+            // 尺寸变化处理（如需要）
+        }
+
+        func draw(in view: MTKView) {
+            guard let drawable = view.currentDrawable,
+                  let descriptor = view.currentRenderPassDescriptor else {
+                return
+            }
+
+            renderer.render(to: drawable, descriptor: descriptor)
+        }
+    }
+}
+```
+
+### 16.5 MetalVideoRenderer 重构 (AC-089)
+
+```swift
+// MetalVideoRenderer.swift - 重构为实现 VideoRenderer 协议
+
+/// Metal 视频渲染器实现
+/// 关联: AC-086 (协议实现), AC-089 (依赖注入)
+final class MetalVideoRenderer: VideoRenderer {
+    // MARK: - VideoRenderer Protocol
+
+    var displayMode: VideoDisplayMode = .fit
+    var zoomFactor: Float = 1.0
+    var hdrConfiguration: HDRConfiguration = .sdr
+    var edrHeadroom: Float = 1.0
+
+    var frameSize: CGSize {
+        guard let buffer = currentPixelBuffer else { return .zero }
+        return CGSize(
+            width: CVPixelBufferGetWidth(buffer),
+            height: CVPixelBufferGetHeight(buffer)
+        )
+    }
+
+    var hasFrame: Bool {
+        currentPixelBuffer != nil
+    }
+
+    // MARK: - Private Properties
+
+    private let device: MTLDevice
+    private let commandQueue: MTLCommandQueue
+    private var pipelineState: MTLRenderPipelineState
+    private let textureCache: CVMetalTextureCache
+    private var uniformBuffer: MTLBuffer
+
+    private var currentPixelBuffer: CVPixelBuffer?
+    private let lock = NSLock()
+
+    // HDR 元数据缓存
+    private let hdrMetadataCache = HDRMetadataCache()
+
+    // MARK: - Initialization
+
+    init(device: MTLDevice? = nil) throws {
+        guard let device = device ?? MTLCreateSystemDefaultDevice() else {
+            throw VideoRendererError.noMetalDevice
+        }
+        self.device = device
+
+        guard let commandQueue = device.makeCommandQueue() else {
+            throw VideoRendererError.commandQueueCreationFailed
+        }
+        self.commandQueue = commandQueue
+
+        // 创建纹理缓存
+        var cache: CVMetalTextureCache?
+        CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
+        guard let textureCache = cache else {
+            throw VideoRendererError.textureCacheCreationFailed
+        }
+        self.textureCache = textureCache
+
+        // 创建 Uniform Buffer
+        guard let uniformBuffer = device.makeBuffer(
+            length: MemoryLayout<VideoUniforms>.size,
+            options: .storageModeShared
+        ) else {
+            throw VideoRendererError.bufferCreationFailed
+        }
+        self.uniformBuffer = uniformBuffer
+
+        // 创建渲染管线
+        self.pipelineState = try Self.createPipelineState(device: device, hdr: false)
+    }
+
+    // MARK: - VideoRenderer Implementation
+
+    func submitFrame(_ pixelBuffer: CVPixelBuffer) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        currentPixelBuffer = pixelBuffer
+
+        // HDR 元数据抖动抑制 (AC-083)
+        let isHDRFrame = detectHDRFrame(pixelBuffer)
+        _ = hdrMetadataCache.update(isHDRFrame: isHDRFrame)
+    }
+
+    func render(to drawable: CAMetalDrawable, descriptor: MTLRenderPassDescriptor) {
+        lock.lock()
+        guard let pixelBuffer = currentPixelBuffer else {
+            lock.unlock()
+            return
+        }
+        lock.unlock()
+
+        // 更新 Uniforms
+        updateUniforms()
+
+        // 创建纹理
+        guard let textures = createTextures(from: pixelBuffer) else { return }
+
+        // 渲染
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+            return
+        }
+
+        encoder.setRenderPipelineState(pipelineState)
+        encoder.setFragmentTexture(textures.y, index: 0)
+        encoder.setFragmentTexture(textures.uv, index: 1)
+        encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 1)
+        encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        encoder.endEncoding()
+
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    func setBrightness(_ value: Float) {
+        // 存储并在 updateUniforms 中应用
+    }
+
+    func setContrast(_ value: Float) {
+        // 存储并在 updateUniforms 中应用
+    }
+
+    func setSaturation(_ value: Float) {
+        // 存储并在 updateUniforms 中应用
+    }
+
+    // MARK: - Private Methods
+
+    private func updateUniforms() {
+        var uniforms = VideoUniforms()
+        uniforms.colorSpace = hdrConfiguration.colorSpace.rawValue
+        uniforms.colorRange = hdrConfiguration.colorRange.rawValue
+        uniforms.edrHeadroom = edrHeadroom
+        uniforms.tonemapMode = hdrConfiguration.tonemapMode.rawValue
+        // ... 其他 uniforms
+
+        uniformBuffer.contents().copyMemory(from: &uniforms, byteCount: MemoryLayout<VideoUniforms>.size)
+    }
+
+    private func detectHDRFrame(_ pixelBuffer: CVPixelBuffer) -> Bool {
+        let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
+        // 检测 10-bit 或 HDR 格式
+        return pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
+               pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange
+    }
+}
+```
+
+### 16.6 核心接口汇总
+
+| 接口/类 | 方法/属性 | 关联 | 说明 |
+|---------|-----------|------|------|
+| `VideoRenderer` | `submitFrame(_:)` | AC-086 | 提交视频帧 |
+| `VideoRenderer` | `render(to:descriptor:)` | AC-086 | 渲染到 drawable |
+| `VideoRenderer` | `hdrConfiguration` | AC-088 | HDR 配置 |
+| `VideoRenderer` | `edrHeadroom` | AC-089 | 外部注入 Headroom |
+| `VideoStreamView.Coordinator` | `MTKViewDelegate` | AC-087 | Delegate 分离 |
+| `HDRConfiguration` | 全部属性 | AC-088 | 统一 HDR 配置 |
+
+### 16.7 目录结构更新
+
+```
+Chiaki/Core/Video/
+├── VideoRenderer.swift        # [新增] AC-086 - 协议定义
+├── MetalVideoRenderer.swift   # [重构] AC-086, AC-089 - 实现协议
+├── VideoStreamView.swift      # [重构] AC-087 - Coordinator 模式
+├── HDRConfiguration.swift     # [新增] AC-088 - 配置结构
+├── EDRHeadroomMonitor.swift   # [新增] AC-081
+├── HDRMetadataCache.swift     # [新增] AC-083
+└── VideoShaders.metal         # [修改] AC-080, AC-084
+```
+
+---
+
+## 17. UI 层 MVVM 合规重构 (F-027)
+
+> **变更来源**: F-027 UI 层 MVVM 合规重构
+> **关联洞察**: INS-042 ~ INS-046 (架构审查)
+
+### 17.1 影响分析
+
+#### 受影响的模块
+
+| 模块 | 影响类型 | 说明 |
+|------|----------|------|
+| `AccountSettingsView` | 重构 | 移除直接 PSNService 访问 |
+| `AccountSettingsViewModel` | 新增 | 封装 PSN 操作 |
+| `VideoSettingsViewModel` | 新增 | 封装 HDR Binding 逻辑 |
+| `ConsolesSettingsViewModel` | 新增 | 封装主机管理操作 |
+| `HostListView` | 重构 | 移除直接 Manager 访问 |
+| `StreamingView` | 重构 | 移除直接 ConsolePinManager 访问 |
+| `ControllerSettingsView` | 重构 | 移除直接 ControllerManager 访问 |
+| `PinManaging` 协议 | 新增 | ConsolePinManager 抽象 |
+| `PSNServicing` 协议 | 新增 | PSNService 抽象 |
+
+#### 受影响的接口
+
+| 接口 | 变更类型 | 向后兼容 | 说明 |
+|------|----------|----------|------|
+| `ConsolePinManager` | 修改 | ✅ | 实现 PinManaging 协议 |
+| `PSNService` | 修改 | ✅ | 实现 PSNServicing 协议 |
+| `AccountSettingsViewModel` | 新增 | ✅ | 新 ViewModel |
+| `VideoSettingsViewModel` | 新增 | ✅ | 新 ViewModel |
+
+### 17.2 协议抽象设计 (AC-095)
+
+#### 17.2.1 PinManaging 协议
+
+```swift
+// PinManaging.swift (新增)
+
+/// PIN 管理协议
+/// 关联: AC-095
+protocol PinManaging: AnyObject, Sendable {
+    /// 设置 PIN
+    func setPin(_ pin: String, for host: ConsoleHost)
+
+    /// 清除 PIN
+    func clearPin(for host: ConsoleHost)
+
+    /// 检查是否有 PIN
+    func hasPin(for host: ConsoleHost) -> Bool
+
+    /// 检查是否需要 PIN 输入
+    func requiresPinEntry(for host: ConsoleHost) -> Bool
+
+    /// 获取 PIN (如果存在)
+    func getPin(for host: ConsoleHost) -> String?
+}
+
+// ConsolePinManager 扩展实现协议
+extension ConsolePinManager: PinManaging {}
+```
+
+#### 17.2.2 PSNServicing 协议
+
+```swift
+// PSNServicing.swift (新增)
+
+/// PSN 服务协议
+/// 关联: AC-095
+protocol PSNServicing: AnyObject {
+    /// 当前账户
+    var account: PSNAccount? { get }
+
+    /// 是否已登录
+    var isSignedIn: Bool { get }
+
+    /// 登录状态
+    var authState: PSNAuthState { get }
+
+    /// 登出
+    func signOut()
+
+    /// 手动刷新 Token
+    func manualRefresh() async throws
+
+    /// 开始 OAuth 登录
+    func startOAuthLogin() -> URL
+}
+
+// PSNService 扩展实现协议
+extension PSNService: PSNServicing {}
+```
+
+### 17.3 AccountSettingsViewModel (AC-091)
+
+```swift
+// AccountSettingsViewModel.swift (新增)
+
+import Foundation
+
+/// 账户设置 ViewModel
+/// 关联: AC-091 - 移除 AccountSettingsView 中的直接 PSNService 访问
+@Observable
+final class AccountSettingsViewModel {
+    // MARK: - Published State
+
+    private(set) var account: PSNAccount?
+    private(set) var isSignedIn: Bool = false
+    private(set) var isRefreshing: Bool = false
+    private(set) var errorMessage: String?
+
+    // MARK: - Dependencies
+
+    private let psnService: PSNServicing
+
+    // MARK: - Initialization
+
+    init(psnService: PSNServicing = PSNService.shared) {
+        self.psnService = psnService
+        updateState()
+    }
+
+    // MARK: - Public Methods
+
+    /// 登出
+    func signOut() {
+        psnService.signOut()
+        updateState()
+    }
+
+    /// 刷新 Token
+    func refreshToken() async {
+        isRefreshing = true
+        errorMessage = nil
+
+        do {
+            try await psnService.manualRefresh()
+            updateState()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isRefreshing = false
+    }
+
+    /// 获取登录 URL
+    func getLoginURL() -> URL {
+        psnService.startOAuthLogin()
+    }
+
+    // MARK: - Private Methods
+
+    private func updateState() {
+        account = psnService.account
+        isSignedIn = psnService.isSignedIn
+    }
+}
+```
+
+### 17.4 VideoSettingsViewModel (AC-093)
+
+```swift
+// VideoSettingsViewModel.swift (新增)
+
+import SwiftUI
+
+/// 视频设置 ViewModel
+/// 关联: AC-093 - 封装 HDR Binding 转换逻辑
+@Observable
+final class VideoSettingsViewModel {
+    // MARK: - Dependencies
+
+    private let store: SettingsStore
+
+    // MARK: - Initialization
+
+    init(store: SettingsStore) {
+        self.store = store
+    }
+
+    // MARK: - Stream Settings Proxy
+
+    var streamSettings: StreamSettings {
+        get { store.streamSettings }
+        set { store.streamSettings = newValue }
+    }
+
+    // MARK: - HDR Bindings (简化 View 层逻辑)
+
+    var hdrEnabled: Bool {
+        get { streamSettings.hdrEnabled }
+        set { streamSettings.hdrEnabled = newValue }
+    }
+
+    var hdrPeakNits: Double {
+        get { Double(streamSettings.hdrTargetPeakNits) }
+        set { streamSettings.hdrTargetPeakNits = Int(newValue) }
+    }
+
+    var hdrPeakMode: StreamSettings.HDRPeakMode {
+        get { streamSettings.hdrPeakMode }
+        set { streamSettings.hdrPeakMode = newValue }
+    }
+
+    var edrIntensity: Float {
+        get { streamSettings.edrIntensity }
+        set { streamSettings.edrIntensity = newValue }
+    }
+
+    // MARK: - Computed Properties
+
+    /// HDR 是否可用（设备支持）
+    var isHDRAvailable: Bool {
+        // 检测设备是否支持 HDR
+        #if os(macOS)
+        return NSScreen.main?.maximumExtendedDynamicRangeColorComponentValue ?? 1.0 > 1.0
+        #else
+        if #available(iOS 16.0, tvOS 16.0, *) {
+            return UIScreen.main.potentialEDRHeadroom > 1.0
+        }
+        return false
+        #endif
+    }
+
+    /// 是否显示 EDR 强度滑块
+    var shouldShowEDRIntensity: Bool {
+        hdrEnabled && isHDRAvailable
+    }
+
+    /// 是否显示色彩空间选项
+    var shouldShowColorSpace: Bool {
+        !hdrEnabled  // HDR 启用时隐藏（自动使用 BT.2020）
+    }
+
+    // MARK: - Validation
+
+    /// 验证并修正设置
+    func validateSettings() {
+        // 确保 EDR 强度在有效范围内
+        if edrIntensity < 0.5 { edrIntensity = 0.5 }
+        if edrIntensity > 2.0 { edrIntensity = 2.0 }
+
+        // HDR 启用时强制使用 BT.2020
+        if hdrEnabled && streamSettings.colorSpace != .bt2020 {
+            streamSettings.colorSpace = .bt2020
+        }
+    }
+}
+```
+
+### 17.5 ConsolesSettingsViewModel (AC-094)
+
+```swift
+// ConsolesSettingsViewModel.swift (新增)
+
+import Foundation
+
+/// 主机设置 ViewModel
+/// 关联: AC-094 - 将 ConsolesSettingsView 中的业务逻辑移至 ViewModel
+@Observable
+final class ConsolesSettingsViewModel {
+    // MARK: - Dependencies
+
+    private let hostStore: HostStore
+    private let pinManager: PinManaging
+
+    // MARK: - Initialization
+
+    init(hostStore: HostStore, pinManager: PinManaging = ConsolePinManager.shared) {
+        self.hostStore = hostStore
+        self.pinManager = pinManager
+    }
+
+    // MARK: - Host Management
+
+    var hosts: [ConsoleHost] {
+        hostStore.hosts
+    }
+
+    /// 删除主机
+    func removeHost(_ host: ConsoleHost) {
+        hostStore.removeHost(host)
+        pinManager.clearPin(for: host)
+    }
+
+    /// 更新主机
+    func updateHost(_ host: ConsoleHost) {
+        hostStore.updateHost(host)
+    }
+
+    /// 重命名主机
+    func renameHost(_ host: ConsoleHost, to newName: String) {
+        var updated = host
+        updated.nickname = newName
+        hostStore.updateHost(updated)
+    }
+
+    // MARK: - PIN Management
+
+    func hasPin(for host: ConsoleHost) -> Bool {
+        pinManager.hasPin(for: host)
+    }
+
+    func setPin(_ pin: String, for host: ConsoleHost) {
+        pinManager.setPin(pin, for: host)
+    }
+
+    func clearPin(for host: ConsoleHost) {
+        pinManager.clearPin(for: host)
+    }
+}
+```
+
+### 17.6 View 重构示例
+
+#### 17.6.1 AccountSettingsView 重构 (AC-091)
+
+```swift
+// AccountSettingsView.swift - 重构后
+
+struct AccountSettingsView: View {
+    // ❌ 移除: @State private var psnService = PSNService.shared
+
+    // ✅ 使用 ViewModel
+    @State private var viewModel = AccountSettingsViewModel()
+
+    var body: some View {
+        Form {
+            if viewModel.isSignedIn {
+                Section("已登录账户") {
+                    if let account = viewModel.account {
+                        Text(account.onlineId)
+                        Text(account.accountId)
+                    }
+
+                    Button("刷新 Token") {
+                        Task { await viewModel.refreshToken() }
+                    }
+                    .disabled(viewModel.isRefreshing)
+
+                    Button("登出", role: .destructive) {
+                        viewModel.signOut()
+                    }
+                }
+            } else {
+                Section {
+                    Link("登录 PSN", destination: viewModel.getLoginURL())
+                }
+            }
+
+            if let error = viewModel.errorMessage {
+                Section {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+}
+```
+
+#### 17.6.2 HostListView 重构 (AC-090)
+
+```swift
+// HostListView.swift - 重构关键部分
+
+struct HostListView: View {
+    @Environment(HostListViewModel.self) var viewModel
+
+    // ❌ 移除直接 Manager 访问:
+    // ConsolePinManager.shared.setPin(pin, for: host)
+    // HostManager.shared.wakeUp(host)
+
+    var body: some View {
+        // ...
+        .sheet(item: $settingPinHost) { host in
+            ConsolePinView(host: host) { pin in
+                // ✅ 通过 ViewModel
+                viewModel.setPin(pin, for: host)
+            } onClear: {
+                viewModel.clearPin(for: host)
+            }
+        }
+    }
+}
+
+// HostListViewModel 扩展
+extension HostListViewModel {
+    // 关联: AC-090
+    private let pinManager: PinManaging = ConsolePinManager.shared
+
+    func setPin(_ pin: String, for host: ConsoleHost) {
+        pinManager.setPin(pin, for: host)
+    }
+
+    func clearPin(for host: ConsoleHost) {
+        pinManager.clearPin(for: host)
+    }
+}
+```
+
+### 17.7 目录结构优化建议 (AC-096)
+
+```
+Chiaki/Features/
+├── HostList/
+│   ├── Views/
+│   │   ├── HostListView.swift         # [修改] AC-090
+│   │   ├── HostCardView.swift
+│   │   └── AddHostView.swift
+│   └── ViewModels/
+│       ├── HostListViewModel.swift    # [修改] AC-090
+│       └── RegistrationViewModel.swift
+│
+├── Settings/
+│   ├── Views/
+│   │   ├── SettingsView.swift
+│   │   ├── VideoSettingsView.swift    # [修改] AC-093
+│   │   ├── AccountSettingsView.swift  # [修改] AC-091
+│   │   ├── ConsolesSettingsView.swift # [修改] AC-094
+│   │   └── ControllerSettingsView.swift # [修改] AC-092
+│   └── ViewModels/
+│       ├── VideoSettingsViewModel.swift   # [新增] AC-093
+│       ├── AccountSettingsViewModel.swift # [新增] AC-091
+│       └── ConsolesSettingsViewModel.swift # [新增] AC-094
+│
+├── Streaming/
+│   ├── Views/
+│   │   ├── StreamingView.swift        # [修改] AC-092
+│   │   └── StreamingControlsView.swift
+│   └── ViewModels/
+│       └── StreamingViewModel.swift
+
+Chiaki/Shared/
+├── Components/
+│   ├── LoadingIndicator.swift
+│   └── ErrorView.swift
+├── Styles/
+│   ├── PrimaryButtonStyle.swift
+│   └── FocusableButtonStyle.swift
+└── Protocols/
+    ├── PinManaging.swift              # [新增] AC-095
+    └── PSNServicing.swift             # [新增] AC-095
+```
+
+### 17.8 核心接口汇总
+
+| 接口/类 | 方法/属性 | 关联 | 说明 |
+|---------|-----------|------|------|
+| `PinManaging` | `setPin`, `clearPin`, `hasPin` | AC-095 | PIN 管理抽象 |
+| `PSNServicing` | `signOut`, `manualRefresh` | AC-095 | PSN 服务抽象 |
+| `AccountSettingsViewModel` | `signOut`, `refreshToken` | AC-091 | 账户操作封装 |
+| `VideoSettingsViewModel` | HDR Bindings | AC-093 | HDR 设置封装 |
+| `ConsolesSettingsViewModel` | `removeHost`, PIN 操作 | AC-094 | 主机管理封装 |
+
+### 17.9 需求追溯
+
+| 验收标准 | 实现模块 | 说明 |
+|----------|----------|------|
+| AC-090 | `HostListView` + `HostListViewModel` | Singleton 解耦 |
+| AC-091 | `AccountSettingsViewModel` | PSNService 封装 |
+| AC-092 | `StreamingView` + `ControllerSettingsView` | Manager 访问移至 ViewModel |
+| AC-093 | `VideoSettingsViewModel` | HDR Binding 封装 |
+| AC-094 | `ConsolesSettingsViewModel` | 业务逻辑分离 |
+| AC-095 | `PinManaging` + `PSNServicing` | 协议抽象 |
+| AC-096 | 目录结构 | 可选优化 |
+
+---
+
+### v1.7.0 (2026-02-04)
+
+**变更来源**: F-025 HDR 渲染管线优化 (INS-034 ~ INS-038), F-026 渲染模块解耦重构 (INS-039 ~ INS-041), F-027 UI 层 MVVM 合规重构 (INS-042 ~ INS-046)
+
+**新增模块**:
+- `EDRHeadroomMonitor` - 动态 EDR Headroom 监听（关联 AC-081）
+- `HDRMetadataCache` - HDR 元数据抖动抑制（关联 AC-083）
+- `HDRConfiguration` - 统一 HDR 配置结构（关联 AC-088）
+- `VideoRenderer` 协议 - 渲染器抽象接口（关联 AC-086）
+- `PinManaging` 协议 - PIN 管理抽象（关联 AC-095）
+- `PSNServicing` 协议 - PSN 服务抽象（关联 AC-095）
+- `AccountSettingsViewModel` - 账户设置 ViewModel（关联 AC-091）
+- `VideoSettingsViewModel` - 视频设置 ViewModel（关联 AC-093）
+- `ConsolesSettingsViewModel` - 主机设置 ViewModel（关联 AC-094）
+
+**修改模块**:
+- `MetalVideoRenderer` - 实现 VideoRenderer 协议，移除 MTKViewDelegate，新增色域映射、动态 Headroom（关联 AC-080, AC-082, AC-086, AC-089）
+- `VideoShaders.metal` - 新增 Rec.2020→P3 矩阵、ACES Tone Mapping（关联 AC-080, AC-084）
+- `VideoStreamView` - Coordinator 实现 MTKViewDelegate，集成 EDR 监听（关联 AC-081, AC-087）
+- `StreamStatsManager` - 新增渲染性能指标（关联 AC-085）
+- `HostListView` - 移除直接 Manager 访问（关联 AC-090）
+- `AccountSettingsView` - 使用 ViewModel 替代直接 PSNService 访问（关联 AC-091）
+- `StreamingView` - 移除直接 ConsolePinManager 访问（关联 AC-092）
+- `ControllerSettingsView` - 移除直接 ControllerManager 访问（关联 AC-092）
+- `ConsolesSettingsView` - 使用 ViewModel 封装业务逻辑（关联 AC-094）
+- `ConsolePinManager` - 实现 PinManaging 协议（关联 AC-095）
+- `PSNService` - 实现 PSNServicing 协议（关联 AC-095）
+
+**破坏性变更**: 无（内部重构，API 兼容）
+
+**迁移说明**:
+1. `MetalVideoRenderer` 不再直接实现 `MTKViewDelegate`，使用 `VideoStreamView.Coordinator` 代替
+2. 新 ViewModel 采用依赖注入，支持 Mock 测试
+3. 协议抽象允许替换具体实现，便于单元测试

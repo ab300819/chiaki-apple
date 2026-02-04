@@ -52,6 +52,10 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-021** | GameController 深度集成 | P2 | 自适应扳机、触控板、电池显示 [体验优化] |
 | **F-022** | 手柄操控 UI/UX 优化 | P2 | 快速操作栏、音量快捷键、数字键盘 [体验优化] |
 | **F-023** | iPad 触摸操作友好化 | P1 | 触摸目标、间距、手势、无障碍优化 [体验优化] |
+| **F-024** | HDR 设置优化 | P1 | EDR 强度调整、色彩空间选项简化 [优化] |
+| **F-025** | HDR 渲染管线优化 | P0 | 色域映射、动态 EDR Headroom、性能指标 [优化] |
+| **F-026** | 渲染模块解耦重构 | P1 | 协议抽象、Delegate 分离、HDR 配置统一 [重构] |
+| **F-027** | UI 层 MVVM 合规重构 | P1 | Singleton 解耦、ViewModel 补全、协议抽象 [重构] |
 
 ---
 
@@ -323,6 +327,75 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - **AC-073**: 虚拟控制器无障碍：VirtualButtonView 添加 accessibilityLabel 和 accessibilityValue
 - **AC-074**: 长按手势支持：虚拟按钮支持 LongPressGesture 触发特殊功能
 - **AC-075**: 滑动快捷调节：流媒体界面边缘支持滑动手势快速调节音量
+
+---
+
+### US-012: HDR 精调
+> 关联功能: F-024
+> 来源: INS-001, INS-002 (chiaki-ng 参考 + 内部反馈)
+
+**作为** 使用 HDR 显示器的用户
+**我希望** 能够调整 HDR 亮度强度，并且设置界面简洁明了
+**以便** 我可以根据显示器特性优化 HDR 显示效果，不被无效选项困扰
+
+**验收标准**:
+- **AC-076**: HDR 精调：在"设置-视频"中添加 EDR 强度滑块（0.5x - 2.0x，默认 1.0x），仅当 HDR 开启时显示
+- **AC-077**: EDR 强度实时预览：调整滑块时实时应用到当前流媒体画面（如已连接）
+- **AC-078**: 色彩空间简化：HDR 开启时隐藏色彩空间选项（自动使用 BT.2020）；HDR 关闭时仅显示 SDR 选项（BT.709/BT.601）
+- **AC-079**: 设置持久化：EDR 强度设置保存到 UserDefaults，下次启动时恢复
+
+---
+
+### US-013: HDR 渲染管线优化
+> 关联功能: F-025
+> 来源: INS-034 ~ INS-038 (GPT/Gemini 方案对比分析)
+
+**作为** 使用 HDR 显示器的用户
+**我希望** HDR 内容的色彩准确且亮度自适应
+**以便** 我在不同显示器和环境下都能获得最佳的 HDR 视觉体验
+
+**验收标准**:
+- **AC-080**: 色域映射：在 Metal Shader 中实现 Rec.2020 → Display P3 色域转换矩阵，修复红色/绿色色偏
+- **AC-081**: 动态 EDR Headroom：监听屏幕 EDR Headroom（macOS: NSScreen / iOS: UIScreen），实时传入 Shader Uniform
+- **AC-082**: Headroom 自适应：Shader 根据当前 Headroom 值动态调整 EDR 输出范围，避免过曝或过暗
+- **AC-083**: 元数据抖动抑制：缓存高置信度 HDR 元数据，避免因 PixelFormat 变化导致频繁 pipeline 切换
+- **AC-084**: Tone Mapping 降级：为不支持 EDR 的设备提供可选的 ACES Tone Mapping 降级路径（HDR→SDR）
+- **AC-085**: 渲染性能指标：扩展 StreamStatsManager，新增 decode ms、render ms、P95/P99 延迟指标
+
+---
+
+### US-014: 渲染模块解耦重构
+> 关联功能: F-026
+> 来源: INS-039 ~ INS-041 (架构审查)
+
+**作为** 开发者
+**我希望** 渲染模块与 UI 框架完全解耦
+**以便** 我可以独立测试渲染逻辑，并支持未来的实现替换
+
+**验收标准**:
+- **AC-086**: 协议抽象：提取 `VideoRenderer` 协议，定义 `submitFrame`、`render`、显示模式、色彩调整等纯渲染接口
+- **AC-087**: Delegate 分离：将 `MTKViewDelegate` 实现从 `MetalVideoRenderer` 移至 `VideoStreamView` 的 Coordinator
+- **AC-088**: HDR 配置统一：创建 `HDRConfiguration` 结构，统一管理 HDR 开关、EDR Headroom、色彩空间、Tonemap 模式
+- **AC-089**: 依赖注入：`MetalVideoRenderer` 通过 `HDRConfiguration` 和 `edrHeadroom` 属性接收外部配置，不直接依赖 View 层
+
+---
+
+### US-015: UI 层 MVVM 合规重构
+> 关联功能: F-027
+> 来源: INS-042 ~ INS-046 (架构审查)
+
+**作为** 开发者
+**我希望** UI 层严格遵循 MVVM 架构原则
+**以便** 代码职责清晰、易于测试、便于维护
+
+**验收标准**:
+- **AC-090**: Singleton 解耦 - HostListView：移除直接 `HostManager.shared` 和 `ConsolePinManager.shared` 访问，改为通过 ViewModel 或 `@Environment` 注入
+- **AC-091**: Singleton 解耦 - AccountSettingsView：创建 `AccountSettingsViewModel` 封装 PSNService 操作，移除 `@State private var psnService = PSNService.shared`
+- **AC-092**: Singleton 解耦 - StreamingView/ControllerSettingsView：移除直接 Manager 访问，通过 ViewModel 代理
+- **AC-093**: ViewModel 补全：为 `VideoSettingsView` 创建 `VideoSettingsViewModel`，封装 HDR Binding 转换逻辑
+- **AC-094**: 业务逻辑分离：将 `ConsolesSettingsView` 中的 `hostStore.removeHost(host)` 等操作移至 ViewModel
+- **AC-095**: 协议抽象：为 `ConsolePinManager`、`PSNService` 定义协议（`PinManaging`、`PSNServicing`），支持 Mock 测试
+- **AC-096**: 目录结构优化：评估并可选地将 Feature 目录拆分为 `Views/` 和 `ViewModels/` 子目录，创建 `Shared/Components/` 和 `Shared/Styles/`
 
 ---
 

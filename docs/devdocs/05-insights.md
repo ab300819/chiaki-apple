@@ -617,3 +617,439 @@
 - [x] INS-029: 已确认 → F-022 / AC-066
 - [x] INS-030: 已确认 → F-022 / AC-067
 - [x] INS-031: 已确认 → F-022 / AC-068
+
+---
+
+## 洞察收集：HDR 设置优化
+
+**收集时间**：2026-02-04
+**来源类型**：🔍 外部参考 (chiaki-ng) + 💡 内部反馈
+
+### 背景
+
+HDR 功能已实现，但存在以下可优化点：
+1. EDR 缩放因子固定（12.5），无法适配不同显示器
+2. 色彩空间选项与 HDR 开关存在逻辑冗余
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-032 | HDR 亮度/EDR 强度调整 | 🔍 chiaki-ng | P1 | 🔄 已转化 |
+| INS-033 | 色彩空间选项简化 | 💡 内部反馈 | P1 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-032: HDR 亮度/EDR 强度调整
+
+- **来源**: 🔍 外部参考 (chiaki-ng DisplaySettingsDialog.qml)
+- **参考**: chiaki-ng 使用 libplacebo，支持 Target Peak (10-10000 nits) 配置
+- **现状**: 当前 EDR 缩放因子固定为 12.5，无法根据显示器特性调整
+- **建议**: 在"设置-视频"中添加 EDR 强度滑块（0.5x - 2.0x）
+- **影响范围**: SettingsStore, VideoSettings, MetalVideoRenderer shader
+- **预期收益**:
+  - 适配不同显示器的 HDR 能力
+  - 用户可根据个人偏好微调 HDR 亮度
+
+#### INS-033: 色彩空间选项简化
+
+- **来源**: 💡 内部反馈
+- **现状**: 色彩空间下拉框包含 HDR 选项，但实际由 HDR 开关控制
+- **建议**: HDR 开启时隐藏色彩空间选项；HDR 关闭时仅显示 SDR 选项
+- **影响范围**: VideoSettings UI
+- **预期收益**:
+  - 减少用户困惑
+  - 避免无效配置组合
+
+---
+
+### 确认结果
+
+- [x] INS-032: 已确认 → F-024 / AC-076, AC-077
+- [x] INS-033: 已确认 → F-024 / AC-078
+
+---
+
+## 洞察收集：HDR 渲染管线优化
+
+**收集时间**：2026-02-04
+**来源类型**：📄 文档调研 (GPT/Gemini 方案对比)
+**参考文档**：
+- `ps5_stream_hdr_metal_design.md` (GPT 方案)
+- `ps5_stream_paln_gemini.md` (Gemini 方案)
+
+### 背景
+
+用户提供两份 AI 生成的 HDR 渲染方案，进行对比分析后发现当前实现存在以下可优化点：
+
+**GPT 方案核心理念**：低延迟优先、帧稳定性、HDR→SDR Tone Mapping 为主线
+- ✅ 清晰的数据流架构（AU Queue → VideoToolbox → FrameSlot → MetalRenderer）
+- ✅ "丢旧保新"队列策略符合低延迟设计
+- ⚠️ HDR→SDR Tone Mapping 在支持 EDR 的 Apple 设备上非必要
+
+**Gemini 方案核心理念**：Zero-Copy、Native HDR via EDR、组件化
+- ✅ 原生 Apple HDR 管线（PQ EOTF → Linear → EDR）
+- ✅ 强调动态 EDR Headroom 监听
+- ⚠️ 缺失 Rec.2020 → Display P3 色域映射
+- ⚠️ 缺失动态 Headroom 传递
+
+**当前实现对照**：
+| 功能 | 实现状态 | 来源方案 |
+|------|----------|----------|
+| Zero-Copy CVMetalTextureCache | ✅ 已实现 | Gemini |
+| PQ EOTF 解码 | ✅ 已实现 | Gemini |
+| EDR 输出 (rgba16Float) | ✅ 已实现 | Gemini |
+| 色域映射 Rec.2020→P3 | ❌ 缺失 | Gemini |
+| 动态 EDR Headroom | ❌ 缺失 | Gemini |
+| 元数据抖动抑制 | ❌ 缺失 | GPT |
+| Tone Mapping 降级 | ❌ 缺失 | GPT |
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-034 | Rec.2020 → Display P3 色域映射 | 📄 Gemini | P0 | 🔄 已转化 |
+| INS-035 | 动态 EDR Headroom 监听与传递 | 📄 Gemini | P1 | 🔄 已转化 |
+| INS-036 | HDR 元数据抖动抑制 | 📄 GPT | P2 | 🔄 已转化 |
+| INS-037 | 可选 Tone Mapping 降级路径 | 📄 GPT | P2 | 🔄 已转化 |
+| INS-038 | 渲染性能指标扩展 | 📄 GPT | P2 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-034: Rec.2020 → Display P3 色域映射
+
+- **来源**: 📄 Gemini 方案 (第3阶段 Shader)
+- **现状**: 当前 Shader 直接输出 BT.2020 RGB，未做色域转换
+- **建议**: 在 PQ EOTF 后添加 Rec.2020→P3 矩阵转换
+- **影响范围**: MetalVideoRenderer shader
+- **预期收益**:
+  - 修复红色/绿色色偏问题
+  - 正确适配 Apple Display P3 屏幕
+- **实现要点**:
+  ```metal
+  // Gemini 方案提供的矩阵
+  constant float3x3 kRec2020_to_P3_Matrix = float3x3(
+      float3(1.6605, -0.5876, -0.0728),
+      float3(-0.1246, 1.1329, -0.0083),
+      float3(-0.0182, -0.1006, 1.1187)
+  );
+
+  // 在 pqEOTF 后、linearToEDR 前应用
+  rgb = kRec2020_to_P3_Matrix * rgb;
+  ```
+
+#### INS-035: 动态 EDR Headroom 监听与传递
+
+- **来源**: 📄 Gemini 方案 (关键注意事项 #1)
+- **现状**: EDR 缩放因子固定为 12.5，不随屏幕亮度变化
+- **建议**: 监听屏幕 EDR Headroom，动态传入 Shader
+- **影响范围**: VideoStreamView, MetalVideoRenderer
+- **预期收益**:
+  - 自动适配不同亮度环境
+  - 避免过曝或过暗
+- **实现要点**:
+  ```swift
+  // macOS
+  NSScreen.main?.maximumExtendedDynamicRangeColorComponentValue
+
+  // iOS 16+
+  UIScreen.main.currentEDRHeadroom
+  ```
+
+#### INS-036: HDR 元数据抖动抑制
+
+- **来源**: 📄 GPT 方案 (6.4 抑制抖动)
+- **现状**: 每帧根据 PixelFormat 判断 HDR，可能频繁切换
+- **建议**: 缓存高置信度 HDR 元数据，避免频繁切换 pipeline
+- **影响范围**: MetalVideoRenderer
+- **预期收益**:
+  - 减少 pipeline 切换开销
+  - 更稳定的视觉体验
+
+#### INS-037: 可选 Tone Mapping 降级路径
+
+- **来源**: 📄 GPT 方案 (第9-10节 HDR 策略)
+- **现状**: 仅支持 EDR passthrough，不支持 SDR 输出
+- **建议**: 为不支持 EDR 的设备提供 ACES Tone Mapping 降级路径
+- **影响范围**: MetalVideoRenderer shader
+- **预期收益**:
+  - 兼容老旧设备
+  - HDR 内容在 SDR 屏幕上仍可观看
+- **实现要点**:
+  ```metal
+  // ACES Filmic Tone Mapping
+  float3 aces_tonemap(float3 x) {
+      float a = 2.51;
+      float b = 0.03;
+      float c = 2.43;
+      float d = 0.59;
+      float e = 0.14;
+      return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+  }
+  ```
+
+#### INS-038: 渲染性能指标扩展
+
+- **来源**: 📄 GPT 方案 (第13节 性能与观测)
+- **现状**: 仅统计 frameCount、droppedFrameCount
+- **建议**: 扩展指标：decode ms、render ms、P95/P99 延迟
+- **影响范围**: StreamStatsManager, MetalVideoRenderer
+- **预期收益**:
+  - 更精确的性能诊断
+  - 便于定位延迟瓶颈
+
+---
+
+### 确认结果
+
+- [x] INS-034: 已确认 → F-025 / AC-080
+- [x] INS-035: 已确认 → F-025 / AC-081, AC-082
+- [x] INS-036: 已确认 → F-025 / AC-083
+- [x] INS-037: 已确认 → F-025 / AC-084
+- [x] INS-038: 已确认 → F-025 / AC-085
+
+---
+
+## 洞察收集：渲染模块封装审查
+
+**收集时间**：2026-02-04
+**来源类型**：💡 架构审查
+
+### 背景
+
+用户提出渲染部分应与 UI、网络、解码逻辑完全解耦。经审查当前实现：
+
+**当前架构**：
+| 文件 | 职责 | 依赖 | 问题 |
+|------|------|------|------|
+| `MetalVideoRenderer.swift` | Metal 渲染核心 | Foundation, Metal, CoreVideo | ⚠️ 实现 MTKViewDelegate |
+| `VideoStreamView.swift` | SwiftUI 适配层 | SwiftUI, MetalKit | ⚠️ 混合 HDR 配置 |
+| `VideoToolboxDecoder.swift` | 视频解码 | VideoToolbox | ✅ 独立模块 |
+
+**问题识别**：
+1. `MetalVideoRenderer` 直接实现 `MTKViewDelegate`，与 MTKView 绑定
+2. HDR 配置分散在 View 层和 Renderer 层
+3. 无协议抽象，不利于测试和替换
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-039 | 渲染器协议抽象 | 💡 架构审查 | P1 | 🔄 已转化 |
+| INS-040 | 分离 MTKViewDelegate | 💡 架构审查 | P2 | 🔄 已转化 |
+| INS-041 | 统一 HDR 配置入口 | 💡 架构审查 | P1 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-039: 渲染器协议抽象
+
+- **现状**: `MetalVideoRenderer` 是具体类，无协议抽象
+- **建议**: 提取 `VideoRenderer` 协议，定义纯渲染接口
+- **影响范围**: MetalVideoRenderer, VideoStreamView
+- **预期收益**:
+  - 支持 Mock 测试
+  - 便于未来替换渲染实现
+- **实现要点**:
+  ```swift
+  protocol VideoRenderer: AnyObject {
+      func submitFrame(_ pixelBuffer: CVPixelBuffer)
+      func render(to drawable: CAMetalDrawable, descriptor: MTLRenderPassDescriptor)
+
+      var displayMode: VideoDisplayMode { get set }
+      var zoomFactor: Float { get set }
+      var edrHeadroom: Float { get set }
+
+      func setBrightness(_ value: Float)
+      func setContrast(_ value: Float)
+      func setSaturation(_ value: Float)
+  }
+  ```
+
+#### INS-040: 分离 MTKViewDelegate
+
+- **现状**: `MetalVideoRenderer` 实现 `MTKViewDelegate`，与 View 耦合
+- **建议**: 将 `MTKViewDelegate` 实现移至 `VideoStreamView` 的 Coordinator
+- **影响范围**: MetalVideoRenderer, VideoStreamView
+- **预期收益**:
+  - Renderer 完全与 UI 框架解耦
+  - 更清晰的职责划分
+- **实现要点**:
+  ```swift
+  // VideoStreamView.Coordinator
+  class Coordinator: NSObject, MTKViewDelegate {
+      let renderer: VideoRenderer
+
+      func draw(in view: MTKView) {
+          guard let drawable = view.currentDrawable,
+                let descriptor = view.currentRenderPassDescriptor else { return }
+          renderer.render(to: drawable, descriptor: descriptor)
+      }
+  }
+  ```
+
+#### INS-041: 统一 HDR 配置入口
+
+- **现状**: HDR 配置分散（View 层设置 pixelFormat/colorspace，Renderer 处理 EOTF）
+- **建议**: 创建 `HDRConfiguration` 结构统一管理
+- **影响范围**: VideoStreamView, MetalVideoRenderer
+- **预期收益**:
+  - 配置集中管理
+  - 便于添加新的 HDR 选项
+- **实现要点**:
+  ```swift
+  struct HDRConfiguration {
+      var enabled: Bool = false
+      var edrHeadroom: Float = 1.0
+      var colorSpace: ColorSpace = .bt709
+      var tonemapMode: TonemapMode = .passthrough
+
+      enum ColorSpace { case bt709, bt601, bt2020 }
+      enum TonemapMode { case passthrough, aces }
+  }
+  ```
+
+---
+
+### 确认结果
+
+- [x] INS-039: 已确认 → F-026 / AC-086
+- [x] INS-040: 已确认 → F-026 / AC-087
+- [x] INS-041: 已确认 → F-026 / AC-088, AC-089
+
+---
+
+## 洞察收集：UI 层架构审查
+
+**收集时间**：2026-02-04
+**来源类型**：💡 架构审查
+**分析范围**：MVVM 合规性、模块解耦、代码组织
+
+### 背景
+
+用户提出 UI 层是否与其他模块解耦、是否符合 MVVM 原则、代码组织是否合理。经全面审查发现：
+
+**✅ 优点**：
+- 目录结构采用 Feature-based 组织，清晰合理
+- 命名规范一致（`*View.swift`, `*ViewModel.swift`）
+- `SettingsStore` 独立且设计良好
+- 部分依赖通过 `@Environment` 正确注入
+
+**❌ 问题**：
+- 5+ 文件直接访问 Singleton Manager，违反 MVVM
+- Settings Views 无 ViewModel，复杂逻辑在 View 中
+- 业务逻辑泄露到 View 层
+- 核心 Manager 无协议抽象，不利于测试
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-042 | Views 直接访问 Singleton Manager 违规 | 💡 | P0 | 🔄 已转化 |
+| INS-043 | Settings Views 缺少 ViewModel 层 | 💡 | P1 | 🔄 已转化 |
+| INS-044 | 业务逻辑泄露到 View 层 | 💡 | P1 | 🔄 已转化 |
+| INS-045 | 核心 Manager 缺少协议抽象 | 💡 | P2 | 🔄 已转化 |
+| INS-046 | UI 模块集中管理建议 | 💡 | P2 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-042: Views 直接访问 Singleton Manager 违规
+
+- **现状**: 多个 View 直接通过 `.shared` 访问数据/服务层
+- **违规文件**:
+  - `HostListView.swift`: `HostManager.shared`, `ConsolePinManager.shared`
+  - `ControllerSettingsView.swift`: `ControllerManager.shared.connectedControllers`
+  - `AccountSettingsView.swift`: `@State private var psnService = PSNService.shared`
+  - `StreamingView.swift`: `ConsolePinManager.shared.requiresPinEntry(for:)`
+  - `ConsolesSettingsView.swift`: 直接调用 `hostStore.removeHost(host)`
+- **建议**: 将 Singleton 访问封装到 ViewModel，通过 `@Environment` 或构造函数注入
+- **影响范围**: HostListView, ControllerSettingsView, AccountSettingsView, StreamingView, ConsolesSettingsView
+- **实现要点**:
+  ```swift
+  // ❌ 当前
+  @State private var psnService = PSNService.shared
+
+  // ✅ 建议
+  @Observable class AccountSettingsViewModel {
+      private let psnService: PSNService
+      init(psnService: PSNService = .shared) { self.psnService = psnService }
+      func signOut() { psnService.signOut() }
+  }
+  ```
+
+#### INS-043: Settings Views 缺少 ViewModel 层
+
+- **现状**: 6 个 Settings Views 直接操作 SettingsStore，无中间 ViewModel
+- **问题**: `VideoSettingsView` 包含复杂 Binding 转换逻辑（`hdrPeakNitsBinding`, `hdrPeakModeBinding`）
+- **建议**: 为包含复杂逻辑的 Settings Views 创建轻量级 ViewModel
+- **影响范围**: VideoSettingsView, AccountSettingsView, ConsolesSettingsView
+- **实现要点**:
+  ```swift
+  @Observable class VideoSettingsViewModel {
+      private let store: SettingsStore
+      var hdrPeakNits: Double {
+          get { Double(store.streamSettings.hdrTargetPeakNits) }
+          set { store.streamSettings.hdrTargetPeakNits = Int(newValue) }
+      }
+  }
+  ```
+
+#### INS-044: 业务逻辑泄露到 View 层
+
+- **现状**: 部分 View 包含应属于 ViewModel 的业务逻辑
+- **违规示例**:
+  - `HostListView.swift`: 条件判断 + wakeUp 调用在 View 中
+  - `ConsolesSettingsView.swift`: 直接调用 `hostStore.removeHost(host)`
+  - `AccountSettingsView.swift`: 直接调用 `psnService.manualRefresh()`
+- **建议**: 将业务逻辑移至对应 ViewModel
+- **影响范围**: HostListView, ConsolesSettingsView, AccountSettingsView
+
+#### INS-045: 核心 Manager 缺少协议抽象
+
+- **现状**: Manager 类无协议定义，难以 Mock 测试
+- **建议**: 为核心 Manager 定义协议
+- **影响范围**: ConsolePinManager, ControllerManager, PSNService, HostManager
+- **实现要点**:
+  ```swift
+  protocol PinManaging {
+      func setPin(_ pin: String, for host: ConsoleHost)
+      func hasPin(for host: ConsoleHost) -> Bool
+  }
+  extension ConsolePinManager: PinManaging {}
+
+  protocol PSNServicing {
+      var account: PSNAccount? { get }
+      func signOut()
+  }
+  extension PSNService: PSNServicing {}
+  ```
+
+#### INS-046: UI 模块集中管理建议
+
+- **现状**: UI 组件分散在各 Feature 目录，共享组件未集中
+- **建议**:
+  1. 创建 `Shared/Components/` 目录集中共享 UI 组件
+  2. 每个 Feature 子目录拆分为 `Views/` 和 `ViewModels/`
+  3. 创建 `Shared/Styles/` 管理 ButtonStyle 等
+- **建议结构**:
+  ```
+  Features/
+  ├── HostList/
+  │   ├── Views/
+  │   └── ViewModels/
+  ├── Settings/
+  │   ├── Views/
+  │   └── ViewModels/
+  Shared/
+  ├── Components/
+  └── Styles/
+  ```
+
+---
+
+### 确认结果
+
+- [x] INS-042: 已确认 → F-027 / AC-090, AC-091, AC-092
+- [x] INS-043: 已确认 → F-027 / AC-093
+- [x] INS-044: 已确认 → F-027 / AC-094
+- [x] INS-045: 已确认 → F-027 / AC-095
+- [x] INS-046: 已确认 → F-027 / AC-096

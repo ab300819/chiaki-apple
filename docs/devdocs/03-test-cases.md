@@ -3592,3 +3592,836 @@ struct PINNumPadE2ETests {
 | P1 | 12 | 无障碍与反馈 |
 | P2 | 5 | 手势扩展 |
 | **总计** | **21** | |
+
+---
+
+## 19. F-025 HDR 渲染管线优化测试
+
+> **变更来源**: F-025 HDR 渲染管线优化
+> **关联洞察**: INS-034 ~ INS-038
+> **新增测试**: UT-027 ~ UT-032, IT-011, E2E-011
+
+### 19.1 测试策略
+
+| 测试类型 | 覆盖范围 | 说明 |
+|----------|----------|------|
+| 单元测试 | 色域映射、EOTF、Tone Mapping、缓存逻辑 | 纯函数/算法测试 |
+| 集成测试 | EDR Headroom 监听与 Shader 传递 | 组件协作测试 |
+| E2E 测试 | HDR 渲染效果验证 | 视觉验收测试 |
+
+### 19.2 单元测试
+
+#### UT-027: 色域映射测试 (AC-080)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-027.1 | testRec2020ToP3MatrixValues | Rec.2020→P3 矩阵常量正确 | 矩阵值与设计文档一致 | P0 |
+| UT-027.2 | testGamutMappingWhitePoint | 白点映射 | (1,1,1) → 接近 (1,1,1) | P0 |
+| UT-027.3 | testGamutMappingPrimaryRed | 红色映射 | Rec.2020 红 → P3 红 (无严重偏移) | P1 |
+| UT-027.4 | testGamutMappingPrimaryGreen | 绿色映射 | Rec.2020 绿 → P3 绿 | P1 |
+| UT-027.5 | testGamutMappingPrimaryBlue | 蓝色映射 | Rec.2020 蓝 → P3 蓝 | P1 |
+| UT-027.6 | testGamutMappingNegativeClamp | 负值软裁剪 | 负值 → 0 (不产生 NaN) | P0 |
+
+```swift
+// ColorSpaceConversionTests.swift
+final class ColorSpaceConversionTests: XCTestCase {
+    // UT-027.1: 验证矩阵常量
+    func testRec2020ToP3MatrixValues() {
+        let matrix = VideoShaderConstants.rec2020ToP3Matrix
+        // 验证矩阵行列式非零（可逆）
+        XCTAssertNotEqual(matrix.determinant, 0, accuracy: 0.001)
+    }
+
+    // UT-027.2: 白点映射
+    func testGamutMappingWhitePoint() {
+        let white = SIMD3<Float>(1, 1, 1)
+        let mapped = applyGamutMapping(white)
+        XCTAssertEqual(mapped.x, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.y, 1.0, accuracy: 0.01)
+        XCTAssertEqual(mapped.z, 1.0, accuracy: 0.01)
+    }
+
+    // UT-027.6: 负值软裁剪
+    func testGamutMappingNegativeClamp() {
+        let outOfGamut = SIMD3<Float>(-0.1, 1.2, 0.5)
+        let mapped = applyGamutMapping(outOfGamut)
+        XCTAssertGreaterThanOrEqual(mapped.x, 0)
+        XCTAssertFalse(mapped.x.isNaN)
+    }
+}
+```
+
+#### UT-028: EDRHeadroomMonitor 测试 (AC-081)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-028.1 | testInitialHeadroomValue | 初始值合理 | currentHeadroom ≥ 1.0 | P0 |
+| UT-028.2 | testHeadroomUpdateSmoothing | 平滑过渡 | 变化 < 10% per update | P1 |
+| UT-028.3 | testMaxHeadroomTracking | 最大值追踪 | maxHeadroom ≥ currentHeadroom | P1 |
+| UT-028.4 | testHeadroomNotNaN | 非 NaN 值 | currentHeadroom.isFinite == true | P0 |
+
+```swift
+// EDRHeadroomMonitorTests.swift
+final class EDRHeadroomMonitorTests: XCTestCase {
+    var monitor: EDRHeadroomMonitor!
+
+    override func setUp() {
+        monitor = EDRHeadroomMonitor()
+    }
+
+    // UT-028.1
+    func testInitialHeadroomValue() {
+        XCTAssertGreaterThanOrEqual(monitor.currentHeadroom, 1.0)
+    }
+
+    // UT-028.4
+    func testHeadroomNotNaN() {
+        XCTAssertTrue(monitor.currentHeadroom.isFinite)
+        XCTAssertTrue(monitor.maxHeadroom.isFinite)
+    }
+}
+```
+
+#### UT-029: HDRMetadataCache 测试 (AC-083)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-029.1 | testInitialStateIsSDR | 初始状态为 SDR | confirmedHDR == false | P0 |
+| UT-029.2 | testHDRConfirmationThreshold | HDR 确认阈值 | 连续 5 帧后 confirmedHDR == true | P0 |
+| UT-029.3 | testSDRConfirmationThreshold | SDR 确认阈值 | 连续 5 帧后 confirmedHDR == false | P0 |
+| UT-029.4 | testJitterSuppression | 抖动抑制 | 单帧切换不改变状态 | P0 |
+| UT-029.5 | testResetClearsState | 重置清除状态 | reset() 后 confirmedHDR == false | P1 |
+
+```swift
+// HDRMetadataCacheTests.swift
+final class HDRMetadataCacheTests: XCTestCase {
+    var cache: HDRMetadataCache!
+
+    override func setUp() {
+        cache = HDRMetadataCache()
+    }
+
+    // UT-029.1
+    func testInitialStateIsSDR() {
+        XCTAssertFalse(cache.confirmedHDR)
+    }
+
+    // UT-029.2
+    func testHDRConfirmationThreshold() {
+        // 需要连续 5 帧 HDR
+        for i in 1...4 {
+            _ = cache.update(isHDRFrame: true)
+            XCTAssertFalse(cache.confirmedHDR, "Frame \(i) should not confirm")
+        }
+        _ = cache.update(isHDRFrame: true)
+        XCTAssertTrue(cache.confirmedHDR, "Frame 5 should confirm HDR")
+    }
+
+    // UT-029.4
+    func testJitterSuppression() {
+        // 先确认 HDR
+        for _ in 1...5 { _ = cache.update(isHDRFrame: true) }
+        XCTAssertTrue(cache.confirmedHDR)
+
+        // 单帧 SDR 不应改变状态
+        _ = cache.update(isHDRFrame: false)
+        XCTAssertTrue(cache.confirmedHDR, "Single SDR frame should not change state")
+    }
+}
+```
+
+#### UT-030: ACES Tone Mapping 测试 (AC-084)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-030.1 | testACESBlackPreservation | 黑色保留 | (0,0,0) → (0,0,0) | P0 |
+| UT-030.2 | testACESWhiteMapping | 白色映射 | (1,1,1) → 接近 (1,1,1) | P0 |
+| UT-030.3 | testACESHighlightCompression | 高光压缩 | (10,10,10) → < (1,1,1) | P0 |
+| UT-030.4 | testACESOutputRange | 输出范围 | 所有输出 ∈ [0, 1] | P0 |
+| UT-030.5 | testACESMonotonicity | 单调性 | x1 < x2 → f(x1) < f(x2) | P1 |
+
+```swift
+// TonemappingTests.swift
+final class TonemappingTests: XCTestCase {
+    // UT-030.1
+    func testACESBlackPreservation() {
+        let black = SIMD3<Float>(0, 0, 0)
+        let mapped = acesTonemap(black)
+        XCTAssertEqual(mapped.x, 0, accuracy: 0.001)
+    }
+
+    // UT-030.3
+    func testACESHighlightCompression() {
+        let bright = SIMD3<Float>(10, 10, 10)
+        let mapped = acesTonemap(bright)
+        XCTAssertLessThan(mapped.x, 1.0)
+        XCTAssertLessThan(mapped.y, 1.0)
+        XCTAssertLessThan(mapped.z, 1.0)
+    }
+
+    // UT-030.4
+    func testACESOutputRange() {
+        let testValues: [Float] = [0, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0]
+        for v in testValues {
+            let input = SIMD3<Float>(v, v, v)
+            let output = acesTonemap(input)
+            XCTAssertGreaterThanOrEqual(output.x, 0)
+            XCTAssertLessThanOrEqual(output.x, 1)
+        }
+    }
+}
+```
+
+#### UT-031: StreamStatsManager 性能指标测试 (AC-085)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-031.1 | testRecordDecodeTime | 记录解码耗时 | decodeTimeMs 更新 | P1 |
+| UT-031.2 | testRecordRenderTime | 记录渲染耗时 | renderTimeMs 更新 | P1 |
+| UT-031.3 | testP95Calculation | P95 计算 | p95LatencyMs 在合理范围 | P1 |
+| UT-031.4 | testP99Calculation | P99 计算 | p99LatencyMs ≥ p95LatencyMs | P1 |
+| UT-031.5 | testSampleWindowSize | 采样窗口限制 | 样本数 ≤ 100 | P2 |
+
+```swift
+// StreamStatsManagerTests.swift (扩展)
+extension StreamStatsManagerTests {
+    // UT-031.3 & UT-031.4
+    func testPercentileCalculation() {
+        let stats = StreamStatsManager()
+
+        // 模拟 100 个样本
+        for i in 1...100 {
+            stats.recordDecodeTime(Double(i))
+            stats.recordRenderTime(Double(i))
+        }
+
+        // P95 应该接近 95
+        XCTAssertGreaterThan(stats.p95LatencyMs, 90)
+        XCTAssertLessThan(stats.p95LatencyMs, 100)
+
+        // P99 ≥ P95
+        XCTAssertGreaterThanOrEqual(stats.p99LatencyMs, stats.p95LatencyMs)
+    }
+}
+```
+
+#### UT-032: HDRConfiguration 测试 (AC-088)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-032.1 | testDefaultConfiguration | 默认配置 | enabled=false, colorSpace=bt709 | P0 |
+| UT-032.2 | testHDRPreset | HDR 预设 | HDRConfiguration.hdr 正确 | P0 |
+| UT-032.3 | testSDRPreset | SDR 预设 | HDRConfiguration.sdr 正确 | P0 |
+| UT-032.4 | testIsHDRComputed | isHDR 计算属性 | enabled && bt2020 → true | P0 |
+| UT-032.5 | testCodable | 序列化/反序列化 | 编码后解码相等 | P1 |
+| UT-032.6 | testEquatable | 相等性判断 | 相同配置相等 | P1 |
+
+```swift
+// HDRConfigurationTests.swift
+final class HDRConfigurationTests: XCTestCase {
+    // UT-032.1
+    func testDefaultConfiguration() {
+        let config = HDRConfiguration()
+        XCTAssertFalse(config.enabled)
+        XCTAssertEqual(config.colorSpace, .bt709)
+        XCTAssertEqual(config.edrIntensity, 1.0)
+    }
+
+    // UT-032.4
+    func testIsHDRComputed() {
+        var config = HDRConfiguration()
+        XCTAssertFalse(config.isHDR)
+
+        config.enabled = true
+        XCTAssertFalse(config.isHDR)  // bt709 != HDR
+
+        config.colorSpace = .bt2020
+        XCTAssertTrue(config.isHDR)
+    }
+
+    // UT-032.5
+    func testCodable() throws {
+        let config = HDRConfiguration(
+            enabled: true,
+            edrIntensity: 1.5,
+            colorSpace: .bt2020,
+            tonemapMode: .aces
+        )
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(HDRConfiguration.self, from: data)
+        XCTAssertEqual(config, decoded)
+    }
+}
+```
+
+### 19.3 集成测试
+
+#### IT-011: EDR Headroom 与 Shader 集成测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-011.1 | testHeadroomPassedToRenderer | Headroom 传递到渲染器 | renderer.edrHeadroom 更新 | P0 |
+| IT-011.2 | testHeadroomInUniformBuffer | Headroom 写入 Uniform | Shader 收到正确值 | P0 |
+| IT-011.3 | testConfigurationChangeTriggersUpdate | 配置变更触发更新 | uniforms 重新写入 | P1 |
+| IT-011.4 | testHeadroomMultipliedByIntensity | Headroom × 强度 | 最终值 = headroom × intensity | P0 |
+
+```swift
+// HDRIntegrationTests.swift
+final class HDRIntegrationTests: XCTestCase {
+    var renderer: MetalVideoRenderer!
+    var monitor: EDRHeadroomMonitor!
+
+    override func setUp() async throws {
+        renderer = try MetalVideoRenderer()
+        monitor = EDRHeadroomMonitor()
+    }
+
+    // IT-011.1
+    func testHeadroomPassedToRenderer() {
+        renderer.edrHeadroom = 2.0
+        XCTAssertEqual(renderer.edrHeadroom, 2.0)
+    }
+
+    // IT-011.4
+    func testHeadroomMultipliedByIntensity() {
+        renderer.edrHeadroom = 2.0
+        renderer.hdrConfiguration.edrIntensity = 1.5
+        // 验证 Uniform 中的值 = 2.0 × 1.5 = 3.0
+        let uniforms = renderer.currentUniforms
+        XCTAssertEqual(uniforms.edrHeadroom, 3.0, accuracy: 0.01)
+    }
+}
+```
+
+### 19.4 E2E 测试
+
+#### E2E-011: HDR 渲染效果验证
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| E2E-011.1 | testHDRBadgeDisplayed | HDR 徽章显示 | Overlay 显示 "HDR" 标志 | P0 |
+| E2E-011.2 | testEDRIntensitySliderAdjustment | EDR 强度滑块调整 | 画面亮度随滑块变化 | P1 |
+| E2E-011.3 | testColorSpaceAutoSelection | 色彩空间自动选择 | HDR 开启后自动选 BT.2020 | P1 |
+
+### 19.5 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-080: 色域映射 | UT-027.1~6 | - | - |
+| AC-081: 动态 EDR Headroom | UT-028.1~4 | IT-011.1~4 | - |
+| AC-082: Headroom 自适应 | - | IT-011.4 | E2E-011.2 |
+| AC-083: 元数据抖动抑制 | UT-029.1~5 | - | - |
+| AC-084: Tone Mapping 降级 | UT-030.1~5 | - | - |
+| AC-085: 渲染性能指标 | UT-031.1~5 | - | - |
+
+---
+
+## 20. F-026 渲染模块解耦重构测试
+
+> **变更来源**: F-026 渲染模块解耦重构
+> **关联洞察**: INS-039 ~ INS-041
+> **新增测试**: UT-033 ~ UT-035, IT-012
+
+### 20.1 测试策略
+
+| 测试类型 | 覆盖范围 | 说明 |
+|----------|----------|------|
+| 单元测试 | 协议实现、配置结构 | 接口契约验证 |
+| 集成测试 | Coordinator 与 Renderer 协作 | Delegate 分离验证 |
+
+### 20.2 单元测试
+
+#### UT-033: VideoRenderer 协议实现测试 (AC-086)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-033.1 | testRendererConformsToProtocol | 协议一致性 | MetalVideoRenderer 实现 VideoRenderer | P0 |
+| UT-033.2 | testSubmitFrameUpdatesBuffer | 提交帧更新缓冲 | hasFrame == true | P0 |
+| UT-033.3 | testFrameSizeCalculation | 帧尺寸计算 | frameSize 匹配 PixelBuffer 尺寸 | P0 |
+| UT-033.4 | testDisplayModeProperty | 显示模式属性 | get/set 工作正常 | P1 |
+| UT-033.5 | testZoomFactorProperty | 缩放因子属性 | get/set 工作正常 | P1 |
+| UT-033.6 | testColorAdjustmentMethods | 色彩调整方法 | setBrightness/setContrast/setSaturation 正常 | P1 |
+
+```swift
+// VideoRendererTests.swift
+final class VideoRendererTests: XCTestCase {
+    var renderer: VideoRenderer!
+
+    override func setUp() async throws {
+        renderer = try MetalVideoRenderer()
+    }
+
+    // UT-033.1
+    func testRendererConformsToProtocol() {
+        XCTAssertTrue(renderer is VideoRenderer)
+    }
+
+    // UT-033.2
+    func testSubmitFrameUpdatesBuffer() {
+        XCTAssertFalse(renderer.hasFrame)
+
+        let pixelBuffer = createTestPixelBuffer(width: 1920, height: 1080)
+        renderer.submitFrame(pixelBuffer)
+
+        XCTAssertTrue(renderer.hasFrame)
+    }
+
+    // UT-033.3
+    func testFrameSizeCalculation() {
+        let pixelBuffer = createTestPixelBuffer(width: 1920, height: 1080)
+        renderer.submitFrame(pixelBuffer)
+
+        XCTAssertEqual(renderer.frameSize.width, 1920)
+        XCTAssertEqual(renderer.frameSize.height, 1080)
+    }
+}
+```
+
+#### UT-034: HDRConfiguration 集成测试 (AC-088, AC-089)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-034.1 | testRendererAcceptsHDRConfiguration | 渲染器接受配置 | hdrConfiguration 属性可设置 | P0 |
+| UT-034.2 | testConfigurationAffectsUniforms | 配置影响 Uniforms | colorSpace 等值传递到 Shader | P0 |
+| UT-034.3 | testEDRHeadroomInjection | EDR Headroom 注入 | edrHeadroom 属性可从外部设置 | P0 |
+
+```swift
+// HDRConfigurationIntegrationTests.swift
+extension VideoRendererTests {
+    // UT-034.1
+    func testRendererAcceptsHDRConfiguration() {
+        let config = HDRConfiguration.hdr
+        renderer.hdrConfiguration = config
+        XCTAssertEqual(renderer.hdrConfiguration.enabled, true)
+        XCTAssertEqual(renderer.hdrConfiguration.colorSpace, .bt2020)
+    }
+
+    // UT-034.3
+    func testEDRHeadroomInjection() {
+        renderer.edrHeadroom = 2.5
+        XCTAssertEqual(renderer.edrHeadroom, 2.5)
+    }
+}
+```
+
+#### UT-035: VideoStreamView.Coordinator 测试 (AC-087)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-035.1 | testCoordinatorConformsToMTKViewDelegate | Coordinator 实现 MTKViewDelegate | 类型检查通过 | P0 |
+| UT-035.2 | testCoordinatorHoldsRenderer | Coordinator 持有 Renderer | renderer 非 nil | P0 |
+| UT-035.3 | testDrawCallsRendererRender | draw(in:) 调用 renderer.render | render 被调用 | P0 |
+
+```swift
+// VideoStreamViewCoordinatorTests.swift
+final class VideoStreamViewCoordinatorTests: XCTestCase {
+    // UT-035.1
+    func testCoordinatorConformsToMTKViewDelegate() {
+        let renderer = try! MetalVideoRenderer()
+        let coordinator = VideoStreamView.Coordinator(renderer: renderer)
+        XCTAssertTrue(coordinator is MTKViewDelegate)
+    }
+
+    // UT-035.2
+    func testCoordinatorHoldsRenderer() {
+        let renderer = try! MetalVideoRenderer()
+        let coordinator = VideoStreamView.Coordinator(renderer: renderer)
+        XCTAssertNotNil(coordinator.renderer)
+    }
+}
+```
+
+### 20.3 集成测试
+
+#### IT-012: Coordinator 与 Renderer 集成测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-012.1 | testMTKViewDelegateFlow | MTKView delegate 流程 | draw(in:) 触发 render() | P0 |
+| IT-012.2 | testRendererNotDirectlyMTKViewDelegate | Renderer 不直接是 Delegate | MetalVideoRenderer 不实现 MTKViewDelegate | P0 |
+| IT-012.3 | testViewUpdatePassesConfiguration | View 更新传递配置 | hdrConfiguration 从 View 传到 Renderer | P1 |
+
+```swift
+// CoordinatorIntegrationTests.swift
+final class CoordinatorIntegrationTests: XCTestCase {
+    // IT-012.2
+    func testRendererNotDirectlyMTKViewDelegate() {
+        let renderer = try! MetalVideoRenderer()
+        // MetalVideoRenderer 不应该直接实现 MTKViewDelegate
+        XCTAssertFalse(renderer is MTKViewDelegate)
+    }
+}
+```
+
+### 20.4 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-086: 协议抽象 | UT-033.1~6 | - | - |
+| AC-087: Delegate 分离 | UT-035.1~3 | IT-012.1~2 | - |
+| AC-088: HDR 配置统一 | UT-032.1~6, UT-034.1~2 | IT-012.3 | - |
+| AC-089: 依赖注入 | UT-034.3 | IT-012.3 | - |
+
+---
+
+## 21. F-027 UI 层 MVVM 合规重构测试
+
+> **变更来源**: F-027 UI 层 MVVM 合规重构
+> **关联洞察**: INS-042 ~ INS-046
+> **新增测试**: UT-036 ~ UT-041, IT-013 ~ IT-014
+
+### 21.1 测试策略
+
+| 测试类型 | 覆盖范围 | 说明 |
+|----------|----------|------|
+| 单元测试 | ViewModel 逻辑、协议实现 | 业务逻辑隔离测试 |
+| 集成测试 | ViewModel 与 Service 协作 | Mock 注入验证 |
+
+### 21.2 单元测试
+
+#### UT-036: AccountSettingsViewModel 测试 (AC-091)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-036.1 | testInitialStateFromService | 初始状态来自服务 | account/isSignedIn 与服务一致 | P0 |
+| UT-036.2 | testSignOutCallsService | signOut 调用服务 | psnService.signOut() 被调用 | P0 |
+| UT-036.3 | testRefreshTokenAsync | 刷新 Token | isRefreshing 状态变化正确 | P0 |
+| UT-036.4 | testRefreshTokenError | 刷新 Token 错误处理 | errorMessage 被设置 | P1 |
+| UT-036.5 | testGetLoginURL | 获取登录 URL | 返回有效 URL | P1 |
+
+```swift
+// AccountSettingsViewModelTests.swift
+final class AccountSettingsViewModelTests: XCTestCase {
+    var viewModel: AccountSettingsViewModel!
+    var mockService: MockPSNService!
+
+    override func setUp() {
+        mockService = MockPSNService()
+        viewModel = AccountSettingsViewModel(psnService: mockService)
+    }
+
+    // UT-036.1
+    func testInitialStateFromService() {
+        mockService.account = PSNAccount(onlineId: "TestUser", accountId: "123")
+        mockService.isSignedIn = true
+
+        viewModel = AccountSettingsViewModel(psnService: mockService)
+
+        XCTAssertEqual(viewModel.account?.onlineId, "TestUser")
+        XCTAssertTrue(viewModel.isSignedIn)
+    }
+
+    // UT-036.2
+    func testSignOutCallsService() {
+        viewModel.signOut()
+        XCTAssertTrue(mockService.signOutCalled)
+    }
+
+    // UT-036.3
+    func testRefreshTokenAsync() async {
+        XCTAssertFalse(viewModel.isRefreshing)
+
+        let task = Task {
+            await viewModel.refreshToken()
+        }
+
+        // 应该在刷新中
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        // 完成后
+        await task.value
+        XCTAssertFalse(viewModel.isRefreshing)
+    }
+}
+
+// Mock
+class MockPSNService: PSNServicing {
+    var account: PSNAccount?
+    var isSignedIn: Bool = false
+    var authState: PSNAuthState = .signedOut
+    var signOutCalled = false
+    var refreshCalled = false
+
+    func signOut() {
+        signOutCalled = true
+        isSignedIn = false
+    }
+
+    func manualRefresh() async throws {
+        refreshCalled = true
+    }
+
+    func startOAuthLogin() -> URL {
+        return URL(string: "https://example.com/login")!
+    }
+}
+```
+
+#### UT-037: VideoSettingsViewModel 测试 (AC-093)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-037.1 | testHDRBindingGet | HDR Binding 读取 | 值与 store 一致 | P0 |
+| UT-037.2 | testHDRBindingSet | HDR Binding 写入 | store 值更新 | P0 |
+| UT-037.3 | testHDRPeakNitsConversion | Peak Nits 类型转换 | Double ↔ Int 正确 | P0 |
+| UT-037.4 | testEDRIntensityRange | EDR 强度范围验证 | 限制在 0.5~2.0 | P1 |
+| UT-037.5 | testShouldShowEDRIntensity | 显示条件计算 | hdrEnabled && available → true | P1 |
+| UT-037.6 | testShouldShowColorSpace | 色彩空间显示条件 | !hdrEnabled → true | P1 |
+
+```swift
+// VideoSettingsViewModelTests.swift
+final class VideoSettingsViewModelTests: XCTestCase {
+    var viewModel: VideoSettingsViewModel!
+    var store: SettingsStore!
+
+    override func setUp() {
+        store = SettingsStore()
+        viewModel = VideoSettingsViewModel(store: store)
+    }
+
+    // UT-037.1 & UT-037.2
+    func testHDRBindingGetSet() {
+        XCTAssertFalse(viewModel.hdrEnabled)
+
+        viewModel.hdrEnabled = true
+        XCTAssertTrue(store.streamSettings.hdrEnabled)
+    }
+
+    // UT-037.3
+    func testHDRPeakNitsConversion() {
+        viewModel.hdrPeakNits = 1000.5
+        XCTAssertEqual(store.streamSettings.hdrTargetPeakNits, 1000)
+        XCTAssertEqual(viewModel.hdrPeakNits, 1000.0)
+    }
+
+    // UT-037.4
+    func testEDRIntensityRange() {
+        viewModel.edrIntensity = 0.3
+        viewModel.validateSettings()
+        XCTAssertGreaterThanOrEqual(viewModel.edrIntensity, 0.5)
+
+        viewModel.edrIntensity = 2.5
+        viewModel.validateSettings()
+        XCTAssertLessThanOrEqual(viewModel.edrIntensity, 2.0)
+    }
+}
+```
+
+#### UT-038: ConsolesSettingsViewModel 测试 (AC-094)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-038.1 | testHostsFromStore | hosts 来自 store | 返回 hostStore.hosts | P0 |
+| UT-038.2 | testRemoveHostCallsStore | 删除主机调用 store | hostStore.removeHost 被调用 | P0 |
+| UT-038.3 | testRemoveHostClearsPIN | 删除主机清除 PIN | pinManager.clearPin 被调用 | P0 |
+| UT-038.4 | testRenameHost | 重命名主机 | nickname 更新 | P1 |
+| UT-038.5 | testPinManagementProxy | PIN 管理代理 | hasPin/setPin/clearPin 工作 | P1 |
+
+```swift
+// ConsolesSettingsViewModelTests.swift
+final class ConsolesSettingsViewModelTests: XCTestCase {
+    var viewModel: ConsolesSettingsViewModel!
+    var mockHostStore: MockHostStore!
+    var mockPinManager: MockPinManager!
+
+    override func setUp() {
+        mockHostStore = MockHostStore()
+        mockPinManager = MockPinManager()
+        viewModel = ConsolesSettingsViewModel(
+            hostStore: mockHostStore,
+            pinManager: mockPinManager
+        )
+    }
+
+    // UT-038.2 & UT-038.3
+    func testRemoveHostCallsStoreAndClearsPIN() {
+        let host = ConsoleHost(id: UUID(), nickname: "Test")
+        viewModel.removeHost(host)
+
+        XCTAssertTrue(mockHostStore.removeHostCalled)
+        XCTAssertTrue(mockPinManager.clearPinCalled)
+    }
+}
+```
+
+#### UT-039: PinManaging 协议测试 (AC-095)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-039.1 | testConsolePinManagerConformsToProtocol | 协议一致性 | ConsolePinManager 实现 PinManaging | P0 |
+| UT-039.2 | testSetAndGetPin | 设置和获取 PIN | setPin 后 getPin 返回正确值 | P0 |
+| UT-039.3 | testClearPin | 清除 PIN | clearPin 后 hasPin 返回 false | P0 |
+| UT-039.4 | testRequiresPinEntry | 需要 PIN 入口 | 逻辑正确 | P1 |
+
+```swift
+// PinManagingTests.swift
+final class PinManagingTests: XCTestCase {
+    var pinManager: PinManaging!
+
+    override func setUp() {
+        pinManager = ConsolePinManager.shared
+    }
+
+    // UT-039.1
+    func testConsolePinManagerConformsToProtocol() {
+        XCTAssertTrue(pinManager is PinManaging)
+    }
+
+    // UT-039.2
+    func testSetAndGetPin() {
+        let host = ConsoleHost(id: UUID(), nickname: "Test")
+        pinManager.setPin("1234", for: host)
+        XCTAssertEqual(pinManager.getPin(for: host), "1234")
+    }
+
+    // UT-039.3
+    func testClearPin() {
+        let host = ConsoleHost(id: UUID(), nickname: "Test")
+        pinManager.setPin("1234", for: host)
+        pinManager.clearPin(for: host)
+        XCTAssertFalse(pinManager.hasPin(for: host))
+    }
+}
+```
+
+#### UT-040: PSNServicing 协议测试 (AC-095)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-040.1 | testPSNServiceConformsToProtocol | 协议一致性 | PSNService 实现 PSNServicing | P0 |
+| UT-040.2 | testMockCanBeInjected | Mock 可注入 | MockPSNService 可替代真实服务 | P0 |
+
+```swift
+// PSNServicingTests.swift
+final class PSNServicingTests: XCTestCase {
+    // UT-040.1
+    func testPSNServiceConformsToProtocol() {
+        let service: PSNServicing = PSNService.shared
+        XCTAssertNotNil(service)
+    }
+
+    // UT-040.2
+    func testMockCanBeInjected() {
+        let mock = MockPSNService()
+        let viewModel = AccountSettingsViewModel(psnService: mock)
+        XCTAssertNotNil(viewModel)
+    }
+}
+```
+
+#### UT-041: HostListViewModel Singleton 解耦测试 (AC-090)
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| UT-041.1 | testSetPinDelegatesToPinManager | setPin 代理到 PinManager | pinManager.setPin 被调用 | P0 |
+| UT-041.2 | testClearPinDelegatesToPinManager | clearPin 代理到 PinManager | pinManager.clearPin 被调用 | P0 |
+| UT-041.3 | testNoDirectManagerAccess | 无直接 Manager 访问 | View 不直接调用 .shared | P0 |
+
+### 21.3 集成测试
+
+#### IT-013: ViewModel 与 Mock Service 集成测试
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-013.1 | testAccountViewModelWithMockService | AccountVM + Mock PSN | 所有交互正确代理 | P0 |
+| IT-013.2 | testConsolesViewModelWithMockStores | ConsolesVM + Mock Stores | 主机操作正确代理 | P0 |
+| IT-013.3 | testVideoViewModelWithMockStore | VideoVM + Mock Settings | 设置读写正确 | P0 |
+
+```swift
+// ViewModelIntegrationTests.swift
+final class ViewModelIntegrationTests: XCTestCase {
+    // IT-013.1
+    func testAccountViewModelWithMockService() async {
+        let mock = MockPSNService()
+        mock.account = PSNAccount(onlineId: "IntegrationTest", accountId: "456")
+        mock.isSignedIn = true
+
+        let viewModel = AccountSettingsViewModel(psnService: mock)
+
+        // 验证初始状态
+        XCTAssertEqual(viewModel.account?.onlineId, "IntegrationTest")
+        XCTAssertTrue(viewModel.isSignedIn)
+
+        // 验证 signOut 交互
+        viewModel.signOut()
+        XCTAssertTrue(mock.signOutCalled)
+        XCTAssertFalse(viewModel.isSignedIn)
+
+        // 验证 refresh 交互
+        await viewModel.refreshToken()
+        XCTAssertTrue(mock.refreshCalled)
+    }
+}
+```
+
+#### IT-014: View 层 Singleton 解耦验证
+
+| 编号 | 测试用例 | 描述 | 预期结果 | 优先级 |
+|------|----------|------|----------|--------|
+| IT-014.1 | testHostListViewNoDirectManagerAccess | HostListView 无直接 Manager 访问 | 代码审查通过 | P0 |
+| IT-014.2 | testAccountSettingsViewUsesViewModel | AccountSettingsView 使用 ViewModel | 无 @State PSNService | P0 |
+| IT-014.3 | testStreamingViewNoDirectPinAccess | StreamingView 无直接 PIN 访问 | 通过 ViewModel 代理 | P0 |
+
+> **注**: IT-014 系列为代码审查型测试，可通过静态分析或 Review 验证。
+
+### 21.4 需求追溯矩阵
+
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
+|----------|----------|----------|----------|
+| AC-090: HostListView Singleton 解耦 | UT-041.1~3 | IT-014.1 | - |
+| AC-091: AccountSettingsViewModel | UT-036.1~5 | IT-013.1, IT-014.2 | - |
+| AC-092: StreamingView/ControllerSettingsView | - | IT-014.3 | - |
+| AC-093: VideoSettingsViewModel | UT-037.1~6 | IT-013.3 | - |
+| AC-094: ConsolesSettingsViewModel | UT-038.1~5 | IT-013.2 | - |
+| AC-095: 协议抽象 | UT-039.1~4, UT-040.1~2 | IT-013.1~3 | - |
+| AC-096: 目录结构优化 | - | - | - |
+
+---
+
+## 22. 测试用例汇总 (F-025, F-026, F-027)
+
+### 22.1 新增测试统计
+
+| 功能 | 单元测试 | 集成测试 | E2E 测试 | 总计 |
+|------|----------|----------|----------|------|
+| F-025 HDR 渲染管线优化 | 24 | 4 | 3 | 31 |
+| F-026 渲染模块解耦重构 | 12 | 3 | 0 | 15 |
+| F-027 UI 层 MVVM 合规重构 | 19 | 6 | 0 | 25 |
+| **总计** | **55** | **13** | **3** | **71** |
+
+### 22.2 优先级分布
+
+| 优先级 | 数量 | 说明 |
+|--------|------|------|
+| P0 | 38 | 核心功能必测 |
+| P1 | 26 | 重要功能 |
+| P2 | 7 | 扩展功能 |
+
+### 22.3 测试编号范围
+
+| 类型 | 范围 | 说明 |
+|------|------|------|
+| 单元测试 | UT-027 ~ UT-041 | 15 个测试组 |
+| 集成测试 | IT-011 ~ IT-014 | 4 个测试组 |
+| E2E 测试 | E2E-011 | 1 个测试组 |
+
+### 22.4 完整追溯矩阵
+
+| AC 编号 | 验收标准 | UT | IT | E2E |
+|---------|----------|-----|-----|-----|
+| AC-080 | 色域映射 | UT-027 | - | - |
+| AC-081 | 动态 EDR Headroom | UT-028 | IT-011 | - |
+| AC-082 | Headroom 自适应 | - | IT-011 | E2E-011 |
+| AC-083 | 元数据抖动抑制 | UT-029 | - | - |
+| AC-084 | Tone Mapping 降级 | UT-030 | - | - |
+| AC-085 | 渲染性能指标 | UT-031 | - | - |
+| AC-086 | 协议抽象 | UT-033 | - | - |
+| AC-087 | Delegate 分离 | UT-035 | IT-012 | - |
+| AC-088 | HDR 配置统一 | UT-032, UT-034 | IT-012 | - |
+| AC-089 | 依赖注入 | UT-034 | IT-012 | - |
+| AC-090 | HostListView 解耦 | UT-041 | IT-014 | - |
+| AC-091 | AccountSettingsViewModel | UT-036 | IT-013 | - |
+| AC-092 | StreamingView 解耦 | - | IT-014 | - |
+| AC-093 | VideoSettingsViewModel | UT-037 | IT-013 | - |
+| AC-094 | ConsolesSettingsViewModel | UT-038 | IT-013 | - |
+| AC-095 | 协议抽象 | UT-039, UT-040 | IT-013 | - |
+| AC-096 | 目录结构优化 | - | - | - |
