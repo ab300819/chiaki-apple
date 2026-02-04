@@ -1,35 +1,24 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// VideoSettingsView.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// View for video and HDR settings
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-093 - VideoSettingsView 使用 ViewModel
+
 import SwiftUI
 
+/// Video settings view using MVVM pattern for HDR settings
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct VideoSettingsView: View {
     @Environment(SettingsStore.self) var store
+    @State private var viewModel = VideoSettingsViewModel()
 
-    // HDR mode helpers
-    private enum HDRPeakMode {
-        case auto, manual
-    }
-
+    // HDR contrast mode (kept in View as it's purely UI state)
     private enum HDRContrastMode {
         case auto, infinity, manual
-    }
-
-    private var hdrPeakModeBinding: Binding<HDRPeakMode> {
-        Binding(
-            get: { store.streamSettings.hdrTargetPeakNits == 0 ? .auto : .manual },
-            set: { mode in
-                if mode == .auto {
-                    store.streamSettings.hdrTargetPeakNits = 0
-                } else {
-                    store.streamSettings.hdrTargetPeakNits = 1000 // Default to 1000 nits
-                }
-            }
-        )
-    }
-
-    private var hdrPeakNitsBinding: Binding<Double> {
-        Binding(
-            get: { Double(store.streamSettings.hdrTargetPeakNits) },
-            set: { store.streamSettings.hdrTargetPeakNits = Int($0) }
-        )
     }
 
     private var hdrContrastModeBinding: Binding<HDRContrastMode> {
@@ -45,7 +34,7 @@ struct VideoSettingsView: View {
                 switch mode {
                 case .auto: store.streamSettings.hdrTargetContrast = 0
                 case .infinity: store.streamSettings.hdrTargetContrast = -1
-                case .manual: store.streamSettings.hdrTargetContrast = 1000 // Default
+                case .manual: store.streamSettings.hdrTargetContrast = 1000
                 }
             }
         )
@@ -70,7 +59,7 @@ struct VideoSettingsView: View {
 
     var body: some View {
         @Bindable var store = store
-        
+
         Form {
             Section {
                 Picker(L10n.Settings.Video.profile, selection: $store.useRemoteProfile) {
@@ -113,8 +102,11 @@ struct VideoSettingsView: View {
                     }
                 }
 
-                Toggle(L10n.Settings.Video.hdr, isOn: $store.streamSettings.hdrEnabled)
-                    .onChange(of: store.streamSettings.hdrEnabled) { _, _ in
+                Toggle(L10n.Settings.Video.hdr, isOn: Binding(
+                    get: { viewModel.hdrEnabled },
+                    set: { viewModel.hdrEnabled = $0 }
+                ))
+                    .onChange(of: viewModel.hdrEnabled) { _, _ in
                         HapticFeedback.selection()
                     }
             } header: {
@@ -122,25 +114,31 @@ struct VideoSettingsView: View {
             }
 
             // HDR Fine-tuning Section (only shown when HDR is enabled)
-            if store.streamSettings.hdrEnabled {
+            if viewModel.hdrEnabled {
                 Section {
-                    // Target Peak Nits
-                    Picker(String(localized: "settings.video.targetPeak"), selection: hdrPeakModeBinding) {
+                    // Target Peak Nits (using ViewModel)
+                    Picker(String(localized: "settings.video.targetPeak"), selection: Binding(
+                        get: { viewModel.hdrPeakMode },
+                        set: { viewModel.hdrPeakMode = $0 }
+                    )) {
                         Text(String(localized: "settings.video.auto")).tag(HDRPeakMode.auto)
                         Text(String(localized: "settings.video.manual")).tag(HDRPeakMode.manual)
                     }
 
-                    if store.streamSettings.hdrTargetPeakNits > 0 {
+                    if viewModel.hdrPeakMode == .manual {
                         VStack(alignment: .leading) {
                             HStack {
                                 Text(String(localized: "settings.video.peakBrightness"))
                                 Spacer()
-                                Text(String(localized: "settings.video.nits \(store.streamSettings.hdrTargetPeakNits)"))
+                                Text(String(localized: "settings.video.nits \(Int(viewModel.hdrPeakNits))"))
                                     .foregroundStyle(.secondary)
                                     .monospacedDigit()
                             }
                             Slider(
-                                value: hdrPeakNitsBinding,
+                                value: Binding(
+                                    get: { viewModel.hdrPeakNits },
+                                    set: { viewModel.hdrPeakNits = $0 }
+                                ),
                                 in: 100...10000,
                                 step: 100
                             )
