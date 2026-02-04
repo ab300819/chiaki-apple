@@ -201,14 +201,22 @@ Qt 客户端通过 `chiaki_opus_decoder_get_sink()` 获取包装后的 sink，Op
 
 ### 回归测试
 
-- 手动验证：音频正常播放无杂音（需用户确认）
+- 手动验证：音频正常播放无杂音 ✅
 - 待新增测试：UT-048 (OpusDecoder 集成测试)
-- 关联 commit：待提交
+- 关联 commit：`12e570c`, `8999532`
 
 ### 修改文件清单
 
 1. `Chiaki/Core/Audio/OpusDecoderBridge.swift` (新建) - Opus 解码器桥接类
 2. `Chiaki/Core/Bridge/ChiakiSession.swift` (修改) - 集成 Opus 解码器
+
+### 经验教训
+
+1. **理解 API 返回值语义**：`opus_decode` 返回的是"帧数"（per-channel samples），而非"总样本数"。在对接不同层级的 API 时，必须仔细确认参数含义。
+2. **症状分析**：
+   - "咯哒声" = 播放压缩数据（未解码）
+   - "颤音" = 数据量错误（只播放一半）
+   - 正常 = 解码正确 + 数据量正确
 
 ---
 

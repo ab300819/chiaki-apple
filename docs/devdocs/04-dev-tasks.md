@@ -1485,7 +1485,7 @@ graph TD
 | **T-185** | Audio: OpusDecoderBridge 创建 | P0 | 🔴 强制 | - | ✅ |
 | **T-186** | Audio: ChiakiSession Opus 集成 | P0 | 🟡 推荐 | T-185 | ✅ |
 | **T-187** | Audio: AudioPlayerBridge 接口适配 | P0 | 🟡 推荐 | T-186 | ✅ |
-| **T-188** | Audio: 音频流端到端测试 | P0 | 🔴 强制 | T-187 | ⏳ |
+| **T-188** | Audio: 音频流端到端测试 | P0 | 🔴 强制 | T-187 | ✅ |
 
 ---
 
