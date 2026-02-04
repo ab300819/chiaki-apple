@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 50% (12/24 任务完成)
+> **完成率**: 54% (13/24 任务完成)
 
 ## M12 任务概览
 
@@ -47,7 +47,7 @@
 | **T-156** | Render: VideoRenderer 协议抽象 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-157** | Render: MetalVideoRenderer 协议实现 | P0 | 🔴 强制 | T-156, T-153 | ✅ |
 | **T-158** | Render: VideoStreamView.Coordinator 分离 | P1 | 🟡 推荐 | T-157 | ✅ |
-| **T-159** | Protocol: PinManaging 协议定义 | P0 | 🔴 强制 | - | ⏳ |
+| **T-159** | Protocol: PinManaging 协议定义 | P0 | 🔴 强制 | - | ✅ |
 | **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ⏳ |
 | **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ⏳ |
 | **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ⏳ |
@@ -501,7 +501,7 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 ---
 
-### T-159: Protocol: PinManaging 协议定义 ⏳
+### T-159: Protocol: PinManaging 协议定义 ✅
 
 **目标**: 定义 PinManaging 协议，抽象 PIN 管理逻辑。
 
@@ -513,16 +513,20 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 **依赖**: -
 
+**完成提交**: `3c05c37` feat(protocol): define PinManaging protocol abstraction (T-159)
+
 **涉及文件**:
 - `Chiaki/Shared/Protocols/PinManaging.swift` (新建)
+- `ChiakiTests/PinManagingTests.swift` (新建)
+- `Chiaki/Core/Storage/ConsolePinManager.swift` (修改)
 
 **验收标准**:
-- [ ] 协议定义 `setPin(_:for:)` 方法
-- [ ] 协议定义 `clearPin(for:)` 方法
-- [ ] 协议定义 `hasPin(for:) -> Bool` 方法
-- [ ] 协议定义 `requiresPinEntry(for:) -> Bool` 方法
-- [ ] 协议定义 `getPin(for:) -> String?` 方法
-- [ ] 协议继承 `AnyObject, Sendable`
+- [x] 协议定义 `setPin(_:for:)` 方法
+- [x] 协议定义 `clearPin(for:)` 方法
+- [x] 协议定义 `hasPin(for:) -> Bool` 方法
+- [x] 协议定义 `requiresPinEntry(for:) -> Bool` 方法
+- [x] 协议定义 `getPin(for:) -> String?` 方法
+- [x] 协议继承 `AnyObject, Sendable`
 
 **测试方法**:
 ```bash
@@ -530,8 +534,8 @@ swift test --filter PinManagingTests
 ```
 
 **Review 要点**:
-- [ ] 方法签名与现有 ConsolePinManager 一致
-- [ ] 无副作用方法标记合适
+- [x] 方法签名与现有 ConsolePinManager 一致
+- [x] 无副作用方法标记合适
 
 ---
 
