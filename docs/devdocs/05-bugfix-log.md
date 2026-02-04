@@ -270,3 +270,69 @@ Qt 客户端通过 `chiaki_opus_decoder_get_sink()` 获取包装后的 sink，Op
 - 关联 commit：T-184
 
 ---
+
+## BUG-006: 进入串流后 PS5 立即断开连接
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户反馈 |
+| **关联功能** | F-001 (核心流媒体) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-04 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+进入串流界面后，PS5 很快显示断开连接（通常在 5 秒内）。Chiaki Apple 端画面停留在最后一帧，但 PS5 电视显示连接已断开。
+
+### 复现步骤
+
+1. 从主机列表进入串流界面
+2. 成功看到游戏画面
+3. 约 5 秒后，PS5 显示客户端已断开
+4. Chiaki Apple 画面冻结在最后一帧
+
+### 根因分析
+
+PS5 期望客户端定期发送控制器状态作为心跳信号，以确认客户端仍然活跃。Chiaki Apple 仅在用户输入时发送控制器状态，导致 PS5 认为客户端已断开连接。
+
+**对比 Qt 客户端** (`streamsession.cpp:19,415`):
+```cpp
+#define SETSU_UPDATE_INTERVAL_MS 4
+
+// Timer 每 4ms 调用一次
+connect(&setsu_update_timer, &QTimer::timeout, this, [this]{ SendFeedbackState(); });
+setsu_update_timer.start(SETSU_UPDATE_INTERVAL_MS);
+```
+
+Qt 客户端使用 4ms 定时器定期发送控制器状态，即使没有输入变化。这作为心跳信号保持连接活跃。
+
+**Chiaki Apple (修复前)**:
+- 仅在 `handleInput()` 或 `sendControllerInput()` 被调用时发送控制器状态
+- 没有定时器机制发送周期性心跳
+- PS5 在未收到心跳后超时断开连接
+
+### 解决方案
+
+在 `StreamingViewModel` 中添加周期性反馈定时器：
+
+1. 新增 `feedbackTimer` 属性
+2. 在进入 `streaming` 状态时启动定时器 (`startFeedbackTimer()`)
+3. 每 8ms 发送当前控制器状态（比 Qt 的 4ms 略长，减少开销同时保持连接）
+4. 在断开连接、错误或退出时停止定时器 (`stopFeedbackTimer()`)
+
+修改文件：`Chiaki/Features/Streaming/StreamingViewModel.swift`
+
+### 回归测试
+
+- 手动验证：进入串流后连接保持稳定
+- 编译验证：`xcodebuild build` 成功
+
+### 经验教训
+
+1. **对比参考实现**：当遇到连接稳定性问题时，应对比 Qt 客户端等成熟实现的机制
+2. **心跳机制**：实时流媒体协议通常需要定期心跳信号，不能仅依赖用户输入触发
+3. **定时器设计**：使用 `RunLoop.main.add(timer, forMode: .common)` 确保定时器在 UI 交互期间也能正常运行
+
+---

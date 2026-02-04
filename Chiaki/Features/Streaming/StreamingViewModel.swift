@@ -88,6 +88,10 @@ final class StreamingViewModel {
     private let pinManager: PinManaging
 
     private var statsUpdateTimer: Timer?
+    /// Timer for periodic controller state feedback
+    /// PS5 expects regular controller updates to know the client is alive
+    /// @satisfies BUG-006 - 唤醒主机后首次连接失败
+    private var feedbackTimer: Timer?
     private var videoRenderer: VideoRenderer?
 
     /// Current controller state (accumulated from multiple input events)
@@ -415,6 +419,7 @@ final class StreamingViewModel {
 
     /// Disconnect from the host
     func disconnect() {
+        stopFeedbackTimer()
         statsUpdateTimer?.invalidate()
         statsUpdateTimer = nil
 
@@ -563,6 +568,7 @@ final class StreamingViewModel {
     private func handleSessionStateChange(_ sessionState: SessionState) {
         switch sessionState {
         case .idle:
+            stopFeedbackTimer()
             state = .disconnected
         case .connecting:
             state = .connecting
@@ -570,10 +576,13 @@ final class StreamingViewModel {
             state = .connected
         case .streaming:
             state = .streaming
+            startFeedbackTimer()  // Start periodic feedback to keep connection alive
             onConnected?()
         case .disconnecting:
+            stopFeedbackTimer()
             state = .disconnected
         case .error(let error):
+            stopFeedbackTimer()
             state = .error(error.description)
         }
     }
@@ -600,6 +609,46 @@ final class StreamingViewModel {
                 self.statsManager.update()
             }
         }
+    }
+
+    // MARK: - Controller Feedback Timer
+
+    /// Start periodic controller feedback to keep PS5 connection alive
+    /// PS5 expects regular controller state updates; without them it disconnects
+    /// Qt client sends updates every 4ms (SETSU_UPDATE_INTERVAL_MS)
+    /// We use 8ms (125 Hz) as a reasonable balance between responsiveness and overhead
+    /// @satisfies BUG-006 - 唤醒主机后首次连接失败
+    private func startFeedbackTimer() {
+        // Only start when streaming
+        guard state == .streaming else { return }
+
+        // Cancel existing timer if any
+        feedbackTimer?.invalidate()
+
+        // Send feedback every 8ms (125 Hz)
+        // This is slightly less aggressive than Qt's 4ms but still keeps connection alive
+        feedbackTimer = Timer.scheduledTimer(withTimeInterval: 0.008, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Send current controller state even if unchanged
+                // This acts as a heartbeat to keep the PS5 connection alive
+                self.session.sendControllerState(self.currentControllerState)
+            }
+        }
+
+        // Ensure timer runs even during UI interactions
+        if let timer = feedbackTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+
+        Logger.session.info("Controller feedback timer started (8ms interval)")
+    }
+
+    /// Stop the feedback timer
+    private func stopFeedbackTimer() {
+        feedbackTimer?.invalidate()
+        feedbackTimer = nil
+        Logger.session.debug("Controller feedback timer stopped")
     }
 }
 
