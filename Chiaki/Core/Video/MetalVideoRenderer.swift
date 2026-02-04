@@ -40,6 +40,8 @@ struct VideoUniforms {
     var saturation: Float
     var colorSpace: UInt32   // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
     var colorRange: UInt32   // 0 = VideoRange(Limited), 1 = FullRange
+    var edrHeadroom: Float   // AC-081: EDR Headroom (1.0+)
+    var tonemapMode: UInt32  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
 
     static var `default`: VideoUniforms {
         VideoUniforms(
@@ -50,7 +52,9 @@ struct VideoUniforms {
             contrast: 1.0,
             saturation: 1.0,
             colorSpace: 0,
-            colorRange: 0
+            colorRange: 0,
+            edrHeadroom: 1.0,
+            tonemapMode: 0
         )
     }
 }
@@ -796,6 +800,8 @@ final class MetalVideoRenderer: NSObject {
         float saturation;
         uint colorSpace;  // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
         uint colorRange;  // 0 = VideoRange(Limited), 1 = FullRange
+        float edrHeadroom; // AC-081: EDR Headroom (1.0+)
+        uint tonemapMode;  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
     };
 
     // Color conversion matrices (column-major)
@@ -871,6 +877,18 @@ final class MetalVideoRenderer: NSObject {
         return max(p3, 0.0);
     }
 
+    // ACES Filmic Tone Mapping fitting parameters
+    // Based on Narkowicz 2015
+    // @satisfies AC-084
+    float3 acesTonemap(float3 x) {
+        float a = 2.51;
+        float b = 0.03;
+        float c = 2.43;
+        float d = 0.59;
+        float e = 0.14;
+        return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+    }
+
     // Convert linear light to EDR (scale for display)
     // SDR reference white = 203 nits, EDR 1.0 = 80 nits (SDR white)
     // So HDR 203 nits should map to EDR 203/80 = 2.5375
@@ -934,8 +952,16 @@ final class MetalVideoRenderer: NSObject {
             rgb = pqEOTF(rgb);
             // Gamut mapping: Rec.2020 -> P3 (AC-080)
             rgb = applyGamutMapping(rgb);
-            // Convert to EDR range for display
-            rgb = linearToEDR(rgb);
+            
+            if (uniforms.tonemapMode == 1u) {
+                // ACES Tone Mapping (SDR Output)
+                rgb = acesTonemap(rgb);
+            } else {
+                // HDR Output (EDR Scaling)
+                rgb = linearToEDR(rgb);
+                rgb = rgb * uniforms.edrHeadroom;
+            }
+            
             // Apply color adjustments in linear space
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
@@ -970,7 +996,17 @@ final class MetalVideoRenderer: NSObject {
             rgb = pqEOTF(rgb);
             // Gamut mapping: Rec.2020 -> P3 (AC-080)
             rgb = applyGamutMapping(rgb);
-            rgb = linearToEDR(rgb);
+
+            if (uniforms.tonemapMode == 1u) {
+                // ACES Tone Mapping (SDR Output)
+                rgb = acesTonemap(rgb);
+            } else {
+                // HDR Output (EDR Scaling)
+                rgb = linearToEDR(rgb);
+                rgb = rgb * uniforms.edrHeadroom;
+            }
+
+            // Apply color adjustments in linear space
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
             rgb = mix(float3(gray), rgb, uniforms.saturation);

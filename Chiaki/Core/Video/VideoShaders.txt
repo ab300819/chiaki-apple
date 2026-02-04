@@ -31,6 +31,8 @@ struct VideoUniforms {
     float saturation;        // Saturation adjustment (0.0 - 2.0, default 1.0)
     uint colorSpace;         // 0 = BT.709 (HD), 1 = BT.601 (SD), 2 = BT.2020 (HDR)
     uint colorRange;         // 0 = VideoRange(Limited), 1 = FullRange
+    float edrHeadroom;       // AC-081: EDR Headroom (1.0+)
+    uint tonemapMode;        // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
 };
 
 // MARK: - Color Space Conversion Constants
@@ -119,6 +121,18 @@ float3 applyGamutMapping(float3 color) {
     return max(p3, 0.0);
 }
 
+// ACES Filmic Tone Mapping fitting parameters
+// Based on Narkowicz 2015
+// @satisfies AC-084
+float3 acesTonemap(float3 x) {
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
 // Convert linear light to EDR (scale for display)
 float3 linearToEDR(float3 linear) {
     // Scale so that SDR white (203 nits) maps appropriately for EDR
@@ -184,7 +198,16 @@ fragment float4 videoBiplanarFragmentShader(
         rgb = clamp(rgb, 0.0, 1.0);
         rgb = pqEOTF(rgb);
         rgb = applyGamutMapping(rgb);
-        rgb = linearToEDR(rgb);
+        
+        if (uniforms.tonemapMode == 1u) {
+            // ACES Tone Mapping (SDR Output)
+            rgb = acesTonemap(rgb);
+        } else {
+            // HDR Output (EDR Scaling)
+            rgb = linearToEDR(rgb);
+            rgb = rgb * uniforms.edrHeadroom;
+        }
+        
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
@@ -219,7 +242,16 @@ fragment float4 videoBGRAFragmentShader(
         rgb = clamp(rgb, 0.0, 1.0);
         rgb = pqEOTF(rgb);
         rgb = applyGamutMapping(rgb);
-        rgb = linearToEDR(rgb);
+        
+        if (uniforms.tonemapMode == 1u) {
+            // ACES Tone Mapping (SDR Output)
+            rgb = acesTonemap(rgb);
+        } else {
+            // HDR Output (EDR Scaling)
+            rgb = linearToEDR(rgb);
+            rgb = rgb * uniforms.edrHeadroom;
+        }
+        
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
