@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 71% (17/24 任务完成)
+> **完成率**: 75% (18/24 任务完成)
 
 ## M12 任务概览
 
@@ -52,7 +52,7 @@
 | **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ✅ |
 | **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ✅ |
 | **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ✅ |
-| **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ⏳ |
+| **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ✅ |
 | **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ⏳ |
 | **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ⏳ |
 | **T-167** | View: VideoSettingsView 重构 | P1 | 🟢 可选 | T-164 | ⏳ |
@@ -684,7 +684,7 @@ swift test --filter AccountSettingsViewModelTests
 
 ---
 
-### T-164: VM: VideoSettingsViewModel ⏳
+### T-164: VM: VideoSettingsViewModel ✅
 
 **目标**: 创建 VideoSettingsViewModel 封装 HDR 设置逻辑。
 
@@ -696,16 +696,19 @@ swift test --filter AccountSettingsViewModelTests
 
 **依赖**: T-147
 
+**完成提交**: `46e3b06` feat(viewmodel): add VideoSettingsViewModel for HDR settings (T-164)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/ViewModels/VideoSettingsViewModel.swift` (新建)
+- `ChiakiTests/VideoSettingsViewModelTests.swift` (新建)
 
 **验收标准**:
-- [ ] `@Observable` 类
-- [ ] 通过构造函数注入 `SettingsStore`
-- [ ] 暴露 `hdrEnabled`, `hdrPeakNits`, `hdrPeakMode`, `edrIntensity` 属性
-- [ ] `hdrPeakNits` 正确处理 Double ↔ Int 转换
-- [ ] 实现 `shouldShowEDRIntensity`, `shouldShowColorSpace` 计算属性
-- [ ] 实现 `validateSettings()` 方法
+- [x] `@Observable` 类
+- [x] 通过构造函数注入 `SettingsStore`
+- [x] 暴露 `hdrEnabled`, `hdrPeakNits`, `hdrPeakMode`, `edrIntensity` 属性
+- [x] `hdrPeakNits` 正确处理 Double ↔ Int 转换
+- [x] 实现 `shouldShowEDRIntensity`, `shouldShowColorSpace` 计算属性
+- [x] 实现 `validateSettings()` 方法
 
 **测试方法**:
 ```bash
@@ -713,8 +716,8 @@ swift test --filter VideoSettingsViewModelTests
 ```
 
 **Review 要点**:
-- [ ] Binding 转换逻辑正确
-- [ ] 验证逻辑完善
+- [x] Binding 转换逻辑正确
+- [x] 验证逻辑完善
 
 ---
 
