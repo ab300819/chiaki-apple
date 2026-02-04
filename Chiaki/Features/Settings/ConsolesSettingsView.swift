@@ -1,8 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// ConsolesSettingsView.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// View for managing registered consoles
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-094 - ConsolesSettingsView 使用 ViewModel
+
 import SwiftUI
 
+/// Console settings view using MVVM pattern
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct ConsolesSettingsView: View {
-    @Environment(HostStore.self) var hostStore
     @Environment(SettingsStore.self) var settingsStore
+    @State private var viewModel = ConsolesSettingsViewModel()
 
     @State private var showDeleteConfirmation = false
     @State private var showHideConfirmation = false
@@ -13,11 +25,11 @@ struct ConsolesSettingsView: View {
         Form {
             // Registered Consoles Section
             Section {
-                if hostStore.registeredHosts.isEmpty {
+                if viewModel.registeredHosts.isEmpty {
                     Text(L10n.Settings.Consoles.noRegistered)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(hostStore.registeredHosts) { host in
+                    ForEach(viewModel.registeredHosts) { host in
                         RegisteredHostRow(
                             host: host,
                             streamerMode: settingsStore.streamerModeEnabled,
@@ -39,9 +51,9 @@ struct ConsolesSettingsView: View {
             }
 
             // Hidden Consoles Section
-            if !hostStore.hiddenHosts.isEmpty {
+            if !viewModel.hiddenHosts.isEmpty {
                 Section {
-                    ForEach(hostStore.hiddenHosts) { host in
+                    ForEach(viewModel.hiddenHosts) { host in
                         HiddenHostRow(
                             host: host,
                             streamerMode: settingsStore.streamerModeEnabled,
@@ -69,7 +81,7 @@ struct ConsolesSettingsView: View {
         ) {
             Button(L10n.Common.delete, role: .destructive) {
                 if let host = selectedHost {
-                    hostStore.removeHost(host)
+                    viewModel.removeHost(host)
                 }
                 selectedHost = nil
             }
@@ -88,7 +100,7 @@ struct ConsolesSettingsView: View {
         ) {
             Button(L10n.Common.hide) {
                 if let host = selectedHost {
-                    hostStore.hideHost(host)
+                    viewModel.hideHost(host)
                 }
                 selectedHost = nil
             }
@@ -107,7 +119,7 @@ struct ConsolesSettingsView: View {
         ) {
             Button(L10n.Common.unhide) {
                 if let host = selectedHost {
-                    hostStore.unhideHost(host)
+                    viewModel.unhideHost(host)
                 }
                 selectedHost = nil
             }
@@ -231,7 +243,6 @@ private struct HiddenHostRow: View {
 #Preview {
     NavigationStack {
         ConsolesSettingsView()
-            .environment(HostStore())
             .environment(SettingsStore())
     }
 }
