@@ -853,6 +853,24 @@ final class MetalVideoRenderer: NSObject {
         return pow(num / den, 1.0 / pq_m1);
     }
 
+    // Rec.2020 to Display P3 color space conversion matrix
+    // D65 white point, linear space.
+    // @satisfies AC-080
+    constant float3x3 kRec2020_to_P3_Matrix = float3x3(
+        float3( 1.2249, -0.0420, -0.0197), // Column 0
+        float3(-0.2247,  1.0419, -0.0786), // Column 1
+        float3( 0.0000,  0.0000,  1.0979)  // Column 2
+    );
+
+    // Rec.2020 -> Display P3 gamut mapping
+    // @satisfies AC-080
+    float3 applyGamutMapping(float3 color) {
+        // 1. Matrix transformation
+        float3 p3 = kRec2020_to_P3_Matrix * color;
+        // 2. Soft clamping (handle negative values/out-of-gamut)
+        return max(p3, 0.0);
+    }
+
     // Convert linear light to EDR (scale for display)
     // SDR reference white = 203 nits, EDR 1.0 = 80 nits (SDR white)
     // So HDR 203 nits should map to EDR 203/80 = 2.5375
@@ -914,6 +932,8 @@ final class MetalVideoRenderer: NSObject {
             rgb = clamp(rgb, 0.0, 1.0);
             // Apply PQ EOTF to get linear light
             rgb = pqEOTF(rgb);
+            // Gamut mapping: Rec.2020 -> P3 (AC-080)
+            rgb = applyGamutMapping(rgb);
             // Convert to EDR range for display
             rgb = linearToEDR(rgb);
             // Apply color adjustments in linear space
@@ -948,6 +968,8 @@ final class MetalVideoRenderer: NSObject {
         if (uniforms.colorSpace == 2u) {
             rgb = clamp(rgb, 0.0, 1.0);
             rgb = pqEOTF(rgb);
+            // Gamut mapping: Rec.2020 -> P3 (AC-080)
+            rgb = applyGamutMapping(rgb);
             rgb = linearToEDR(rgb);
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));

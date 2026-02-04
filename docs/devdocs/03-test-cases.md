@@ -1515,7 +1515,7 @@ jobs:
 | AC-073 | VirtualControllerAccessibilityTests | 单元测试 | - | `ChiakiTests/VirtualControllerAccessibilityTests.swift` |
 | AC-074 | VirtualButtonLongPressTests | 单元测试 | `Chiaki/Features/Streaming/VirtualController/VirtualControllerView.swift`<br>`Chiaki/Features/Streaming/VirtualController/VirtualButtonView.swift` | `ChiakiTests/VirtualButtonLongPressTests.swift` |
 | AC-075 | EdgeVolumeGestureTests | 单元测试 | `Chiaki/Features/Streaming/EdgeVolumeGesture.swift`<br>`Chiaki/Features/Streaming/StreamingViewModel.swift` | `ChiakiTests/EdgeVolumeGestureTests.swift` |
-| AC-080 | UT-027.1~6 | 单元测试 | - | - |
+| AC-080 | ColorSpaceConversionTests | 单元测试 | `Chiaki/Core/Video/VideoShaderConstants.swift`<br>`Chiaki/Core/Video/VideoShaders.txt` | `ChiakiTests/ColorSpaceConversionTests.swift` |
 | AC-081 | EDRHeadroomMonitorTests | 单元测试 | `Chiaki/Core/Video/EDRHeadroomMonitor.swift` | `ChiakiTests/EDRHeadroomMonitorTests.swift` |
 | AC-082 | IT-011.4, E2E-011.2 | 集成+E2E | - | - |
 | AC-083 | UT-029.1~5 | 单元测试 | `Chiaki/Core/Video/HDRMetadataCache.swift` | `ChiakiTests/HDRMetadataCacheTests.swift` |

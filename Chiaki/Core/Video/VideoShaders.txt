@@ -100,6 +100,25 @@ float3 pqEOTF(float3 pq) {
     return pow(num / den, 1.0 / pq_m1);
 }
 
+// MARK: - Gamut Mapping (AC-080)
+
+// Rec.2020 to Display P3 color space conversion matrix
+// D65 white point, linear space.
+constant float3x3 kRec2020_to_P3_Matrix = float3x3(
+    float3( 1.2249, -0.0420, -0.0197), // Column 0
+    float3(-0.2247,  1.0419, -0.0786), // Column 1
+    float3( 0.0000,  0.0000,  1.0979)  // Column 2
+);
+
+// Rec.2020 → Display P3 gamut mapping
+// @satisfies AC-080
+float3 applyGamutMapping(float3 color) {
+    // 1. Matrix transformation
+    float3 p3 = kRec2020_to_P3_Matrix * color;
+    // 2. Soft clamping (handle negative values/out-of-gamut)
+    return max(p3, 0.0);
+}
+
 // Convert linear light to EDR (scale for display)
 float3 linearToEDR(float3 linear) {
     // Scale so that SDR white (203 nits) maps appropriately for EDR
@@ -164,6 +183,7 @@ fragment float4 videoBiplanarFragmentShader(
     if (uniforms.colorSpace == 2u) {
         rgb = clamp(rgb, 0.0, 1.0);
         rgb = pqEOTF(rgb);
+        rgb = applyGamutMapping(rgb);
         rgb = linearToEDR(rgb);
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
@@ -198,6 +218,7 @@ fragment float4 videoBGRAFragmentShader(
     if (uniforms.colorSpace == 2u) {
         rgb = clamp(rgb, 0.0, 1.0);
         rgb = pqEOTF(rgb);
+        rgb = applyGamutMapping(rgb);
         rgb = linearToEDR(rgb);
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));

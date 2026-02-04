@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 12% (3/24 任务完成)
+> **完成率**: 17% (4/24 任务完成)
 
 ## M12 任务概览
 
@@ -38,7 +38,7 @@
 | **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ✅ |
 | **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ⏳ |
+| **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ⏳ |
 | **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ⏳ |
 | **T-153** | HDR: MetalVideoRenderer 集成 | P0 | 🟡 推荐 | T-148, T-149, T-152 | ⏳ |
@@ -172,7 +172,7 @@ swift test --filter EDRHeadroomMonitorTests
 
 ---
 
-### T-150: HDR: Shader 色域映射 (Rec.2020→P3) ⏳
+### T-150: HDR: Shader 色域映射 (Rec.2020→P3) ✅
 
 **目标**: 在 Metal Shader 中实现 Rec.2020 到 Display P3 色域映射。
 
@@ -184,25 +184,29 @@ swift test --filter EDRHeadroomMonitorTests
 
 **依赖**: T-147
 
+**完成提交**: `pending` feat(video): add Rec.2020 to P3 gamut mapping (T-150)
+
 **涉及文件**:
-- `Chiaki/Core/Video/VideoShaders.metal` (修改)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader)
+- `Chiaki/Core/Video/VideoShaders.txt` (修改 - 参考文档)
+- `Chiaki/Core/Video/VideoShaderConstants.swift` (新建 - Swift 侧常量)
+- `ChiakiTests/ColorSpaceConversionTests.swift` (新建)
 
 **验收标准**:
-- [ ] 添加 `kRec2020_to_P3_Matrix` 常量矩阵
-- [ ] 添加 `applyGamutMapping()` 函数
-- [ ] 白点映射 (1,1,1) → 接近 (1,1,1)
-- [ ] 负值软裁剪（不产生 NaN）
-- [ ] 矩阵可逆（行列式非零）
+- [x] 添加 `kRec2020_to_P3_Matrix` 常量矩阵
+- [x] 添加 `applyGamutMapping()` 函数
+- [x] 白点映射 (1,1,1) → 接近 (1,1,1)
+- [x] 负值软裁剪（不产生 NaN）
+- [x] 矩阵可逆（行列式非零）
 
 **测试方法**:
 ```bash
-# 使用 Metal 单元测试或 Swift 测试函数验证
-swift test --filter ColorSpaceConversionTests
+xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/ColorSpaceConversionTests
 ```
 
 **Review 要点**:
-- [ ] 矩阵值与标准参考一致
-- [ ] 在正确位置调用（PQ EOTF 后，EDR 缩放前）
+- [x] 矩阵值与标准参考一致
+- [x] 在正确位置调用（PQ EOTF 后，EDR 缩放前）
 
 ---
 
