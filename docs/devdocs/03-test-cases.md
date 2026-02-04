@@ -1508,6 +1508,23 @@ jobs:
 | AC-066 | UT-018.1~6, IT-010.1~4 | 单元+集成 | ✅ 8+5 | VolumeShortcutTests, VolumeOSDIntegrationTests |
 | AC-067 | UT-019.1~8, E2E-009.1~5 | 单元+E2E | ✅ 10 | GamepadNumPadTests |
 | AC-068 | UT-020.1~6 | 单元测试 | - | - |
+| AC-080 | UT-027.1~6 | 单元测试 | - | - |
+| AC-081 | UT-028.1~4, IT-011.1~4 | 单元+集成 | - | - |
+| AC-082 | IT-011.4, E2E-011.2 | 集成+E2E | - | - |
+| AC-083 | UT-029.1~5 | 单元测试 | `Chiaki/Core/Video/HDRMetadataCache.swift` | `ChiakiTests/HDRMetadataCacheTests.swift` |
+| AC-084 | UT-030.1~5 | 单元测试 | - | - |
+| AC-085 | UT-031.1~5 | 单元测试 | - | - |
+| AC-086 | UT-033.1~6 | 单元测试 | - | - |
+| AC-087 | UT-035.1~3, IT-012.1~3 | 单元+集成 | - | - |
+| AC-088 | UT-032.1~6, UT-034.1~3, IT-012.1~3 | 单元+集成 | `Chiaki/Core/Video/HDRConfiguration.swift` | `ChiakiTests/HDRConfigurationTests.swift` |
+| AC-089 | UT-034.1~3, IT-012.1~3 | 单元+集成 | - | - |
+| AC-090 | UT-041.1~3, IT-014.1 | 单元+集成 | - | - |
+| AC-091 | UT-036.1~5, IT-013.1 | 单元+集成 | - | - |
+| AC-092 | IT-014.3 | 集成测试 | - | - |
+| AC-093 | UT-037.1~6, IT-013.3 | 单元+集成 | - | - |
+| AC-094 | UT-038.1~5, IT-013.2 | 单元+集成 | - | - |
+| AC-095 | UT-039.1~4, UT-040.1~2 | 单元测试 | - | - |
+| AC-096 | - | 架构审查 | - | - |
 
 ### 10.3 测试覆盖状态
 

@@ -29,14 +29,14 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 4% (1/24 任务完成)
+> **完成率**: 8% (2/24 任务完成)
 
 ## M12 任务概览
 
 | 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
 |------|------|--------|----------|------|------|
 | **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ✅ |
-| **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ⏳ |
+| **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ⏳ |
 | **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ⏳ |
 | **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ⏳ |
@@ -98,9 +98,9 @@ swift test --filter HDRConfigurationTests
 
 ---
 
-### T-148: HDR: HDRMetadataCache 抖动抑制 ⏳
+### T-148: HDR: HDRMetadataCache 抖动抑制 ✅
 
-**目标**: 实现 HDR 元数据缓存，避免 HDR/SDR 状态频繁切换。
+**目标**: 实现 HDR 元数据缓存,避免 HDR/SDR 状态频繁切换。
 
 **关联需求**: F-025 | AC-083
 
@@ -110,15 +110,18 @@ swift test --filter HDRConfigurationTests
 
 **依赖**: T-147
 
+**完成提交**: `4e315cb` feat(video): add HDRMetadataCache jitter suppression (T-148)
+
 **涉及文件**:
 - `Chiaki/Core/Video/HDRMetadataCache.swift` (新建)
+- `ChiakiTests/HDRMetadataCacheTests.swift` (新建)
 
 **验收标准**:
-- [ ] 初始状态为 SDR (confirmedHDR = false)
-- [ ] 需要连续 5 帧 HDR 才能确认为 HDR 模式
-- [ ] 需要连续 5 帧 SDR 才能切换回 SDR 模式
-- [ ] 单帧抖动不改变状态
-- [ ] `reset()` 方法清除所有状态
+- [x] 初始状态为 SDR (confirmedHDR = false)
+- [x] 需要连续 5 帧 HDR 才能确认为 HDR 模式
+- [x] 需要连续 5 帧 SDR 才能切换回 SDR 模式
+- [x] 单帧抖动不改变状态
+- [x] `reset()` 方法清除所有状态
 
 **测试方法**:
 ```bash
@@ -126,8 +129,8 @@ swift test --filter HDRMetadataCacheTests
 ```
 
 **Review 要点**:
-- [ ] 阈值可配置或有合理常量
-- [ ] 线程安全（如需从多线程调用）
+- [x] 阈值可配置或有合理常量
+- [x] 线程安全（如需从多线程调用）
 
 ---
 
