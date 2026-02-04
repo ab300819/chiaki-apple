@@ -436,7 +436,7 @@ final class VideoDecoderBridge {
     // MARK: - Properties
 
     private var decoder: VideoToolboxDecoder?
-    private var renderer: MetalVideoRenderer?
+    private var renderer: VideoRenderer?
 
     private var pendingSPS: Data?
     private var pendingPPS: Data?
@@ -470,7 +470,7 @@ final class VideoDecoderBridge {
     // MARK: - Public Methods
 
     /// Set video renderer for decoded frame output
-    func setRenderer(_ renderer: MetalVideoRenderer) {
+    func setRenderer(_ renderer: VideoRenderer) {
         self.renderer = renderer
     }
 

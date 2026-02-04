@@ -87,7 +87,7 @@ final class StreamingViewModel {
     private let audioPlayerBridge: AudioPlayerBridge
 
     private var statsUpdateTimer: Timer?
-    private var videoRenderer: MetalVideoRenderer?
+    private var videoRenderer: VideoRenderer?
 
     /// Current controller state (accumulated from multiple input events)
     private var currentControllerState = ChiakiControllerInput()
@@ -231,7 +231,7 @@ final class StreamingViewModel {
     }
 
     /// Set the video renderer for decoded frame output
-    func setVideoRenderer(_ renderer: MetalVideoRenderer) {
+    func setVideoRenderer(_ renderer: VideoRenderer) {
         self.videoRenderer = renderer
         videoDecoderBridge.setRenderer(renderer)
 
