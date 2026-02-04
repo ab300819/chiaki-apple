@@ -184,7 +184,7 @@ swift test --filter EDRHeadroomMonitorTests
 
 **依赖**: T-147
 
-**完成提交**: `pending` feat(video): add Rec.2020 to P3 gamut mapping (T-150)
+**完成提交**: `d353a35` feat(video): add Rec.2020 to P3 gamut mapping (T-150)
 
 **涉及文件**:
 - `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader)
