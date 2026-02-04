@@ -29,13 +29,13 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 0% (0/24 任务完成)
+> **完成率**: 4% (1/24 任务完成)
 
 ## M12 任务概览
 
 | 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
 |------|------|--------|----------|------|------|
-| **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ⏳ |
+| **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ✅ |
 | **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ⏳ |
 | **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ⏳ |
 | **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ⏳ |
@@ -64,7 +64,7 @@
 
 ## M12 任务详情
 
-### T-147: HDR: HDRConfiguration 统一配置结构 ⏳
+### T-147: HDR: HDRConfiguration 统一配置结构 ✅
 
 **目标**: 创建统一的 HDR 配置结构，集中管理所有 HDR 相关设置。
 
@@ -74,15 +74,18 @@
 
 **TDD 模式**: 🔴 强制
 
+**完成提交**: `11af485` feat(video): add HDRConfiguration unified structure (T-147)
+
 **涉及文件**:
 - `Chiaki/Core/Video/HDRConfiguration.swift` (新建)
+- `ChiakiTests/HDRConfigurationTests.swift` (新建)
 
 **验收标准**:
-- [ ] `HDRConfiguration` 结构包含 enabled, edrIntensity, colorSpace, colorRange, tonemapMode, gamutMappingEnabled
-- [ ] 提供 `.sdr` 和 `.hdr` 静态预设
-- [ ] `isHDR` 计算属性正确判断 (enabled && bt2020)
-- [ ] 实现 Codable 和 Equatable
-- [ ] 所有属性有合理默认值
+- [x] `HDRConfiguration` 结构包含 enabled, edrIntensity, colorSpace, colorRange, tonemapMode, gamutMappingEnabled
+- [x] 提供 `.sdr` 和 `.hdr` 静态预设
+- [x] `isHDR` 计算属性正确判断 (enabled && bt2020)
+- [x] 实现 Codable 和 Equatable
+- [x] 所有属性有合理默认值
 
 **测试方法**:
 ```bash
@@ -90,8 +93,8 @@ swift test --filter HDRConfigurationTests
 ```
 
 **Review 要点**:
-- [ ] 枚举值与 Shader 常量对齐
-- [ ] 默认值与现有行为兼容
+- [x] 枚举值与 Shader 常量对齐
+- [x] 默认值与现有行为兼容
 
 ---
 
