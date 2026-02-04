@@ -1,5 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// HostListView.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// Host list view with MVVM singleton decoupling
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-090 - HostListView Singleton 解耦
+
 import SwiftUI
 
+/// Host list view using MVVM pattern
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct HostListView: View {
     @Environment(NavigationManager.self) var navigationManager
     @State private var viewModel = HostListViewModel()
@@ -60,14 +72,14 @@ struct HostListView: View {
             AddHostView(viewModel: viewModel)
         }
         .sheet(item: $registeringHost) { host in
-            RegistrationView(hostManager: HostManager.shared, initialAddress: host.address)
+            RegistrationView(initialAddress: host.address)
         }
         .sheet(item: $settingPinHost) { host in
             ConsolePinView(host: host) { pin in
                 if let pin = pin {
-                    ConsolePinManager.shared.setPin(pin, for: host)
+                    viewModel.setPin(pin, for: host)
                 } else {
-                    ConsolePinManager.shared.clearPin(for: host)
+                    viewModel.clearPin(for: host)
                 }
             }
         }
@@ -141,7 +153,7 @@ struct HostListView: View {
                                     settingPinHost = host
                                 } label: {
                                     Label(
-                                        ConsolePinManager.shared.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
+                                        viewModel.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
                                         systemImage: "lock"
                                     )
                                 }
@@ -225,7 +237,7 @@ struct HostListView: View {
                                 settingPinHost = host
                             } label: {
                                 Label(
-                                    ConsolePinManager.shared.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
+                                    viewModel.hasPin(for: host) ? String(localized: "consolePin.changePin") : String(localized: "consolePin.setPin"),
                                     systemImage: "lock"
                                 )
                             }

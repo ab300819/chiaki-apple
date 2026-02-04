@@ -39,6 +39,7 @@ final class HostListViewModel {
     // MARK: - Private Properties
 
     private var _hostManager: HostManager?
+    private let pinManager: PinManaging
     private var isInitialized = false
 
     /// Safe accessor for host manager (force unwraps after initialization)
@@ -51,7 +52,12 @@ final class HostListViewModel {
 
     // MARK: - Initialization
 
-    init(hostManager: HostManager? = nil) {
+    /// Initialize with dependencies
+    /// - Parameters:
+    ///   - hostManager: Host manager (defaults to shared, lazily initialized)
+    ///   - pinManager: PIN manager (defaults to shared instance)
+    init(hostManager: HostManager? = nil, pinManager: PinManaging? = nil) {
+        self.pinManager = pinManager ?? ConsolePinManager.shared
         // Defer heavy initialization - don't access .shared here
         if let manager = hostManager {
             self._hostManager = manager
@@ -167,6 +173,33 @@ final class HostListViewModel {
     /// Get host by ID
     func host(byId id: UUID) -> ConsoleHost? {
         hosts.first { $0.id == id }
+    }
+}
+
+// MARK: - PIN Management
+/// @requirement F-027 - UI 层 MVVM 合规重构
+/// @satisfies AC-090 - HostListViewModel PIN 代理
+
+extension HostListViewModel {
+    /// Check if host has a stored PIN
+    /// - Parameter host: Host to check
+    /// - Returns: true if PIN exists
+    func hasPin(for host: ConsoleHost) -> Bool {
+        pinManager.hasPin(for: host)
+    }
+
+    /// Set PIN for a host
+    /// - Parameters:
+    ///   - pin: PIN to store
+    ///   - host: Host to associate PIN with
+    func setPin(_ pin: String, for host: ConsoleHost) {
+        pinManager.setPin(pin, for: host)
+    }
+
+    /// Clear PIN for a host
+    /// - Parameter host: Host to clear PIN for
+    func clearPin(for host: ConsoleHost) {
+        pinManager.clearPin(for: host)
     }
 }
 
