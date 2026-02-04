@@ -31,6 +31,8 @@ enum VideoDisplayMode: Int, CaseIterable {
 // MARK: - Video Uniforms
 
 /// Uniforms passed to Metal shaders
+/// [requirement] F-025
+/// [satisfies] AC-081, AC-084
 struct VideoUniforms {
     var transform: simd_float4x4
     var textureSizeY: simd_float2
@@ -42,6 +44,7 @@ struct VideoUniforms {
     var colorRange: UInt32   // 0 = VideoRange(Limited), 1 = FullRange
     var edrHeadroom: Float   // AC-081: EDR Headroom (1.0+)
     var tonemapMode: UInt32  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
+    var _padding: Float = 0.0 // Ensure 16-byte alignment of the struct size (Total: 112 bytes)
 
     static var `default`: VideoUniforms {
         VideoUniforms(
@@ -54,7 +57,8 @@ struct VideoUniforms {
             colorSpace: 0,
             colorRange: 0,
             edrHeadroom: 1.0,
-            tonemapMode: 0
+            tonemapMode: 0,
+            _padding: 0.0
         )
     }
 }
@@ -111,6 +115,42 @@ final class MetalVideoRenderer: NSObject {
 
     /// Current video uniforms
     private var uniforms = VideoUniforms.default
+
+    /// HDR configuration
+    /// [requirement] F-025
+    /// [satisfies] AC-088
+    var hdrConfiguration: HDRConfiguration = .sdr {
+        didSet {
+            uniforms.colorSpace = hdrConfiguration.colorSpace.rawValue
+            uniforms.colorRange = hdrConfiguration.colorRange.rawValue
+            uniforms.tonemapMode = hdrConfiguration.tonemapMode.rawValue
+            // brightness/saturation/edrIntensity are handled separately via their setters if needed, 
+            // or we could sync them here too. 
+            triggerRedraw()
+        }
+    }
+
+    /// EDR Headroom (1.0+)
+    /// [requirement] F-025
+    /// [satisfies] AC-081
+    var edrHeadroom: Float {
+        get { uniforms.edrHeadroom }
+        set {
+            uniforms.edrHeadroom = max(1.0, newValue)
+            triggerRedraw()
+        }
+    }
+
+    /// Tone mapping mode for HDR→SDR conversion
+    /// [requirement] F-025
+    /// [satisfies] AC-084
+    var tonemapMode: TonemapMode {
+        get { TonemapMode(rawValue: uniforms.tonemapMode) ?? .passthrough }
+        set {
+            uniforms.tonemapMode = newValue.rawValue
+            triggerRedraw()
+        }
+    }
 
     /// Current display mode
     var displayMode: VideoDisplayMode = .normal {
@@ -802,6 +842,7 @@ final class MetalVideoRenderer: NSObject {
         uint colorRange;  // 0 = VideoRange(Limited), 1 = FullRange
         float edrHeadroom; // AC-081: EDR Headroom (1.0+)
         uint tonemapMode;  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
+        float _padding;    // Align struct size to 16 bytes
     };
 
     // Color conversion matrices (column-major)
