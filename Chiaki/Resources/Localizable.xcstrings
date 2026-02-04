@@ -512,6 +512,9 @@
         }
       }
     },
+    "common.edit" : {
+
+    },
     "common.hidden" : {
       "localizations" : {
         "en" : {
@@ -1295,6 +1298,15 @@
           }
         }
       }
+    },
+    "hostList.deleteMultipleConfirmMessage %lld" : {
+
+    },
+    "hostList.deleteSelected %lld" : {
+
+    },
+    "hostList.deleteSelectedHelp" : {
+
     },
     "hostList.discover" : {
       "localizations" : {
@@ -2244,6 +2256,7 @@
       }
     },
     "psnLogin.tokenExpired" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2260,6 +2273,7 @@
       }
     },
     "psnLogin.tokenExpires" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

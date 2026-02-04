@@ -59,6 +59,9 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-028** | HDR 配置完全落地 | P0 | Shader 动态分支、配置字段接入渲染 [优化] |
 | **F-029** | MainActor 边界规范化 | P1 | Store 类 MainActor 标注、线程安全保障 [质量] |
 | **F-030** | 日志输出规范化 | P2 | 统一 Logger 系统、DEBUG 保护、噪声清理 [质量] |
+| **F-031** | 主题色系统化 | P2 | 迁移至 Apple 系统强调色 [视觉优化] |
+| **F-032** | 自动发现主机 | P2 | 进入主机列表自动启动发现，移除手动按钮 [体验优化] |
+| **F-033** | macOS TabView 布局 | P2 | macOS 采用 TabView 替代侧边栏，跨平台一致 [体验优化] |
 
 ---
 
@@ -445,6 +448,56 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - **AC-104**: Logger 统一：`ChiakiSessionWrapper` 中的 debug `print` 替换为 Logger 系统调用
 - **AC-105**: DEBUG 保护：确保 verbose 日志使用 `#if DEBUG` 保护
 - **AC-106**: Bridge 层日志审查：审查其他 Bridge 层文件，统一日志输出方式
+
+---
+
+### US-019: 主题色系统化
+> 关联功能: F-031
+> 来源: INS-003 (🎨 UI/UX 审查)
+
+**作为** 用户
+**我希望** 应用的主题色与 Apple 系统风格保持一致
+**以便** 获得与原生应用一致的视觉体验，并支持系统强调色自定义
+
+**验收标准**:
+- **AC-107**: 品牌色迁移：`ChiakiTheme.brandPurple` 替换为 `Color.accentColor`
+- **AC-108**: 全局颜色更新：所有使用 `Color.chiakiPurple` 的位置迁移为 `Color.accentColor`
+- **AC-109**: 主题适配验证：确保深色/浅色模式下颜色表现正常
+- **AC-110**: 系统强调色支持：macOS 支持用户自定义系统强调色
+
+---
+
+### US-020: 自动发现主机
+> 关联功能: F-032
+> 来源: INS-004 (🎨 UI/UX 审查)
+
+**作为** 用户
+**我希望** 打开应用时自动发现局域网内的 PlayStation 主机
+**以便** 无需手动点击即可看到可用主机，体验更流畅
+
+**验收标准**:
+- **AC-111**: 自动启动发现：进入 `HostListView` 时自动调用 `startDiscovery()`
+- **AC-112**: 自动停止发现：离开 `HostListView` 或进入流媒体时停止发现
+- **AC-113**: 移除发现按钮：从工具栏移除 wifi/wifi.slash 发现按钮
+- **AC-114**: 保留下拉刷新：用户仍可通过下拉刷新手动触发发现
+- **AC-115**: macOS 菜单保留：macOS 菜单栏的"Refresh Discovery"命令保留
+
+---
+
+### US-021: macOS TabView 布局
+> 关联功能: F-033
+> 来源: INS-005 (🎨 UI/UX 审查)
+
+**作为** macOS 用户
+**我希望** 应用布局与 iPad 版本一致
+**以便** 获得跨平台统一的使用体验，减少学习成本
+
+**验收标准**:
+- **AC-116**: TabView 替代侧边栏：macOS 使用 `TabView` 替代 `NavigationSplitView`
+- **AC-117**: Tab 项一致：Tab 项与 iOS/iPadOS 一致（Hosts、Settings）
+- **AC-118**: 移除欢迎页：移除 `WelcomeView`（无需侧边栏空状态）
+- **AC-119**: 菜单栏保留：macOS 菜单栏功能（Cmd+N 添加主机等）保持不变
+- **AC-120**: 窗口样式调整：评估是否需要调整 `.windowStyle(.hiddenTitleBar)`
 
 ---
 

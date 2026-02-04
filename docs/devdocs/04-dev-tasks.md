@@ -1,16 +1,26 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
-> **状态更新**: 2026-02-04
-> **当前里程碑**: M13 (HDR 配置完全落地、MainActor 边界规范化、日志输出规范化)
-> **M12 状态**: 100% 完成 (24/24)
-> **M11 归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (35 任务)
+> **状态更新**: 2026-02-05
+> **当前里程碑**: M13 (HDR 配置完全落地、MainActor 边界规范化、日志输出规范化、主题色系统化、自动发现、macOS 布局优化)
+> **归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (M11: 35 任务, M12: 24 任务)
 
 ---
 
-## M11 归档摘要
+## 归档摘要
+
+### M12 归档 (2026-02-05)
+
+> **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构 | **完成率**: 100% (24/24)
+> **详情**: [查看归档文件](archive/04-dev-tasks-archive.md#m12-归档---hdr-渲染优化渲染模块解耦ui-层-mvvm-重构)
+
+| 状态 | 数量 | 说明 |
+|------|------|------|
+| ✅ 已完成 | 24 | T-147~T-170 |
+
+### M11 归档 (2026-02-04)
 
 > **阶段目标**: Beta 1 发布冲刺 | **完成率**: 97% (35/36)
-> **详情**: [查看归档文件](archive/04-dev-tasks-archive.md)
+> **详情**: [查看归档文件](archive/04-dev-tasks-archive.md#m11-归档---beta-1-发布冲刺)
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
@@ -23,980 +33,6 @@
 - **关联需求**: F-018, AC-048
 - **当前进度**: tvOS 配置已完成，待设计师提供实际图像资产
 - **涉及文件**: `Assets.xcassets/AppIcon.appiconset/`
-
----
-
-# 开发任务 (M12)
-
-> **状态更新**: 2026-02-04
-> **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 100% (24/24 任务完成)
-
-## M12 任务概览
-
-| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
-|------|------|--------|----------|------|------|
-| **T-147** | HDR: HDRConfiguration 统一配置结构 | P0 | 🔴 强制 | - | ✅ |
-| **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ✅ |
-| **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ✅ |
-| **T-153** | HDR: MetalVideoRenderer 集成 | P0 | 🟡 推荐 | T-148, T-149, T-152 | ✅ |
-| **T-154** | HDR: VideoStreamView EDR 集成 | P0 | 🟢 可选 | T-149, T-153 | ✅ |
-| **T-155** | Stats: 渲染性能指标扩展 | P1 | 🔴 强制 | T-153 | ✅ |
-| **T-156** | Render: VideoRenderer 协议抽象 | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-157** | Render: MetalVideoRenderer 协议实现 | P0 | 🔴 强制 | T-156, T-153 | ✅ |
-| **T-158** | Render: VideoStreamView.Coordinator 分离 | P1 | 🟡 推荐 | T-157 | ✅ |
-| **T-159** | Protocol: PinManaging 协议定义 | P0 | 🔴 强制 | - | ✅ |
-| **T-160** | Protocol: PSNServicing 协议定义 | P0 | 🔴 强制 | - | ✅ |
-| **T-161** | Protocol: ConsolePinManager 协议实现 | P0 | 🟡 推荐 | T-159 | ✅ |
-| **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ✅ |
-| **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ✅ |
-| **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ✅ |
-| **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ✅ |
-| **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ✅ |
-| **T-167** | View: VideoSettingsView 重构 | P1 | 🟢 可选 | T-164 | ✅ |
-| **T-168** | View: ConsolesSettingsView 重构 | P1 | 🟢 可选 | T-165 | ✅ |
-| **T-169** | View: HostListView Singleton 解耦 | P0 | 🟢 可选 | T-161, T-165 | ✅ |
-| **T-170** | View: StreamingView/ControllerSettingsView 解耦 | P1 | 🟢 可选 | T-161 | ✅ |
-
----
-
-## M12 任务详情
-
-### T-147: HDR: HDRConfiguration 统一配置结构 ✅
-
-**目标**: 创建统一的 HDR 配置结构，集中管理所有 HDR 相关设置。
-
-**关联需求**: F-025, F-026 | AC-088
-
-**测试用例**: UT-032.1~6
-
-**TDD 模式**: 🔴 强制
-
-**完成提交**: `11af485` feat(video): add HDRConfiguration unified structure (T-147)
-
-**涉及文件**:
-- `Chiaki/Core/Video/HDRConfiguration.swift` (新建)
-- `ChiakiTests/HDRConfigurationTests.swift` (新建)
-
-**验收标准**:
-- [x] `HDRConfiguration` 结构包含 enabled, edrIntensity, colorSpace, colorRange, tonemapMode, gamutMappingEnabled
-- [x] 提供 `.sdr` 和 `.hdr` 静态预设
-- [x] `isHDR` 计算属性正确判断 (enabled && bt2020)
-- [x] 实现 Codable 和 Equatable
-- [x] 所有属性有合理默认值
-
-**测试方法**:
-```bash
-swift test --filter HDRConfigurationTests
-```
-
-**Review 要点**:
-- [x] 枚举值与 Shader 常量对齐
-- [x] 默认值与现有行为兼容
-
----
-
-### T-148: HDR: HDRMetadataCache 抖动抑制 ✅
-
-**目标**: 实现 HDR 元数据缓存,避免 HDR/SDR 状态频繁切换。
-
-**关联需求**: F-025 | AC-083
-
-**测试用例**: UT-029.1~5
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-147
-
-**完成提交**: `4e315cb` feat(video): add HDRMetadataCache jitter suppression (T-148)
-
-**涉及文件**:
-- `Chiaki/Core/Video/HDRMetadataCache.swift` (新建)
-- `ChiakiTests/HDRMetadataCacheTests.swift` (新建)
-
-**验收标准**:
-- [x] 初始状态为 SDR (confirmedHDR = false)
-- [x] 需要连续 5 帧 HDR 才能确认为 HDR 模式
-- [x] 需要连续 5 帧 SDR 才能切换回 SDR 模式
-- [x] 单帧抖动不改变状态
-- [x] `reset()` 方法清除所有状态
-
-**测试方法**:
-```bash
-swift test --filter HDRMetadataCacheTests
-```
-
-**Review 要点**:
-- [x] 阈值可配置或有合理常量
-- [x] 线程安全（如需从多线程调用）
-
----
-
-### T-149: HDR: EDRHeadroomMonitor 动态监听 ✅
-
-**目标**: 实现 EDR Headroom 动态监听，支持 macOS 和 iOS。
-
-**关联需求**: F-025 | AC-081
-
-**测试用例**: UT-028.1~4, IT-011.1~4
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-147
-
-**完成提交**: `f02af86` feat(video): add EDRHeadroomMonitor dynamic headroom tracking (T-149)
-
-**涉及文件**:
-- `Chiaki/Core/Video/EDRHeadroomMonitor.swift` (新建)
-- `ChiakiTests/EDRHeadroomMonitorTests.swift` (新建)
-
-**验收标准**:
-- [x] macOS: 监听 `NSScreen.maximumExtendedDynamicRangeColorComponentValue`
-- [x] iOS 16+: 使用 `UIScreen.currentEDRHeadroom`
-- [x] 初始值 ≥ 1.0
-- [x] 值变化平滑过渡（避免突变）
-- [x] 追踪最大可用 Headroom
-- [x] 正确清理 observer/displayLink
-
-**测试方法**:
-```bash
-swift test --filter EDRHeadroomMonitorTests
-```
-
-**Review 要点**:
-- [x] 平台条件编译正确 (`#if os(macOS)`)
-- [x] DisplayLink 正确配置帧率
-- [x] 内存管理（deinit 清理）
-
----
-
-### T-150: HDR: Shader 色域映射 (Rec.2020→P3) ✅
-
-**目标**: 在 Metal Shader 中实现 Rec.2020 到 Display P3 色域映射。
-
-**关联需求**: F-025 | AC-080
-
-**测试用例**: UT-027.1~6
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-147
-
-**完成提交**: `d353a35` feat(video): add Rec.2020 to P3 gamut mapping (T-150)
-
-**涉及文件**:
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader)
-- `Chiaki/Core/Video/VideoShaders.txt` (修改 - 参考文档)
-- `Chiaki/Core/Video/VideoShaderConstants.swift` (新建 - Swift 侧常量)
-- `ChiakiTests/ColorSpaceConversionTests.swift` (新建)
-
-**验收标准**:
-- [x] 添加 `kRec2020_to_P3_Matrix` 常量矩阵
-- [x] 添加 `applyGamutMapping()` 函数
-- [x] 白点映射 (1,1,1) → 接近 (1,1,1)
-- [x] 负值软裁剪（不产生 NaN）
-- [x] 矩阵可逆（行列式非零）
-
-**测试方法**:
-```bash
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/ColorSpaceConversionTests
-```
-
-**Review 要点**:
-- [x] 矩阵值与标准参考一致
-- [x] 在正确位置调用（PQ EOTF 后，EDR 缩放前）
-
----
-
-### T-151: HDR: Shader ACES Tone Mapping ✅
-
-**目标**: 实现 ACES Filmic Tone Mapping 用于 HDR→SDR 降级。
-
-**关联需求**: F-025 | AC-084
-
-**测试用例**: UT-030.1~5
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-150
-
-**完成提交**: `47555af` feat(video): add ACES Filmic tone mapping for HDR→SDR (T-151)
-
-**涉及文件**:
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader)
-- `Chiaki/Core/Video/VideoShaders.txt` (修改 - 参考文档)
-- `Chiaki/Core/Video/VideoShaderConstants.swift` (修改 - Swift 侧常量)
-- `ChiakiTests/TonemappingTests.swift` (新建)
-
-**验收标准**:
-- [x] 实现 `acesTonemap()` 函数
-- [x] 黑色保留: (0,0,0) → (0,0,0)
-- [x] 高光压缩: (10,10,10) → < (1,1,1)
-- [x] 输出范围 ∈ [0, 1]
-- [x] 单调性: x1 < x2 → f(x1) < f(x2)
-
-**测试方法**:
-```bash
-swift test --filter TonemappingTests
-```
-
-**Review 要点**:
-- [x] ACES 参数与标准一致
-- [x] 条件调用（tonemapMode == 1 时）
-
----
-
-### T-152: HDR: Shader Uniform 扩展 ✅
-
-**目标**: 扩展 Shader Uniform 结构以支持新的 HDR 参数。
-
-**关联需求**: F-025 | AC-081, AC-082, AC-084
-
-**测试用例**: IT-011.2
-
-**TDD 模式**: 🟡 推荐
-
-**依赖**: T-150, T-151
-
-**完成提交**: `cb61b66` feat(video): extend shader uniforms with HDR parameters (T-152)
-
-**涉及文件**:
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader 及 Swift 结构)
-- `ChiakiTests/HDRIntegrationTests.swift` (新建)
-
-**验收标准**:
-- [x] `VideoUniforms` 新增 `edrHeadroom: Float`
-- [x] `VideoUniforms` 新增 `tonemapMode: UInt32`
-- [x] Swift 侧 `VideoUniforms` 与 Metal 侧内存布局一致 (112 bytes, 16-byte aligned)
-- [x] Fragment Shader 根据 uniforms 选择处理路径
-
-**测试方法**:
-```bash
-swift test --filter HDRIntegrationTests
-```
-
-**Review 要点**:
-- [x] 内存对齐正确 (添加 `_padding` 确保 16 字节对齐)
-- [x] 默认值与现有行为兼容
-
----
-
-### T-153: HDR: MetalVideoRenderer 集成 ✅
-
-**目标**: 将所有 HDR 组件集成到 MetalVideoRenderer。
-
-**关联需求**: F-025 | AC-080, AC-082, AC-083
-
-**测试用例**: IT-011.1~4
-
-**TDD 模式**: 🟡 推荐
-
-**依赖**: T-148, T-149, T-152
-
-**完成提交**: `2cd83ef` feat(video): integrate HDRMetadataCache for jitter suppression (T-153)
-
-**涉及文件**:
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改)
-- `ChiakiTests/VideoRendererHDRTests.swift` (新建)
-
-**验收标准**:
-- [x] 集成 `HDRMetadataCache` 用于抖动抑制
-- [x] 添加 `edrHeadroom` 属性接收外部值
-- [x] 添加 `hdrConfiguration` 属性
-- [x] `updateUniforms()` 方法正确填充所有 HDR 相关字段
-- [x] 根据 PixelFormat 检测 HDR 帧
-
-**测试方法**:
-```bash
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererHDRTests
-```
-
-**Review 要点**:
-- [x] 线程安全（帧提交可能来自不同线程）
-- [x] 不破坏现有 SDR 渲染逻辑
-
----
-
-### T-154: HDR: VideoStreamView EDR 集成 ✅
-
-**目标**: 在 VideoStreamView 中集成 EDR Headroom 监听和传递。
-
-**关联需求**: F-025 | AC-081, AC-082
-
-**测试用例**: E2E-011.1~3
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-149, T-153
-
-**完成提交**: `ecc9ad7` feat(video): integrate EDR headroom monitoring in VideoStreamView (T-154)
-
-**涉及文件**:
-- `Chiaki/Core/Video/VideoStreamView.swift` (修改)
-
-**验收标准**:
-- [x] 持有 `EDRHeadroomMonitor` 实例
-- [x] 在 `updateNSView`/`updateUIView` 中传递 headroom 到 renderer
-- [x] HDR 模式下配置 `rgba16Float` (macOS) / `rgb10a2Unorm` (iOS/tvOS) 像素格式
-- [x] HDR 模式下配置 `extendedLinearDisplayP3` 色彩空间
-- [x] 动态切换像素格式（HDR↔SDR）
-
-**测试方法**: 手动测试 + E2E-011 (可通过 Build 验证)
-
-**Review 要点**:
-- [x] 像素格式切换时机正确
-- [x] 无内存泄漏
-
----
-
-### T-155: Stats: 渲染性能指标扩展 ✅
-
-**目标**: 扩展 StreamStatsManager 以支持详细渲染性能指标。
-
-**关联需求**: F-025 | AC-085
-
-**测试用例**: UT-031.1~5
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-153
-
-**完成提交**: `80c9ffb` feat(stats): extend performance metrics with decode/render timing (T-155)
-
-**涉及文件**:
-- `Chiaki/Core/Streaming/StreamStatsManager.swift` (修改)
-- `ChiakiTests/StreamStatsManagerTests.swift` (修改)
-
-**验收标准**:
-- [x] 新增 `decodeTimeMs`, `renderTimeMs` 属性
-- [x] 新增 `p95LatencyMs`, `p99LatencyMs` 属性
-- [x] 实现百分位计算（采样窗口 100）
-- [x] `recordDecodeTime()`, `recordRenderTime()` 方法
-- [x] P99 ≥ P95 恒成立
-
-**测试方法**:
-```bash
-# 由于使用了 swift-testing，通过 xcodebuild 运行
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/StreamStatsManagerTests
-```
-
-**Review 要点**:
-- [x] 采样窗口大小合理
-- [x] 计算效率可接受
-
----
-
-### T-156: Render: VideoRenderer 协议抽象 ✅
-
-**目标**: 定义 VideoRenderer 协议，实现渲染器抽象。
-
-**关联需求**: F-026 | AC-086
-
-**测试用例**: UT-033.1~6
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-147
-
-**完成提交**: 待提交
-
-**涉及文件**:
-- `Chiaki/Core/Video/VideoRenderer.swift` (修改)
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改)
-- `ChiakiTests/VideoRendererTests.swift` (新建)
-
-**验收标准**:
-- [x] 协议定义 `submitFrame(_:)` 方法
-- [x] 协议定义 `render(to:descriptor:)` 方法
-- [x] 协议定义 `displayMode`, `zoomFactor`, `hdrConfiguration`, `edrHeadroom` 属性
-- [x] 协议定义 `setBrightness`, `setContrast`, `setSaturation` 方法
-- [x] 协议定义 `frameSize`, `hasFrame` 查询属性
-- [x] 定义 `VideoDisplayMode`, `TonemapMode` 枚举
-
-**测试方法**:
-```bash
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererProtocolTests
-```
-
-**Review 要点**:
-- [x] 协议足够抽象，不暴露 Metal 细节
-- [x] Sendable 合规
-
----
-
-### T-157: Render: MetalVideoRenderer 协议实现 ✅
-
-**目标**: 重构 MetalVideoRenderer 以实现 VideoRenderer 协议。
-
-**关联需求**: F-026 | AC-086, AC-089
-
-**测试用例**: UT-033.1~6, UT-034.1~3
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-156, T-153
-
-**完成提交**: 待提交 (与 T-156, T-158 合并提交)
-
-**涉及文件**:
-- `Chiaki/Core/Video/MetalVideoRenderer.swift` (重构)
-
-**验收标准**:
-- [x] `MetalVideoRenderer` 实现 `VideoRenderer` 协议
-- [x] **移除** `MTKViewDelegate` 实现
-- [x] 所有协议方法正确实现
-- [x] 通过依赖注入接收 `HDRConfiguration`
-- [x] `edrHeadroom` 可从外部设置
-
-**测试方法**:
-```bash
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererProtocolTests
-```
-
-**Review 要点**:
-- [x] 不再直接实现 MTKViewDelegate
-- [x] 无破坏性变更（MTKViewDelegateBridge 接管 delegate）
-
----
-
-### T-158: Render: VideoStreamView.Coordinator 分离 ✅
-
-**目标**: 将 MTKViewDelegate 实现移至 VideoStreamView.Coordinator。
-
-**关联需求**: F-026 | AC-087
-
-**测试用例**: UT-035.1~3, IT-012.1~3
-
-**TDD 模式**: 🟡 推荐
-
-**依赖**: T-157
-
-**完成提交**: 待提交 (与 T-156, T-157 合并提交)
-
-**涉及文件**:
-- `Chiaki/Core/Video/VideoStreamView.swift` (重构)
-
-**验收标准**:
-- [x] `MTKViewDelegateBridge` 实现 `MTKViewDelegate` (替代原 Coordinator 设计)
-- [x] Bridge/Coordinator 持有 `VideoRenderer` 引用
-- [x] `draw(in:)` 调用 `renderer.render(to:descriptor:)`
-- [x] `mtkView(_:drawableSizeWillChange:)` 正确处理
-- [x] View 通过 Coordinator 与 Renderer 交互
-
-**实现说明**:
-- 使用 `MTKViewDelegateBridge` 类实现 MTKViewDelegate
-- 通过 `VideoStreamView.Coordinator` 持有 bridge 引用防止提前释放
-- VRR 逻辑从 MetalVideoRenderer 移至 Bridge
-
-**测试方法**:
-```bash
-xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:ChiakiTests/VideoRendererTests
-```
-
-**Review 要点**:
-- [x] Bridge/Coordinator 生命周期正确
-- [x] 无循环引用 (使用 weak 引用)
-
----
-
-### T-159: Protocol: PinManaging 协议定义 ✅
-
-**目标**: 定义 PinManaging 协议，抽象 PIN 管理逻辑。
-
-**关联需求**: F-027 | AC-095
-
-**测试用例**: UT-039.1~4
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: -
-
-**完成提交**: `3c05c37` feat(protocol): define PinManaging protocol abstraction (T-159)
-
-**涉及文件**:
-- `Chiaki/Shared/Protocols/PinManaging.swift` (新建)
-- `ChiakiTests/PinManagingTests.swift` (新建)
-- `Chiaki/Core/Storage/ConsolePinManager.swift` (修改)
-
-**验收标准**:
-- [x] 协议定义 `setPin(_:for:)` 方法
-- [x] 协议定义 `clearPin(for:)` 方法
-- [x] 协议定义 `hasPin(for:) -> Bool` 方法
-- [x] 协议定义 `requiresPinEntry(for:) -> Bool` 方法
-- [x] 协议定义 `getPin(for:) -> String?` 方法
-- [x] 协议继承 `AnyObject, Sendable`
-
-**测试方法**:
-```bash
-swift test --filter PinManagingTests
-```
-
-**Review 要点**:
-- [x] 方法签名与现有 ConsolePinManager 一致
-- [x] 无副作用方法标记合适
-
----
-
-### T-160: Protocol: PSNServicing 协议定义 ✅
-
-**目标**: 定义 PSNServicing 协议，抽象 PSN 服务逻辑。
-
-**关联需求**: F-027 | AC-095
-
-**测试用例**: UT-040.1~2
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: -
-
-**完成提交**: `d081981` feat(protocol): define PSNServicing protocol abstraction (T-160, T-162)
-
-**涉及文件**:
-- `Chiaki/Shared/Protocols/PSNServicing.swift` (新建)
-- `ChiakiTests/PSNServicingTests.swift` (新建)
-
-**验收标准**:
-- [x] 协议定义 `account: PSNAccount?` 属性
-- [x] 协议定义 `isSignedIn: Bool` 属性
-- [x] 协议定义 `authState: PSNAuthState` 属性
-- [x] 协议定义 `signOut()` 方法
-- [x] 协议定义 `manualRefresh() async throws` 方法
-- [x] 协议定义 `startOAuthLogin() -> URL` 方法
-
-**测试方法**:
-```bash
-swift test --filter PSNServicingTests
-```
-
-**Review 要点**:
-- [x] 方法签名与现有 PSNService 一致
-- [x] async 方法正确标记
-
----
-
-### T-161: Protocol: ConsolePinManager 协议实现 ✅
-
-**目标**: 让 ConsolePinManager 实现 PinManaging 协议。
-
-**关联需求**: F-027 | AC-095
-
-**测试用例**: UT-039.1~4
-
-**TDD 模式**: 🟡 推荐
-
-**依赖**: T-159
-
-**完成提交**: `3c05c37` feat(protocol): define PinManaging protocol abstraction (T-159)
-
-**实现说明**: 与 T-159 合并完成，ConsolePinManager 通过扩展声明遵守 PinManaging 协议
-
-**涉及文件**:
-- `Chiaki/Core/Storage/ConsolePinManager.swift` (修改)
-
-**验收标准**:
-- [x] `ConsolePinManager` 实现 `PinManaging` 协议
-- [x] 所有协议方法已有实现（扩展声明即可）
-- [x] 现有调用方无需修改
-
-**测试方法**:
-```bash
-swift test --filter PinManagingTests
-```
-
-**Review 要点**:
-- [x] 无破坏性变更
-- [x] 协议扩展位置合理
-
----
-
-### T-162: Protocol: PSNService 协议实现 ✅
-
-**目标**: 让 PSNService 实现 PSNServicing 协议。
-
-**关联需求**: F-027 | AC-095
-
-**测试用例**: UT-040.1~2
-
-**TDD 模式**: 🟡 推荐
-
-**依赖**: T-160
-
-**完成提交**: `d081981` feat(protocol): define PSNServicing protocol abstraction (T-160, T-162)
-
-**实现说明**: 与 T-160 合并完成，PSNService 通过扩展声明遵守 PSNServicing 协议，桥接现有 API
-
-**涉及文件**:
-- `Chiaki/Shared/Protocols/PSNServicing.swift` (扩展)
-
-**验收标准**:
-- [x] `PSNService` 实现 `PSNServicing` 协议
-- [x] 所有协议方法已有实现（扩展声明即可）
-- [x] 现有调用方无需修改
-
-**测试方法**:
-```bash
-swift test --filter PSNServicingTests
-```
-
-**Review 要点**:
-- [x] 无破坏性变更
-- [x] 协议扩展位置合理
-
----
-
-### T-163: VM: AccountSettingsViewModel ✅
-
-**目标**: 创建 AccountSettingsViewModel 封装 PSN 操作。
-
-**关联需求**: F-027 | AC-091
-
-**测试用例**: UT-036.1~6, IT-013.1
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-162
-
-**完成提交**: `b1bda8a` feat(viewmodel): add AccountSettingsViewModel for PSN operations (T-163)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/ViewModels/AccountSettingsViewModel.swift` (新建)
-- `ChiakiTests/AccountSettingsViewModelTests.swift` (新建)
-
-**验收标准**:
-- [x] `@Observable` 类
-- [x] 通过构造函数注入 `PSNServicing`
-- [x] 暴露 `account`, `isSignedIn`, `isRefreshing`, `errorMessage` 状态
-- [x] 实现 `signOut()` 方法
-- [x] 实现 `refreshToken() async` 方法
-- [x] 实现 `getLoginURL() -> URL` 方法
-
-**测试方法**:
-```bash
-swift test --filter AccountSettingsViewModelTests
-```
-
-**Review 要点**:
-- [x] 依赖注入正确
-- [x] 错误处理完善
-- [x] 状态更新在主线程
-
----
-
-### T-164: VM: VideoSettingsViewModel ✅
-
-**目标**: 创建 VideoSettingsViewModel 封装 HDR 设置逻辑。
-
-**关联需求**: F-027 | AC-093
-
-**测试用例**: UT-037.1~6, IT-013.3
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-147
-
-**完成提交**: `46e3b06` feat(viewmodel): add VideoSettingsViewModel for HDR settings (T-164)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/ViewModels/VideoSettingsViewModel.swift` (新建)
-- `ChiakiTests/VideoSettingsViewModelTests.swift` (新建)
-
-**验收标准**:
-- [x] `@Observable` 类
-- [x] 通过构造函数注入 `SettingsStore`
-- [x] 暴露 `hdrEnabled`, `hdrPeakNits`, `hdrPeakMode`, `edrIntensity` 属性
-- [x] `hdrPeakNits` 正确处理 Double ↔ Int 转换
-- [x] 实现 `shouldShowEDRIntensity`, `shouldShowColorSpace` 计算属性
-- [x] 实现 `validateSettings()` 方法
-
-**测试方法**:
-```bash
-swift test --filter VideoSettingsViewModelTests
-```
-
-**Review 要点**:
-- [x] Binding 转换逻辑正确
-- [x] 验证逻辑完善
-
----
-
-### T-165: VM: ConsolesSettingsViewModel ✅
-
-**目标**: 创建 ConsolesSettingsViewModel 封装主机管理逻辑。
-
-**关联需求**: F-027 | AC-094
-
-**测试用例**: UT-038.1~5, IT-013.2
-
-**TDD 模式**: 🔴 强制
-
-**依赖**: T-159, T-161
-
-**完成提交**: `59c5e02` feat(viewmodel): add ConsolesSettingsViewModel for host management (T-165)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/ViewModels/ConsolesSettingsViewModel.swift` (新建)
-- `ChiakiTests/ConsolesSettingsViewModelTests.swift` (新建)
-
-**验收标准**:
-- [x] `@Observable` 类
-- [x] 通过构造函数注入 `HostStore` 和 `PinManaging`
-- [x] 暴露 `registeredHosts`, `hiddenHosts` 属性
-- [x] 实现 `removeHost(_:)` 方法（同时清除 PIN）
-- [x] 实现 `hideHost(_:)`, `unhideHost(_:)` 方法
-- [x] 实现 `hasPin(for:)`, `setPin(_:for:)`, `clearPin(for:)` 代理方法
-
-**测试方法**:
-```bash
-swift test --filter ConsolesSettingsViewModelTests
-```
-
-**Review 要点**:
-- [x] 删除主机时清除关联 PIN
-- [x] 代理方法正确转发
-
----
-
-### T-166: View: AccountSettingsView 重构 ✅
-
-**目标**: 重构 AccountSettingsView 使用 ViewModel。
-
-**关联需求**: F-027 | AC-091
-
-**测试用例**: IT-014.2
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-163
-
-**完成提交**: `1361575` refactor(view): use AccountSettingsViewModel in AccountSettingsView (T-166)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/AccountSettingsView.swift` (重构)
-
-**验收标准**:
-- [x] **移除** `@State private var psnService = PSNService.shared`
-- [x] 使用 `@State private var viewModel = AccountSettingsViewModel()`
-- [x] 所有 PSN 操作通过 viewModel 调用
-- [x] UI 绑定 viewModel 状态
-
-**测试方法**: 代码审查 + 手动测试
-
-**Review 要点**:
-- [x] 无直接 Service 访问
-- [x] 错误提示正确显示
-
----
-
-### T-167: View: VideoSettingsView 重构 ✅
-
-**目标**: 重构 VideoSettingsView 使用 ViewModel。
-
-**关联需求**: F-027 | AC-093
-
-**测试用例**: -
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-164
-
-**完成提交**: `079b998` refactor(view): use VideoSettingsViewModel in VideoSettingsView (T-167)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/VideoSettingsView.swift` (重构)
-
-**验收标准**:
-- [x] **移除** 复杂的 Binding 计算属性 (hdrPeakModeBinding, hdrPeakNitsBinding)
-- [x] 使用 `VideoSettingsViewModel`
-- [x] UI 绑定 viewModel 属性 (hdrEnabled, hdrPeakMode, hdrPeakNits)
-- [x] HDR 设置逻辑简化
-
-**测试方法**: 代码审查 + 手动测试
-
-**Review 要点**:
-- [x] Binding 简化
-- [x] 设置变更正确保存
-
----
-
-### T-168: View: ConsolesSettingsView 重构 ✅
-
-**目标**: 重构 ConsolesSettingsView 使用 ViewModel。
-
-**关联需求**: F-027 | AC-094
-
-**测试用例**: -
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-165
-
-**完成提交**: `4360f31` refactor(view): use ConsolesSettingsViewModel in ConsolesSettingsView (T-168)
-
-**涉及文件**:
-- `Chiaki/Features/Settings/ConsolesSettingsView.swift` (重构)
-
-**验收标准**:
-- [x] **移除** 直接 `hostStore.removeHost(host)` 调用
-- [x] 使用 `ConsolesSettingsViewModel`
-- [x] 所有主机操作通过 viewModel 调用
-
-**测试方法**: 代码审查 + 手动测试
-
-**Review 要点**:
-- [x] 无直接 Store 修改
-- [x] PIN 操作正确代理 (viewModel.removeHost 自动清除 PIN)
-
----
-
-### T-169: View: HostListView Singleton 解耦 ✅
-
-**目标**: 移除 HostListView 中的直接 Manager 访问。
-
-**关联需求**: F-027 | AC-090
-
-**测试用例**: UT-041.1~3, IT-014.1
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-161, T-165
-
-**完成提交**: `4259fc9` refactor(view): decouple HostListView from singletons (T-169)
-
-**涉及文件**:
-- `Chiaki/Features/HostList/HostListView.swift` (修改)
-- `Chiaki/Features/HostList/HostListViewModel.swift` (扩展)
-
-**验收标准**:
-- [x] **移除** 直接 `HostManager.shared` 访问 (RegistrationView 调用)
-- [x] **移除** 直接 `ConsolePinManager.shared` 访问
-- [x] 通过 HostListViewModel 代理 PIN 操作 (hasPin, setPin, clearPin)
-- [x] 所有 Manager 调用通过 ViewModel
-
-**测试方法**: 代码审查 + IT-014.1
-
-**Review 要点**:
-- [x] 无 `.shared` 直接访问
-- [x] ViewModel 正确扩展 (添加 PinManaging 依赖和 PIN 代理方法)
-
----
-
-### T-170: View: StreamingView/ControllerSettingsView 解耦 ✅
-
-**目标**: 移除其他 View 中的直接 Manager 访问。
-
-**关联需求**: F-027 | AC-092
-
-**测试用例**: IT-014.3
-
-**TDD 模式**: 🟢 可选
-
-**依赖**: T-161
-
-**完成提交**: `08744e3` refactor(view): decouple StreamingView and ControllerSettingsView from singletons (T-170)
-
-**涉及文件**:
-- `Chiaki/Features/Streaming/StreamingView.swift` (修改)
-- `Chiaki/Features/Streaming/StreamingViewModel.swift` (扩展)
-- `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
-
-**验收标准**:
-- [x] StreamingView **移除** 直接 `ConsolePinManager.shared` 访问
-- [x] ControllerSettingsView **移除** 直接 `ControllerManager.shared` 访问
-- [x] 通过 ViewModel 或 Environment 注入依赖
-
-**实现说明**:
-- StreamingViewModel 添加 PinManaging 依赖和 requiresPinEntry 计算属性
-- ControllerSettingsView 通过 @Environment(ControllerManager.self) 注入
-
-**测试方法**: 代码审查 + IT-014.3
-
-**Review 要点**:
-- [x] 无 `.shared` 直接访问
-- [x] 依赖注入方式合理
-
----
-
-## M12 依赖关系图
-
-```mermaid
-graph TD
-    %% F-025 HDR 渲染管线优化
-    subgraph F025[F-025 HDR 渲染管线优化]
-        T147[T-147: HDRConfiguration]
-        T148[T-148: HDRMetadataCache]
-        T149[T-149: EDRHeadroomMonitor]
-        T150[T-150: Shader 色域映射]
-        T151[T-151: Shader ACES Tone Mapping]
-        T152[T-152: Shader Uniform 扩展]
-        T153[T-153: MetalVideoRenderer 集成]
-        T154[T-154: VideoStreamView EDR 集成]
-        T155[T-155: 渲染性能指标]
-
-        T147 --> T148
-        T147 --> T149
-        T147 --> T150
-        T150 --> T151
-        T150 --> T152
-        T151 --> T152
-        T148 --> T153
-        T149 --> T153
-        T152 --> T153
-        T149 --> T154
-        T153 --> T154
-        T153 --> T155
-    end
-
-    %% F-026 渲染模块解耦
-    subgraph F026[F-026 渲染模块解耦]
-        T156[T-156: VideoRenderer 协议]
-        T157[T-157: MetalVideoRenderer 协议实现]
-        T158[T-158: Coordinator 分离]
-
-        T147 --> T156
-        T156 --> T157
-        T153 --> T157
-        T157 --> T158
-    end
-
-    %% F-027 UI 层 MVVM 重构
-    subgraph F027[F-027 UI 层 MVVM 重构]
-        T159[T-159: PinManaging 协议]
-        T160[T-160: PSNServicing 协议]
-        T161[T-161: ConsolePinManager 实现]
-        T162[T-162: PSNService 实现]
-        T163[T-163: AccountSettingsVM]
-        T164[T-164: VideoSettingsVM]
-        T165[T-165: ConsolesSettingsVM]
-        T166[T-166: AccountSettingsView]
-        T167[T-167: VideoSettingsView]
-        T168[T-168: ConsolesSettingsView]
-        T169[T-169: HostListView 解耦]
-        T170[T-170: StreamingView 解耦]
-
-        T159 --> T161
-        T160 --> T162
-        T162 --> T163
-        T147 --> T164
-        T159 --> T165
-        T161 --> T165
-        T163 --> T166
-        T164 --> T167
-        T165 --> T168
-        T161 --> T169
-        T165 --> T169
-        T161 --> T170
-    end
-```
-
-## M12 执行检查清单
-
-1. [x] 开始前确保 M11 所有任务已完成（除 T-115 App Icon）
-2. [x] 建议执行顺序：T-147 → T-159/T-160 → T-148~T-152 → T-156 → T-161~T-165 → T-153~T-158 → T-166~T-170
-3. [x] 核心逻辑任务（🔴 强制 TDD）必须先写测试
-4. [x] 每个任务完成后运行 `/devdocs-sync --trace` 更新追溯
 
 ---
 
@@ -1729,3 +765,656 @@ graph LR
 - [ ] 发现服务生命周期管理正确
 - [ ] 轮询逻辑不会阻塞主线程
 - [ ] 超时后正确清理资源
+
+---
+
+## BUG-006: 主题色系统化 (F-031)
+
+> **来源**: UI/UX 审查 (INS-003)
+> **优先级**: P2
+> **状态**: ⏳ 待开始
+> **关联需求**: F-031, US-019
+
+### 问题摘要
+
+当前应用使用自定义紫色 (#6750A4) 作为主题色，与 Apple 系统风格不一致。需要迁移为 `Color.accentColor`，使应用与系统 UI 风格保持一致，并支持用户自定义系统强调色。
+
+### 任务列表
+
+| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
+|------|------|--------|----------|------|------|
+| **T-189** | Theme: ChiakiTheme 品牌色迁移 | P2 | ⚪ 不适用 | - | ⏳ |
+| **T-190** | Theme: 全局 chiakiPurple 替换 | P2 | 🟢 可选 | T-189 | ⏳ |
+| **T-191** | Theme: 主题适配验证 | P2 | 🟢 可选 | T-190 | ⏳ |
+
+---
+
+### T-189: Theme: ChiakiTheme 品牌色迁移
+
+> **关联需求**: F-031, AC-107
+> **关联测试**: CR-005 (代码审查)
+> **TDD 模式**: ⚪ 不适用 (基础设施)
+> **优先级**: P2
+
+**任务描述**:
+修改 `ChiakiTheme.swift`，将品牌色从自定义紫色迁移为 Apple 系统强调色。
+
+**涉及文件**:
+- `Chiaki/Utilities/ChiakiTheme.swift` (修改)
+
+**修改内容**:
+
+```swift
+// 修改前
+static let brandPurple = Color(red: 0.404, green: 0.314, blue: 0.643)
+
+// 修改后
+static let brandColor = Color.accentColor
+
+// 修改前
+extension Color {
+    static let chiakiPurple = ChiakiTheme.brandPurple
+}
+
+// 修改后
+extension Color {
+    /// 应用主题色（使用系统强调色）
+    static let chiakiAccent = ChiakiTheme.brandColor
+
+    /// 向后兼容别名（已废弃，请使用 chiakiAccent）
+    @available(*, deprecated, renamed: "chiakiAccent")
+    static let chiakiPurple = chiakiAccent
+}
+```
+
+**验收标准**:
+- [ ] `ChiakiTheme.brandPurple` 重命名为 `brandColor`
+- [ ] `brandColor` 使用 `Color.accentColor`
+- [ ] `Color.chiakiPurple` 标记为 deprecated
+- [ ] 添加 `Color.chiakiAccent` 新别名
+- [ ] 编译无错误
+
+**Review 要点**:
+- [ ] 命名符合 Apple 风格
+- [ ] deprecation 警告正确
+- [ ] 无遗漏的引用
+
+---
+
+### T-190: Theme: 全局 chiakiPurple 替换
+
+> **关联需求**: F-031, AC-108
+> **关联测试**: CR-005 (代码审查)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-189
+> **优先级**: P2
+
+**任务描述**:
+将项目中所有使用 `Color.chiakiPurple` 的位置替换为 `Color.accentColor`。
+
+**涉及文件**:
+- `Chiaki/Features/HostList/HostRowView.swift` (修改)
+- `Chiaki/Features/HostList/TVHostCardView.swift` (修改)
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
+- `Chiaki/Features/Streaming/StreamingControlsView.swift` (修改)
+- `Chiaki/Features/Streaming/QuickSettingsSection.swift` (修改)
+- `Chiaki/Features/Streaming/TouchableSlider.swift` (修改)
+
+**替换映射**:
+
+| 文件 | 原用法 | 新用法 |
+|------|--------|--------|
+| HostRowView.swift | `.foregroundStyle(Color.chiakiPurple)` | `.foregroundStyle(.accentColor)` |
+| TVHostCardView.swift | `Color.chiakiPurple` | `.accentColor` |
+| ControllerSettingsView.swift | `Color.chiakiPurple` | `.accentColor` |
+| StreamingControlsView.swift | `.chiakiPurple` | `.accentColor` |
+| QuickSettingsSection.swift | `Color.chiakiPurple` | `.accentColor` |
+| TouchableSlider.swift | `.chiakiPurple` | `.accentColor` |
+
+**验收标准**:
+- [ ] 项目中无 `chiakiPurple` 警告（已 deprecated）
+- [ ] 所有主题色使用 `.accentColor`
+- [ ] 编译无错误、无警告
+- [ ] UI 效果与系统风格一致
+
+**测试方法**:
+```bash
+# 搜索是否还有遗漏的 chiakiPurple 使用
+grep -r "chiakiPurple" --include="*.swift" Chiaki/
+```
+
+**Review 要点**:
+- [ ] 所有使用点已替换
+- [ ] 语法一致（`.accentColor` vs `Color.accentColor`）
+- [ ] 不影响其他颜色逻辑
+
+---
+
+### T-191: Theme: 主题适配验证
+
+> **关联需求**: F-031, AC-109, AC-110
+> **关联测试**: E2E-014.1~3 (手动验证)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-190
+> **优先级**: P2
+
+**任务描述**:
+验证主题色在不同模式和平台下的表现正确。
+
+**验证清单**:
+
+| 平台 | 浅色模式 | 深色模式 | 自定义强调色 |
+|------|----------|----------|--------------|
+| macOS | [ ] 正常 | [ ] 正常 | [ ] 正常 |
+| iOS | [ ] 正常 | [ ] 正常 | N/A |
+| iPadOS | [ ] 正常 | [ ] 正常 | N/A |
+| tvOS | [ ] 正常 | [ ] 正常 | N/A |
+
+**手动测试步骤**:
+
+1. **浅色模式测试** (AC-109):
+   - [ ] macOS: 系统偏好设置 → 外观 → 浅色
+   - [ ] iOS/iPadOS: 设置 → 显示与亮度 → 浅色
+   - [ ] 验证按钮、图标、滑块颜色正常
+
+2. **深色模式测试** (AC-109):
+   - [ ] macOS: 系统偏好设置 → 外观 → 深色
+   - [ ] iOS/iPadOS: 设置 → 显示与亮度 → 深色
+   - [ ] 验证按钮、图标、滑块颜色正常
+
+3. **macOS 自定义强调色测试** (AC-110):
+   - [ ] 系统偏好设置 → 外观 → 强调色
+   - [ ] 分别测试：蓝、紫、粉、红、橙、黄、绿、石墨
+   - [ ] 验证应用主题色随系统变化
+
+**验收标准**:
+- [ ] 浅色/深色模式下颜色对比度符合 WCAG 2.1 AA 标准
+- [ ] macOS 自定义强调色正确响应
+- [ ] 无视觉异常（颜色消失、不可见等）
+
+**Review 要点**:
+- [ ] 验证覆盖所有目标平台
+- [ ] 边缘情况（高对比度模式）考虑
+- [ ] 截图证据保留
+
+---
+
+### F-031 依赖关系图
+
+```mermaid
+graph LR
+    T189[T-189: ChiakiTheme 品牌色迁移] --> T190[T-190: 全局 chiakiPurple 替换]
+    T190 --> T191[T-191: 主题适配验证]
+```
+
+### F-031 执行检查清单
+
+1. [ ] T-189: 修改 ChiakiTheme.swift 核心定义
+2. [ ] T-190: 批量替换所有 chiakiPurple 使用
+3. [ ] T-191: 在各平台验证主题效果
+4. [ ] 完成后运行 `/devdocs-sync --trace` 更新追溯
+
+### F-031 需求追溯汇总
+
+| AC 编号 | 验收标准 | 任务 | 测试 |
+|---------|----------|------|------|
+| AC-107 | 品牌色迁移 | T-189 | CR-005 |
+| AC-108 | 全局颜色更新 | T-190 | CR-005 |
+| AC-109 | 主题适配验证 | T-191 | E2E-014 |
+| AC-110 | 系统强调色支持 | T-191 | E2E-014 |
+
+---
+
+## F-032: 自动发现主机
+
+> **来源**: UI/UX 审查 (INS-004)
+> **优先级**: P2
+> **状态**: ⏳ 待开始
+> **关联需求**: F-032, US-020
+
+### 问题摘要
+
+当前用户需要手动点击发现按钮才能扫描局域网主机。应改为自动发现，进入主机列表时自动启动，提升用户体验。
+
+### 任务列表
+
+| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
+|------|------|--------|----------|------|------|
+| **T-192** | Discovery: HostListView 自动发现 | P2 | 🟢 可选 | - | ⏳ |
+| **T-193** | Discovery: 移除发现按钮 | P2 | 🟢 可选 | T-192 | ⏳ |
+| **T-194** | Discovery: 生命周期优化 | P2 | 🟡 推荐 | T-192 | ⏳ |
+
+---
+
+### T-192: Discovery: HostListView 自动发现
+
+> **关联需求**: F-032, AC-111, AC-114
+> **关联测试**: E2E-015.1 (手动验证)
+> **TDD 模式**: 🟢 可选
+> **优先级**: P2
+
+**任务描述**:
+修改 `HostListView`，在视图出现时自动启动主机发现。
+
+**涉及文件**:
+- `Chiaki/Features/HostList/HostListView.swift` (修改)
+- `Chiaki/Features/HostList/HostListViewModel.swift` (修改)
+
+**修改内容**:
+
+```swift
+// HostListView.swift - 在 .task 中添加自动发现
+.task {
+    viewModel.initializeIfNeeded()
+    viewModel.startDiscoveryIfNeeded()  // 新增
+}
+
+// HostListViewModel.swift - 添加自动发现方法
+func startDiscoveryIfNeeded() {
+    guard !isDiscovering else { return }
+    startDiscovery()
+}
+```
+
+**验收标准**:
+- [ ] 进入 `HostListView` 时自动调用 `startDiscovery()`
+- [ ] 已在发现中时不重复启动
+- [ ] 下拉刷新仍可手动触发发现
+- [ ] 编译无错误
+
+**测试方法**: E2E-015.1 手动验证 - 启动应用，观察主机是否自动出现
+
+**Review 要点**:
+- [ ] 自动发现不阻塞 UI
+- [ ] 防重入逻辑正确
+- [ ] 日志记录发现启动
+
+---
+
+### T-193: Discovery: 移除发现按钮
+
+> **关联需求**: F-032, AC-113, AC-115
+> **关联测试**: CR-006 (代码审查)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-192
+> **优先级**: P2
+
+**任务描述**:
+从 `HostListView` 工具栏移除发现按钮，保留 macOS 菜单栏的 Refresh Discovery 命令。
+
+**涉及文件**:
+- `Chiaki/Features/HostList/HostListView.swift` (修改)
+
+**修改内容**:
+
+```swift
+// 删除以下代码块
+#if !os(tvOS)
+ToolbarItem(placement: .navigation) {
+    Button(action: {
+        HapticFeedback.button()
+        viewModel.toggleDiscovery()
+    }) {
+        Label(
+            viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery,
+            systemImage: viewModel.isDiscovering ? "wifi" : "wifi.slash"
+        )
+    }
+    .help(viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery)
+}
+#endif
+```
+
+**验收标准**:
+- [ ] 工具栏无发现按钮（wifi/wifi.slash 图标）
+- [ ] macOS 菜单栏 "Refresh Discovery" (Cmd+R) 仍可用
+- [ ] tvOS 行为不受影响
+- [ ] 编译无错误、无遗留引用
+
+**测试方法**: CR-006 代码审查 + 手动验证 UI
+
+**Review 要点**:
+- [ ] 工具栏布局正确
+- [ ] 无遗留的 `toggleDiscovery` 调用
+- [ ] Localization 字符串可保留（供菜单使用）
+
+---
+
+### T-194: Discovery: 生命周期优化
+
+> **关联需求**: F-032, AC-112
+> **关联测试**: IT-018.1 (集成测试)
+> **TDD 模式**: 🟡 推荐
+> **依赖**: T-192
+> **优先级**: P2
+
+**任务描述**:
+优化发现服务生命周期：离开主机列表或进入流媒体时停止发现，节省资源。
+
+**涉及文件**:
+- `Chiaki/Features/HostList/HostListView.swift` (修改)
+- `Chiaki/Features/HostList/HostListViewModel.swift` (修改)
+
+**修改内容**:
+
+```swift
+// HostListView.swift - 添加 onDisappear
+.onDisappear {
+    viewModel.stopDiscoveryIfNeeded()
+}
+
+// HostListViewModel.swift - 添加停止方法
+func stopDiscoveryIfNeeded() {
+    guard isDiscovering else { return }
+    stopDiscovery()
+}
+```
+
+**验收标准**:
+- [ ] 离开 `HostListView` 时停止发现
+- [ ] 进入流媒体界面时停止发现（已有逻辑）
+- [ ] 返回 `HostListView` 时重新启动发现
+- [ ] 不影响下拉刷新和菜单栏命令
+
+**测试方法**: IT-018.1 集成测试 - 监控发现服务状态
+
+**Review 要点**:
+- [ ] 生命周期时机正确
+- [ ] 不会过于频繁启停
+- [ ] 日志记录状态变化
+
+---
+
+### F-032 依赖关系图
+
+```mermaid
+graph LR
+    T192[T-192: HostListView 自动发现] --> T193[T-193: 移除发现按钮]
+    T192 --> T194[T-194: 生命周期优化]
+```
+
+### F-032 执行检查清单
+
+1. [ ] T-192: 实现自动发现逻辑
+2. [ ] T-193: 移除工具栏发现按钮
+3. [ ] T-194: 优化发现服务生命周期
+4. [ ] 完成后运行 `/devdocs-sync --trace` 更新追溯
+
+### F-032 需求追溯汇总
+
+| AC 编号 | 验收标准 | 任务 | 测试 |
+|---------|----------|------|------|
+| AC-111 | 自动启动发现 | T-192 | E2E-015 |
+| AC-112 | 自动停止发现 | T-194 | IT-018 |
+| AC-113 | 移除发现按钮 | T-193 | CR-006 |
+| AC-114 | 保留下拉刷新 | T-192 | E2E-015 |
+| AC-115 | macOS 菜单保留 | T-193 | CR-006 |
+
+---
+
+## F-033: macOS TabView 布局
+
+> **来源**: UI/UX 审查 (INS-005)
+> **优先级**: P2
+> **状态**: ⏳ 待开始
+> **关联需求**: F-033, US-021
+
+### 问题摘要
+
+当前 macOS 使用 `NavigationSplitView` 侧边栏布局，与 iOS/iPadOS 的 `TabView` 布局不一致。统一使用 TabView 可简化代码并提供跨平台一致体验。
+
+### 任务列表
+
+| 编号 | 名称 | 优先级 | TDD 模式 | 依赖 | 状态 |
+|------|------|--------|----------|------|------|
+| **T-195** | Layout: macOS ContentView TabView 迁移 | P2 | 🟢 可选 | - | ⏳ |
+| **T-196** | Layout: 移除 NavigationSplitView 相关代码 | P2 | 🟢 可选 | T-195 | ⏳ |
+| **T-197** | Layout: macOS 窗口样式调整 | P2 | 🟢 可选 | T-195 | ⏳ |
+| **T-198** | Layout: 跨平台布局验证 | P2 | 🟢 可选 | T-195, T-196, T-197 | ⏳ |
+
+---
+
+### T-195: Layout: macOS ContentView TabView 迁移
+
+> **关联需求**: F-033, AC-116, AC-117
+> **关联测试**: E2E-016.1 (手动验证)
+> **TDD 模式**: 🟢 可选
+> **优先级**: P2
+
+**任务描述**:
+修改 `ContentView.swift`，将 macOS 的 `NavigationSplitView` 替换为 `TabView`，与 iOS/iPadOS 统一。
+
+**涉及文件**:
+- `Chiaki/App/ContentView.swift` (修改)
+
+**修改内容**:
+
+```swift
+// 修改前 (macOS)
+#if os(macOS)
+@Bindable var manager = navigationManager
+NavigationSplitView {
+    List(selection: $manager.sidebarSelection) {
+        NavigationLink(value: SidebarItem.hosts) {
+            Label("Hosts", systemImage: "gamecontroller")
+        }
+        NavigationLink(value: SidebarItem.settings) {
+            Label("Settings", systemImage: "gear")
+        }
+    }
+    .navigationTitle("Chiaki")
+} detail: {
+    NavigationStack {
+        switch navigationManager.sidebarSelection {
+        case .hosts:
+            HostListView()
+        case .settings:
+            SettingsView()
+        case nil:
+            WelcomeView()
+        }
+    }
+}
+#else
+TabView { ... }
+#endif
+
+// 修改后 (统一)
+TabView {
+    NavigationStack {
+        HostListView()
+    }
+    .tabItem {
+        Label("Hosts", systemImage: "gamecontroller")
+    }
+
+    SettingsView()
+    .tabItem {
+        Label("Settings", systemImage: "gear")
+    }
+}
+```
+
+**验收标准**:
+- [ ] macOS 使用 `TabView` 布局
+- [ ] Tab 项：Hosts (gamecontroller)、Settings (gear)
+- [ ] Tab 切换正常
+- [ ] 编译无错误
+
+**测试方法**: E2E-016.1 手动验证 - macOS 上运行应用
+
+**Review 要点**:
+- [ ] 条件编译正确移除
+- [ ] NavigationStack 保留
+- [ ] Tab 项与 iOS 一致
+
+---
+
+### T-196: Layout: 移除 NavigationSplitView 相关代码
+
+> **关联需求**: F-033, AC-118
+> **关联测试**: CR-007 (代码审查)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-195
+> **优先级**: P2
+
+**任务描述**:
+移除与 `NavigationSplitView` 相关的代码，包括 `SidebarItem`、`WelcomeView`、`sidebarSelection` 等。
+
+**涉及文件**:
+- `Chiaki/App/ContentView.swift` (修改)
+- `Chiaki/App/NavigationManager.swift` (修改)
+
+**修改内容**:
+
+1. **ContentView.swift**:
+   - 删除 `WelcomeView` 结构体
+   - 删除 `#if os(macOS)` 分支中的 NavigationSplitView 代码
+
+2. **NavigationManager.swift**:
+   - 删除 `SidebarItem` 枚举（如果存在）
+   - 删除 `sidebarSelection` 属性（如果存在）
+
+**验收标准**:
+- [ ] `WelcomeView` 已删除
+- [ ] `SidebarItem` 枚举已删除（如有）
+- [ ] `sidebarSelection` 属性已删除（如有）
+- [ ] 编译无错误、无遗留引用
+
+**测试方法**: CR-007 代码审查
+
+**Review 要点**:
+- [ ] 无遗留的死代码
+- [ ] 无编译警告
+- [ ] Preview 正常工作
+
+---
+
+### T-197: Layout: macOS 窗口样式调整
+
+> **关联需求**: F-033, AC-119, AC-120
+> **关联测试**: E2E-016.2 (手动验证)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-195
+> **优先级**: P2
+
+**任务描述**:
+评估并调整 macOS 窗口样式，确保 TabView 布局下窗口外观合适。
+
+**涉及文件**:
+- `Chiaki/App/ChiakiApp.swift` (修改)
+
+**评估项**:
+
+| 配置项 | 当前值 | 评估 |
+|--------|--------|------|
+| `.windowStyle(.hiddenTitleBar)` | 启用 | 考虑移除（TabView 不需要隐藏标题栏） |
+| `.defaultSize(width: 1280, height: 720)` | 保持 | 可适当减小 |
+| `SidebarCommands()` | 启用 | 应移除（无侧边栏） |
+
+**修改建议**:
+
+```swift
+// 修改前
+.windowStyle(.hiddenTitleBar)
+.commands {
+    // ...
+    SidebarCommands()
+}
+
+// 修改后
+// 移除 .windowStyle(.hiddenTitleBar) 或改为其他样式
+.commands {
+    // 移除 SidebarCommands()
+}
+```
+
+**验收标准**:
+- [ ] 窗口标题栏显示正常
+- [ ] 菜单栏功能保持不变（Cmd+N、Cmd+R 等）
+- [ ] `SidebarCommands()` 已移除
+- [ ] 窗口尺寸合适
+
+**测试方法**: E2E-016.2 手动验证 - macOS 上检查窗口外观
+
+**Review 要点**:
+- [ ] 窗口样式符合 macOS 规范
+- [ ] 无多余的窗口命令
+- [ ] 与系统外观一致
+
+---
+
+### T-198: Layout: 跨平台布局验证
+
+> **关联需求**: F-033, AC-116~AC-120
+> **关联测试**: E2E-016.1~3 (手动验证)
+> **TDD 模式**: 🟢 可选
+> **依赖**: T-195, T-196, T-197
+> **优先级**: P2
+
+**任务描述**:
+在所有目标平台验证 TabView 布局的正确性和一致性。
+
+**验证清单**:
+
+| 平台 | Tab 切换 | 导航正常 | 流媒体入口 | 设置页面 |
+|------|----------|----------|------------|----------|
+| macOS | [ ] | [ ] | [ ] | [ ] |
+| iOS | [ ] | [ ] | [ ] | [ ] |
+| iPadOS | [ ] | [ ] | [ ] | [ ] |
+
+**手动测试步骤**:
+
+1. **macOS 验证**:
+   - [ ] 启动应用，确认显示 TabView
+   - [ ] 点击 Hosts tab，显示主机列表
+   - [ ] 点击 Settings tab，显示设置页面
+   - [ ] 从主机列表进入流媒体
+   - [ ] Cmd+N 添加主机
+   - [ ] Cmd+R 刷新发现
+   - [ ] Cmd+, 打开设置
+
+2. **iOS/iPadOS 验证**:
+   - [ ] 确认布局与修改前一致
+   - [ ] 功能无回归
+
+**验收标准**:
+- [ ] 所有平台 TabView 正常显示
+- [ ] 所有平台导航功能正常
+- [ ] 所有平台流媒体功能正常
+- [ ] macOS 菜单快捷键正常
+
+**Review 要点**:
+- [ ] 跨平台测试覆盖完整
+- [ ] 无功能回归
+- [ ] 截图证据保留
+
+---
+
+### F-033 依赖关系图
+
+```mermaid
+graph TD
+    T195[T-195: TabView 迁移] --> T196[T-196: 移除旧代码]
+    T195 --> T197[T-197: 窗口样式调整]
+    T196 --> T198[T-198: 跨平台验证]
+    T197 --> T198
+```
+
+### F-033 执行检查清单
+
+1. [ ] T-195: 将 macOS 布局改为 TabView
+2. [ ] T-196: 移除 NavigationSplitView 相关代码
+3. [ ] T-197: 调整 macOS 窗口样式
+4. [ ] T-198: 在所有平台验证布局
+5. [ ] 完成后运行 `/devdocs-sync --trace` 更新追溯
+
+### F-033 需求追溯汇总
+
+| AC 编号 | 验收标准 | 任务 | 测试 |
+|---------|----------|------|------|
+| AC-116 | TabView 替代侧边栏 | T-195 | E2E-016 |
+| AC-117 | Tab 项一致 | T-195 | E2E-016 |
+| AC-118 | 移除欢迎页 | T-196 | CR-007 |
+| AC-119 | 菜单栏保留 | T-197 | E2E-016 |
+| AC-120 | 窗口样式调整 | T-197 | E2E-016 |

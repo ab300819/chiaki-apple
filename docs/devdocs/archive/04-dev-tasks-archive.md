@@ -1,4 +1,103 @@
-# 开发任务归档 - M11 已完成任务
+# 开发任务归档
+
+> **最后更新**: 2026-02-05
+> **归档版本**: M11 + M12
+
+---
+
+# M12 归档 - HDR 渲染优化、渲染模块解耦、UI 层 MVVM 重构
+
+> **归档时间**: 2026-02-05
+> **归档原因**: M12 任务 100% 完成
+> **任务数量**: 24
+
+## M12 归档任务汇总
+
+| 编号 | 名称 | 优先级 | 关联需求 | 完成状态 |
+|------|------|--------|----------|----------|
+| T-147 | HDR: HDRConfiguration 统一配置结构 | P0 | F-025, AC-088 | ✅ |
+| T-148 | HDR: HDRMetadataCache 抖动抑制 | P0 | F-025, AC-083 | ✅ |
+| T-149 | HDR: EDRHeadroomMonitor 动态监听 | P0 | F-025, AC-081 | ✅ |
+| T-150 | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | F-025, AC-080 | ✅ |
+| T-151 | HDR: Shader ACES Tone Mapping | P1 | F-025, AC-084 | ✅ |
+| T-152 | HDR: Shader Uniform 扩展 | P0 | F-025, AC-081~084 | ✅ |
+| T-153 | HDR: MetalVideoRenderer 集成 | P0 | F-025, AC-080~083 | ✅ |
+| T-154 | HDR: VideoStreamView EDR 集成 | P0 | F-025, AC-081~082 | ✅ |
+| T-155 | Stats: 渲染性能指标扩展 | P1 | F-025, AC-085 | ✅ |
+| T-156 | Render: VideoRenderer 协议抽象 | P0 | F-026, AC-086 | ✅ |
+| T-157 | Render: MetalVideoRenderer 协议实现 | P0 | F-026, AC-086, AC-089 | ✅ |
+| T-158 | Render: VideoStreamView.Coordinator 分离 | P1 | F-026, AC-087 | ✅ |
+| T-159 | Protocol: PinManaging 协议定义 | P0 | F-027, AC-095 | ✅ |
+| T-160 | Protocol: PSNServicing 协议定义 | P0 | F-027, AC-095 | ✅ |
+| T-161 | Protocol: ConsolePinManager 协议实现 | P0 | F-027, AC-095 | ✅ |
+| T-162 | Protocol: PSNService 协议实现 | P0 | F-027, AC-095 | ✅ |
+| T-163 | VM: AccountSettingsViewModel | P0 | F-027, AC-091 | ✅ |
+| T-164 | VM: VideoSettingsViewModel | P1 | F-027, AC-093 | ✅ |
+| T-165 | VM: ConsolesSettingsViewModel | P1 | F-027, AC-094 | ✅ |
+| T-166 | View: AccountSettingsView 重构 | P0 | F-027, AC-091 | ✅ |
+| T-167 | View: VideoSettingsView 重构 | P1 | F-027, AC-093 | ✅ |
+| T-168 | View: ConsolesSettingsView 重构 | P1 | F-027, AC-094 | ✅ |
+| T-169 | View: HostListView Singleton 解耦 | P0 | F-027, AC-090 | ✅ |
+| T-170 | View: StreamingView/ControllerSettingsView 解耦 | P1 | F-027, AC-092 | ✅ |
+
+## M12 关键提交
+
+| 任务 | 提交 | 描述 |
+|------|------|------|
+| T-147 | `11af485` | feat(video): add HDRConfiguration unified structure |
+| T-148 | `4e315cb` | feat(video): add HDRMetadataCache jitter suppression |
+| T-149 | `f02af86` | feat(video): add EDRHeadroomMonitor dynamic headroom tracking |
+| T-150 | `d353a35` | feat(video): add Rec.2020 to P3 gamut mapping |
+| T-151 | `47555af` | feat(video): add ACES Filmic tone mapping for HDR→SDR |
+| T-152 | `cb61b66` | feat(video): extend shader uniforms with HDR parameters |
+| T-153 | `2cd83ef` | feat(video): integrate HDRMetadataCache for jitter suppression |
+| T-154 | `ecc9ad7` | feat(video): integrate EDR headroom monitoring in VideoStreamView |
+| T-155 | `80c9ffb` | feat(stats): extend performance metrics with decode/render timing |
+| T-159 | `3c05c37` | feat(protocol): define PinManaging protocol abstraction |
+| T-160/162 | `d081981` | feat(protocol): define PSNServicing protocol abstraction |
+| T-163 | `b1bda8a` | feat(viewmodel): add AccountSettingsViewModel for PSN operations |
+| T-164 | `46e3b06` | feat(viewmodel): add VideoSettingsViewModel for HDR settings |
+| T-165 | `59c5e02` | feat(viewmodel): add ConsolesSettingsViewModel for host management |
+| T-166 | `1361575` | refactor(view): use AccountSettingsViewModel in AccountSettingsView |
+| T-167 | `079b998` | refactor(view): use VideoSettingsViewModel in VideoSettingsView |
+| T-168 | `4360f31` | refactor(view): use ConsolesSettingsViewModel in ConsolesSettingsView |
+| T-169 | `4259fc9` | refactor(view): decouple HostListView from singletons |
+| T-170 | `08744e3` | refactor(view): decouple StreamingView and ControllerSettingsView |
+
+## M12 涉及文件
+
+**HDR 渲染管线 (F-025)**:
+- `Chiaki/Core/Video/HDRConfiguration.swift` (新建)
+- `Chiaki/Core/Video/HDRMetadataCache.swift` (新建)
+- `Chiaki/Core/Video/EDRHeadroomMonitor.swift` (新建)
+- `Chiaki/Core/Video/VideoShaderConstants.swift` (新建)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改)
+- `Chiaki/Core/Video/VideoStreamView.swift` (修改)
+- `Chiaki/Core/Streaming/StreamStatsManager.swift` (修改)
+
+**渲染模块解耦 (F-026)**:
+- `Chiaki/Core/Video/VideoRenderer.swift` (新建/修改)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (重构)
+- `Chiaki/Core/Video/VideoStreamView.swift` (重构)
+
+**UI 层 MVVM 重构 (F-027)**:
+- `Chiaki/Shared/Protocols/PinManaging.swift` (新建)
+- `Chiaki/Shared/Protocols/PSNServicing.swift` (新建)
+- `Chiaki/Features/Settings/ViewModels/AccountSettingsViewModel.swift` (新建)
+- `Chiaki/Features/Settings/ViewModels/VideoSettingsViewModel.swift` (新建)
+- `Chiaki/Features/Settings/ViewModels/ConsolesSettingsViewModel.swift` (新建)
+- `Chiaki/Features/Settings/AccountSettingsView.swift` (重构)
+- `Chiaki/Features/Settings/VideoSettingsView.swift` (重构)
+- `Chiaki/Features/Settings/ConsolesSettingsView.swift` (重构)
+- `Chiaki/Features/HostList/HostListView.swift` (重构)
+- `Chiaki/Features/HostList/HostListViewModel.swift` (扩展)
+- `Chiaki/Features/Streaming/StreamingView.swift` (重构)
+- `Chiaki/Features/Streaming/StreamingViewModel.swift` (扩展)
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` (重构)
+
+---
+
+# M11 归档 - Beta 1 发布冲刺
 
 > **归档时间**: 2026-02-04
 > **归档原因**: M11 任务已完成
