@@ -56,6 +56,9 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-025** | HDR 渲染管线优化 | P0 | 色域映射、动态 EDR Headroom、性能指标 [优化] |
 | **F-026** | 渲染模块解耦重构 | P1 | 协议抽象、Delegate 分离、HDR 配置统一 [重构] |
 | **F-027** | UI 层 MVVM 合规重构 | P1 | Singleton 解耦、ViewModel 补全、协议抽象 [重构] |
+| **F-028** | HDR 配置完全落地 | P0 | Shader 动态分支、配置字段接入渲染 [优化] |
+| **F-029** | MainActor 边界规范化 | P1 | Store 类 MainActor 标注、线程安全保障 [质量] |
+| **F-030** | 日志输出规范化 | P2 | 统一 Logger 系统、DEBUG 保护、噪声清理 [质量] |
 
 ---
 
@@ -396,6 +399,52 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - **AC-094**: 业务逻辑分离：将 `ConsolesSettingsView` 中的 `hostStore.removeHost(host)` 等操作移至 ViewModel
 - **AC-095**: 协议抽象：为 `ConsolePinManager`、`PSNService` 定义协议（`PinManaging`、`PSNServicing`），支持 Mock 测试
 - **AC-096**: 目录结构优化：评估并可选地将 Feature 目录拆分为 `Views/` 和 `ViewModels/` 子目录，创建 `Shared/Components/` 和 `Shared/Styles/`
+
+---
+
+### US-016: HDR 配置完全落地
+> 关联功能: F-028
+> 来源: INS-002 (REVIEW_SUMMARY 审查)
+
+**作为** 用户
+**我希望** HDR 配置选项能够真正影响渲染效果
+**以便** 我可以根据显示器特性调整最佳 HDR 体验
+
+**验收标准**:
+- **AC-097**: Shader 动态分支：将 `edrIntensity`、`gamutMappingEnabled` 等字段加入 `VideoUniforms`，Shader 根据配置动态执行
+- **AC-098**: EDR 强度应用：`edrIntensity` 字段在 Shader 中作为乘数应用于 EDR 输出
+- **AC-099**: 色域映射开关：`gamutMappingEnabled` 控制是否执行 Rec.2020→P3 色域映射
+- **AC-100**: 单元测试覆盖：为 `VideoShaderConstants.swift` 补充单元测试，确保矩阵/tonemap 行为可回归
+
+---
+
+### US-017: MainActor 边界规范化
+> 关联功能: F-029
+> 来源: INS-004 (REVIEW_SUMMARY 审查)
+
+**作为** 开发者
+**我希望** Store 类有明确的线程边界
+**以便** 避免后台线程写入导致 Observation/UI 未定义行为
+
+**验收标准**:
+- **AC-101**: SettingsStore 标注：`SettingsStore` 整体标注 `@MainActor`
+- **AC-102**: HostStore 标注：`HostStore` 整体标注 `@MainActor`
+- **AC-103**: 其他 Observable Store 审查：审查并标注其他作为 Environment 对象的 `@Observable` 类
+
+---
+
+### US-018: 日志输出规范化
+> 关联功能: F-030
+> 来源: INS-005 (REVIEW_SUMMARY 审查)
+
+**作为** 开发者
+**我希望** 日志输出统一规范
+**以便** release 版本无噪声、性能损耗最小
+
+**验收标准**:
+- **AC-104**: Logger 统一：`ChiakiSessionWrapper` 中的 debug `print` 替换为 Logger 系统调用
+- **AC-105**: DEBUG 保护：确保 verbose 日志使用 `#if DEBUG` 保护
+- **AC-106**: Bridge 层日志审查：审查其他 Bridge 层文件，统一日志输出方式
 
 ---
 

@@ -1078,3 +1078,71 @@ HDR 功能已实现，但存在以下可优化点：
 - [x] INS-044: 已确认 → F-027 / AC-094
 - [x] INS-045: 已确认 → F-027 / AC-095
 - [x] INS-046: 已确认 → F-027 / AC-096
+
+---
+
+## 洞察收集：REVIEW_SUMMARY 审查结论
+
+**收集时间**: 2026-02-04
+**来源类型**: 💡 内部审查 + 📄 架构复核
+**来源文件**: `REVIEW_SUMMARY.md`
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-047 | 解码重排策略优化 | 💡 | P1 | ⏸️ 暂缓 |
+| INS-048 | HDR 配置完全落地 | 💡 | P0 | 🔄 已转化 |
+| INS-049 | 全局单例收敛 | 💡 | P1 | ✅ 已完成 (M12) |
+| INS-050 | MainActor 边界标注 | 💡 | P1 | 🔄 已转化 |
+| INS-051 | Debug 输出统一日志 | 💡 | P2 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-047: 解码重排策略优化（暂缓）
+
+- **来源**: 💡 REVIEW_SUMMARY 高优先级建议
+- **现状**: `VideoToolboxDecoder` 使用固定 4 帧重排缓冲，永远等满再输出
+- **建议**: 改为动态策略：仅在检测到乱序/B 帧时缓冲，或根据 codec/profile 动态设置
+- **影响范围**: VideoToolboxDecoder、视频延迟体验
+- **状态**: ⏸️ 暂缓（需充分测试，可作为 M13+ 优化项）
+- **暂缓原因**: 修改重排策略风险较高，当前固定策略虽有延迟但稳定性好
+
+#### INS-048: HDR 配置完全落地 → F-028
+
+- **来源**: 💡 REVIEW_SUMMARY 高优先级建议
+- **现状**: `HDRConfiguration` 有 `edrIntensity`、`gamutMappingEnabled` 字段，但 shader 固定执行
+- **建议**: 将配置字段进入 `VideoUniforms`，shader 根据配置分支执行
+- **影响范围**: VideoUniforms、Metal Shader
+- **状态**: 🔄 已转化 → **F-028** (AC-097~AC-100)
+
+#### INS-049: 全局单例收敛（M12 已完成）
+
+- **来源**: 💡 REVIEW_SUMMARY 高优先级建议
+- **建议**: 按 T-156/T-159/T-160 推进协议化注入
+- **状态**: ✅ **M12 已完成**
+- **完成内容**: T-159~T-170 (PinManaging/PSNServicing 协议、ViewModel 补全、View 层解耦)
+
+#### INS-050: MainActor 边界标注 → F-029
+
+- **来源**: 💡 REVIEW_SUMMARY 中优先级建议
+- **现状**: `SettingsStore`、`HostStore` 等 Store 未整体标注 `@MainActor`
+- **建议**: 对作为 Environment 对象的 Store 整体标注 `@MainActor`
+- **影响范围**: SettingsStore、HostStore、其他 @Observable Store
+- **状态**: 🔄 已转化 → **F-029** (AC-101~AC-103)
+
+#### INS-051: Debug 输出统一日志 → F-030
+
+- **来源**: 💡 REVIEW_SUMMARY 中优先级建议
+- **现状**: `ChiakiSessionWrapper` 中有较多 debug `print`
+- **建议**: 统一走 Logger 系统并用 `#if DEBUG` 保护
+- **影响范围**: ChiakiSessionWrapper、Bridge 层
+- **状态**: 🔄 已转化 → **F-030** (AC-104~AC-106)
+
+### 确认结果
+
+- [ ] INS-047: ⏸️ 暂缓
+- [x] INS-048: 已确认 → F-028 / AC-097~AC-100
+- [x] INS-049: 已完成 (M12 T-159~T-170)
+- [x] INS-050: 已确认 → F-029 / AC-101~AC-103
+- [x] INS-051: 已确认 → F-030 / AC-104~AC-106
