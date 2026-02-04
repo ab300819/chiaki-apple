@@ -189,6 +189,11 @@ final class MetalVideoRenderer: NSObject {
     /// Lock for thread-safe frame updates
     private let frameLock = NSLock()
 
+    /// HDR metadata cache for jitter suppression
+    /// [requirement] F-025
+    /// [satisfies] AC-083
+    private let hdrMetadataCache = HDRMetadataCache()
+
     /// Frame counter for statistics
     private(set) var frameCount: UInt64 = 0
 
@@ -489,6 +494,19 @@ final class MetalVideoRenderer: NSObject {
         let height = CVPixelBufferGetHeight(pixelBuffer)
 
         videoSize = CGSize(width: width, height: height)
+
+        // 1. Detect HDR from pixel format
+        let isHDRFrame = (pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange)
+        
+        // 2. Apply jitter suppression
+        // [verifies] AC-083
+        let confirmedHDR = hdrMetadataCache.update(isHDRFrame: isHDRFrame)
+        
+        // 3. Automatically switch configuration if changed
+        if confirmedHDR != hdrConfiguration.isHDR {
+            hdrConfiguration = confirmedHDR ? .hdr : .sdr
+            logInfo("🎬 HDR: Automatic mode switch -> \(confirmedHDR ? "HDR" : "SDR") (Jitter Suppressed)")
+        }
 
         switch pixelFormat {
         case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
