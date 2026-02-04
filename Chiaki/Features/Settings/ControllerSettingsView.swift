@@ -156,6 +156,6 @@ struct ControllerSettingsView: View {
     NavigationStack {
         ControllerSettingsView()
             .environment(SettingsStore())
-            .environment(ControllerManager.shared)
+            .environment(ControllerManager.preview)
     }
 }

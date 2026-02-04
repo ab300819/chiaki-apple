@@ -336,3 +336,117 @@ Qt 客户端使用 4ms 定时器定期发送控制器状态，即使没有输入
 3. **定时器设计**：使用 `RunLoop.main.add(timer, forMode: .common)` 确保定时器在 UI 交互期间也能正常运行
 
 ---
+
+## BUG-007: 设置页面国际化字符串显示异常
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户反馈 |
+| **关联功能** | F-003 (设置界面) |
+| **Issue** | N/A |
+| **严重程度** | P2 |
+| **修复日期** | 2026-02-05 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+设置页面中：
+1. "设置-视频"中帧率和码率的值显示异常，标签名重复（如"码率 码率"）
+2. "设置-音频"中音量和缓冲区大小的值显示异常，标签名重复（如"音量 音量"）
+
+### 复现步骤
+
+1. 将系统语言设置为中文
+2. 打开 Chiaki Apple → 设置 → 视频
+3. 观察帧率和码率的显示值
+4. 打开设置 → 音频
+5. 观察音量百分比和缓冲区大小的显示值
+
+### 根因分析
+
+`Localizable.xcstrings` 中带插值参数的本地化字符串（`settings.video.fps %lld`、`settings.video.mbps %lld`、`settings.audio.percent %lld`、`settings.audio.ms %lld`）只有英文翻译，没有中文翻译。
+
+当中文环境下找不到对应翻译时，SwiftUI 会 fallback 显示 key 本身，导致显示异常。
+
+### 解决方案
+
+在 `Localizable.xcstrings` 中为以下 key 添加中文翻译：
+
+| Key | 英文 | 中文 |
+|-----|------|------|
+| `settings.video.fps %lld` | `%lld FPS` | `%lld FPS` |
+| `settings.video.mbps %lld` | `%lld Mbps` | `%lld Mbps` |
+| `settings.audio.percent %lld` | `%lld%%` | `%lld%%` |
+| `settings.audio.ms %lld` | `%lld ms` | `%lld 毫秒` |
+
+### 回归测试
+
+- 手动验证：中文环境下设置页面显示正常
+- 编译验证：`xcodebuild build` 成功
+
+---
+
+## BUG-008: ControllerSettingsView SwiftUI Preview 崩溃
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 开发测试 |
+| **关联功能** | F-004 (控制器设置) |
+| **Issue** | N/A |
+| **严重程度** | P2 |
+| **修复日期** | 2026-02-05 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+在 Xcode 中打开 `ControllerSettingsView.swift` 文件时，SwiftUI Preview 崩溃无法显示。
+
+### 复现步骤
+
+1. 在 Xcode 中打开 `Chiaki/Features/Settings/ControllerSettingsView.swift`
+2. 等待 SwiftUI Preview 加载
+3. Preview 崩溃，显示错误
+
+### 根因分析
+
+`ControllerSettingsView` 的 `#Preview` 使用 `ControllerManager.shared` 作为环境依赖。`ControllerManager.shared` 在初始化时会：
+
+1. 调用 `setupNotifications()` 注册 GameController 通知
+2. 调用 `scanConnectedControllers()` 扫描 `GCController.controllers()`
+
+在 SwiftUI Preview 环境中，GameController 框架可能不可用或行为异常，导致 Preview 崩溃。
+
+### 解决方案
+
+1. 在 `ControllerManager` 中添加 `preview` 静态实例，使用特殊初始化器跳过 GameController 相关设置：
+
+```swift
+static let preview: ControllerManager = {
+    let manager = ControllerManager(forPreview: true)
+    return manager
+}()
+
+private init(forPreview: Bool = false) {
+    guard !forPreview else {
+        Logger.controller.debug("ControllerManager initialized for preview")
+        return
+    }
+    setupNotifications()
+    scanConnectedControllers()
+    // ...
+}
+```
+
+2. 更新 `ControllerSettingsView` 的 Preview 使用 `ControllerManager.preview`
+
+### 回归测试
+
+- 编译验证：`xcodebuild build` 成功
+- Preview 验证：SwiftUI Preview 正常显示
+
+### 修改文件清单
+
+1. `Chiaki/Core/Controllers/ControllerManager.swift` - 添加 preview 实例
+2. `Chiaki/Features/Settings/ControllerSettingsView.swift` - 使用 preview 实例
+
+---

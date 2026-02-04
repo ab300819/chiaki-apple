@@ -513,7 +513,20 @@
       }
     },
     "common.edit" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        }
+      }
     },
     "common.hidden" : {
       "localizations" : {
@@ -2496,6 +2509,12 @@
             "state" : "translated",
             "value" : "%lld ms"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 毫秒"
+          }
         }
       }
     },
@@ -2518,6 +2537,12 @@
     "settings.audio.percent %lld" : {
       "localizations" : {
         "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        },
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld%%"
@@ -3880,6 +3905,12 @@
             "state" : "translated",
             "value" : "%lld FPS"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld FPS"
+          }
         }
       }
     },
@@ -4036,6 +4067,12 @@
     "settings.video.mbps %lld" : {
       "localizations" : {
         "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Mbps"
+          }
+        },
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Mbps"

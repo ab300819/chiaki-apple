@@ -87,9 +87,20 @@ final class ControllerManager {
 
     static let shared = ControllerManager()
 
+    /// Preview instance that skips GameController framework initialization
+    /// Safe to use in SwiftUI Previews where GCController may not be available
+    static let preview: ControllerManager = {
+        let manager = ControllerManager(forPreview: true)
+        return manager
+    }()
+
     // MARK: - Initialization
 
-    private init() {
+    private init(forPreview: Bool = false) {
+        guard !forPreview else {
+            Logger.controller.debug("ControllerManager initialized for preview (no GCController)")
+            return
+        }
         setupNotifications()
         scanConnectedControllers()
         Logger.controller.info("ControllerManager initialized")
