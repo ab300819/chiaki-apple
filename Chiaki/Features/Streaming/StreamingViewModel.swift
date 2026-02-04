@@ -79,12 +79,13 @@ final class StreamingViewModel {
     private var volumeOSDHideTask: Task<Void, Never>?
 
     // MARK: - Internal state
-    
+
     let host: ConsoleHost
     private let session: ChiakiSessionWrapper
     private let statistics: StreamStatistics
     private let videoDecoderBridge: VideoDecoderBridge
     private let audioPlayerBridge: AudioPlayerBridge
+    private let pinManager: PinManaging
 
     private var statsUpdateTimer: Timer?
     private var videoRenderer: VideoRenderer?
@@ -94,10 +95,24 @@ final class StreamingViewModel {
     private var lastSettings: StreamSettings?
     private var lastIsRemote: Bool = false
 
+    // MARK: - PIN Management
+    /// @requirement F-027 - UI 层 MVVM 合规重构
+    /// @satisfies AC-092 - StreamingView Singleton 解耦
+
+    /// Check if PIN entry is required for the host
+    var requiresPinEntry: Bool {
+        pinManager.requiresPinEntry(for: host)
+    }
+
     // MARK: - Initialization
 
-    init(host: ConsoleHost) {
+    /// Initialize with host and optional dependencies
+    /// - Parameters:
+    ///   - host: Console host to connect to
+    ///   - pinManager: PIN manager (defaults to shared instance)
+    init(host: ConsoleHost, pinManager: PinManaging? = nil) {
         self.host = host
+        self.pinManager = pinManager ?? ConsolePinManager.shared
         self.session = ChiakiSessionWrapper()
         self.statistics = StreamStatistics()
         self.videoDecoderBridge = VideoDecoderBridge()

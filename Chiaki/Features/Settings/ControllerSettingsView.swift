@@ -1,14 +1,27 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// ControllerSettingsView.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// Controller settings view with singleton decoupling
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-092 - ControllerSettingsView Singleton 解耦
+
 import SwiftUI
 
+/// Controller settings view using Environment injection
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct ControllerSettingsView: View {
     @Environment(SettingsStore.self) var store
+    @Environment(ControllerManager.self) var controllerManager
 
     var body: some View {
         @Bindable var store = store
         Form {
             // Connected Controllers Section
             Section {
-                let controllers = ControllerManager.shared.connectedControllers
+                let controllers = controllerManager.connectedControllers
                 if controllers.isEmpty {
                     HStack {
                         Image(systemName: "gamecontroller")
@@ -143,6 +156,6 @@ struct ControllerSettingsView: View {
     NavigationStack {
         ControllerSettingsView()
             .environment(SettingsStore())
-            .environment(NavigationManager())
+            .environment(ControllerManager.shared)
     }
 }

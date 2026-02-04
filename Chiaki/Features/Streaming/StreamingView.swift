@@ -1,5 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// StreamingView.swift
+// Chiaki - PlayStation Remote Play Client for Apple Platforms
+//
+// Streaming view with MVVM singleton decoupling
+//
+// @requirement F-027 - UI 层 MVVM 合规重构
+// @satisfies AC-092 - StreamingView Singleton 解耦
+
 import SwiftUI
 
+/// Streaming view using MVVM pattern
+/// @requirement F-027 - UI 层 MVVM 合规重构
 struct StreamingView: View {
     @State private var viewModel: StreamingViewModel
     @Environment(\.dismiss) private var dismiss
@@ -13,10 +25,6 @@ struct StreamingView: View {
 
     private let host: ConsoleHost
 
-    private var requiresPin: Bool {
-        ConsolePinManager.shared.requiresPinEntry(for: host)
-    }
-
     init(host: ConsoleHost) {
         self.host = host
         _viewModel = State(initialValue: StreamingViewModel(host: host))
@@ -24,7 +32,7 @@ struct StreamingView: View {
     
     var body: some View {
         Group {
-            if requiresPin && !pinVerified {
+            if viewModel.requiresPinEntry && !pinVerified {
                 pinEntryContent
             } else {
                 streamingContent
