@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 17% (4/24 任务完成)
+> **完成率**: 21% (5/24 任务完成)
 
 ## M12 任务概览
 
@@ -39,7 +39,7 @@
 | **T-148** | HDR: HDRMetadataCache 抖动抑制 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-149** | HDR: EDRHeadroomMonitor 动态监听 | P0 | 🔴 强制 | T-147 | ✅ |
 | **T-150** | HDR: Shader 色域映射 (Rec.2020→P3) | P0 | 🔴 强制 | T-147 | ✅ |
-| **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ⏳ |
+| **T-151** | HDR: Shader ACES Tone Mapping | P1 | 🔴 强制 | T-150 | ✅ |
 | **T-152** | HDR: Shader Uniform 扩展 | P0 | 🟡 推荐 | T-150, T-151 | ⏳ |
 | **T-153** | HDR: MetalVideoRenderer 集成 | P0 | 🟡 推荐 | T-148, T-149, T-152 | ⏳ |
 | **T-154** | HDR: VideoStreamView EDR 集成 | P0 | 🟢 可选 | T-149, T-153 | ⏳ |
@@ -210,7 +210,7 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 ---
 
-### T-151: HDR: Shader ACES Tone Mapping ⏳
+### T-151: HDR: Shader ACES Tone Mapping ✅
 
 **目标**: 实现 ACES Filmic Tone Mapping 用于 HDR→SDR 降级。
 
@@ -222,15 +222,20 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS' -only-testing:Chiak
 
 **依赖**: T-150
 
+**完成提交**: `47555af` feat(video): add ACES Filmic tone mapping for HDR→SDR (T-151)
+
 **涉及文件**:
-- `Chiaki/Core/Video/VideoShaders.metal` (修改)
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - 嵌入式 shader)
+- `Chiaki/Core/Video/VideoShaders.txt` (修改 - 参考文档)
+- `Chiaki/Core/Video/VideoShaderConstants.swift` (修改 - Swift 侧常量)
+- `ChiakiTests/TonemappingTests.swift` (新建)
 
 **验收标准**:
-- [ ] 实现 `acesTonemap()` 函数
-- [ ] 黑色保留: (0,0,0) → (0,0,0)
-- [ ] 高光压缩: (10,10,10) → < (1,1,1)
-- [ ] 输出范围 ∈ [0, 1]
-- [ ] 单调性: x1 < x2 → f(x1) < f(x2)
+- [x] 实现 `acesTonemap()` 函数
+- [x] 黑色保留: (0,0,0) → (0,0,0)
+- [x] 高光压缩: (10,10,10) → < (1,1,1)
+- [x] 输出范围 ∈ [0, 1]
+- [x] 单调性: x1 < x2 → f(x1) < f(x2)
 
 **测试方法**:
 ```bash
@@ -238,8 +243,8 @@ swift test --filter TonemappingTests
 ```
 
 **Review 要点**:
-- [ ] ACES 参数与标准一致
-- [ ] 条件调用（tonemapMode == 1 时）
+- [x] ACES 参数与标准一致
+- [x] 条件调用（tonemapMode == 1 时）
 
 ---
 
