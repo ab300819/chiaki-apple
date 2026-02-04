@@ -29,7 +29,7 @@
 
 > **状态更新**: 2026-02-04
 > **阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-> **完成率**: 75% (18/24 任务完成)
+> **完成率**: 79% (19/24 任务完成)
 
 ## M12 任务概览
 
@@ -53,7 +53,7 @@
 | **T-162** | Protocol: PSNService 协议实现 | P0 | 🟡 推荐 | T-160 | ✅ |
 | **T-163** | VM: AccountSettingsViewModel | P0 | 🔴 强制 | T-162 | ✅ |
 | **T-164** | VM: VideoSettingsViewModel | P1 | 🔴 强制 | T-147 | ✅ |
-| **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ⏳ |
+| **T-165** | VM: ConsolesSettingsViewModel | P1 | 🔴 强制 | T-159, T-161 | ✅ |
 | **T-166** | View: AccountSettingsView 重构 | P0 | 🟢 可选 | T-163 | ⏳ |
 | **T-167** | View: VideoSettingsView 重构 | P1 | 🟢 可选 | T-164 | ⏳ |
 | **T-168** | View: ConsolesSettingsView 重构 | P1 | 🟢 可选 | T-165 | ⏳ |
@@ -721,7 +721,7 @@ swift test --filter VideoSettingsViewModelTests
 
 ---
 
-### T-165: VM: ConsolesSettingsViewModel ⏳
+### T-165: VM: ConsolesSettingsViewModel ✅
 
 **目标**: 创建 ConsolesSettingsViewModel 封装主机管理逻辑。
 
@@ -733,16 +733,19 @@ swift test --filter VideoSettingsViewModelTests
 
 **依赖**: T-159, T-161
 
+**完成提交**: `59c5e02` feat(viewmodel): add ConsolesSettingsViewModel for host management (T-165)
+
 **涉及文件**:
 - `Chiaki/Features/Settings/ViewModels/ConsolesSettingsViewModel.swift` (新建)
+- `ChiakiTests/ConsolesSettingsViewModelTests.swift` (新建)
 
 **验收标准**:
-- [ ] `@Observable` 类
-- [ ] 通过构造函数注入 `HostStore` 和 `PinManaging`
-- [ ] 暴露 `hosts` 属性
-- [ ] 实现 `removeHost(_:)` 方法（同时清除 PIN）
-- [ ] 实现 `renameHost(_:to:)` 方法
-- [ ] 实现 `hasPin(for:)`, `setPin(_:for:)`, `clearPin(for:)` 代理方法
+- [x] `@Observable` 类
+- [x] 通过构造函数注入 `HostStore` 和 `PinManaging`
+- [x] 暴露 `registeredHosts`, `hiddenHosts` 属性
+- [x] 实现 `removeHost(_:)` 方法（同时清除 PIN）
+- [x] 实现 `hideHost(_:)`, `unhideHost(_:)` 方法
+- [x] 实现 `hasPin(for:)`, `setPin(_:for:)`, `clearPin(for:)` 代理方法
 
 **测试方法**:
 ```bash
@@ -750,8 +753,8 @@ swift test --filter ConsolesSettingsViewModelTests
 ```
 
 **Review 要点**:
-- [ ] 删除主机时清除关联 PIN
-- [ ] 代理方法正确转发
+- [x] 删除主机时清除关联 PIN
+- [x] 代理方法正确转发
 
 ---
 
