@@ -33,6 +33,11 @@ struct VideoUniforms {
     uint colorRange;         // 0 = VideoRange(Limited), 1 = FullRange
     float edrHeadroom;       // AC-081: EDR Headroom (1.0+)
     uint tonemapMode;        // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
+    float edrIntensity;      // AC-098: EDR Output intensity multiplier
+    uint gamutMappingEnabled; // AC-099: 0 = Disabled, 1 = Enabled
+    float _padding1;         // Align struct size to 16 bytes (Total: 128 bytes)
+    float _padding2;
+    float _padding3;
 };
 
 // MARK: - Color Space Conversion Constants

@@ -15,8 +15,8 @@ import simd
 
 /// Uniforms passed to Metal shaders
 
-/// [requirement] F-025
-/// [satisfies] AC-081, AC-084
+/// [requirement] F-025, F-028
+/// [satisfies] AC-081, AC-084, AC-097, AC-098, AC-099
 struct VideoUniforms {
     var transform: simd_float4x4
     var textureSizeY: simd_float2
@@ -28,7 +28,11 @@ struct VideoUniforms {
     var colorRange: UInt32   // 0 = VideoRange(Limited), 1 = FullRange
     var edrHeadroom: Float   // AC-081: EDR Headroom (1.0+)
     var tonemapMode: UInt32  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
-    var _padding: Float = 0.0 // Ensure 16-byte alignment of the struct size (Total: 112 bytes)
+    var edrIntensity: Float        // AC-098: EDR Output intensity multiplier (default 1.0)
+    var gamutMappingEnabled: UInt32 // AC-099: 0 = Disabled, 1 = Enabled (default)
+    var _padding1: Float = 0.0      // Ensure 16-byte alignment (Total: 128 bytes)
+    var _padding2: Float = 0.0
+    var _padding3: Float = 0.0
 
     static var `default`: VideoUniforms {
         VideoUniforms(
@@ -42,7 +46,11 @@ struct VideoUniforms {
             colorRange: 0,
             edrHeadroom: 1.0,
             tonemapMode: 0,
-            _padding: 0.0
+            edrIntensity: 1.0,
+            gamutMappingEnabled: 1,
+            _padding1: 0.0,
+            _padding2: 0.0,
+            _padding3: 0.0
         )
     }
 }
@@ -875,7 +883,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         uint colorRange;  // 0 = VideoRange(Limited), 1 = FullRange
         float edrHeadroom; // AC-081: EDR Headroom (1.0+)
         uint tonemapMode;  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
-        float _padding;    // Align struct size to 16 bytes
+        float edrIntensity;        // AC-098: EDR Output intensity multiplier
+        uint gamutMappingEnabled;  // AC-099: 0 = Disabled, 1 = Enabled
+        float _padding1;           // Align struct size to 16 bytes
+        float _padding2;
+        float _padding3;
     };
 
     // Color conversion matrices (column-major)
