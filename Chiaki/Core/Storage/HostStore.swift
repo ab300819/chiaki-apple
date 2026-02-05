@@ -11,11 +11,14 @@ import Observation
 // MARK: - Host Store
 
 /// Persistent storage for PlayStation hosts
+/// [requirement] F-029
+/// [satisfies] AC-102
 @Observable
+@MainActor
 final class HostStore {
     // MARK: - Singleton
 
-    @MainActor static let shared = HostStore()
+    static let shared = HostStore()
 
     // MARK: - Properties
 
