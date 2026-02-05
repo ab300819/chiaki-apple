@@ -1,7 +1,102 @@
 # 开发任务归档
 
 > **最后更新**: 2026-02-05
-> **归档版本**: M11 + M12
+> **归档版本**: M11 + M12 + M13
+
+---
+
+# M13 归档 - HDR 配置落地、MainActor 边界、日志规范化、主题色、自动发现、macOS 布局
+
+> **归档时间**: 2026-02-05
+> **归档原因**: M13 任务 100% 完成
+> **任务数量**: 23
+
+## M13 归档任务汇总
+
+| 编号 | 名称 | 优先级 | 关联需求 | 完成状态 |
+|------|------|--------|----------|----------|
+| T-171 | HDR: VideoUniforms 扩展 | P0 | F-028, AC-097 | ✅ |
+| T-172 | HDR: VideoShaderConstants CPU 验证 | P0 | F-028, AC-100 | ✅ |
+| T-173 | HDR: MetalVideoRenderer 配置同步 | P0 | F-028, AC-097~099 | ✅ |
+| T-174 | HDR: Shader 动态分支 | P0 | F-028, AC-098~099 | ✅ |
+| T-175 | MainActor: SettingsStore 标注 | P0 | F-029, AC-101 | ✅ |
+| T-176 | MainActor: HostStore 标注 | P0 | F-029, AC-102 | ✅ |
+| T-177 | MainActor: NetworkMonitor 状态隔离 | P1 | F-029, AC-103 | ✅ |
+| T-178 | Logging: ChiakiSessionWrapper Logger 替换 | P1 | F-030, AC-104 | ✅ |
+| T-179 | Logging: VideoDecoderBridge DEBUG 保护 | P1 | F-030, AC-105 | ✅ |
+| T-180 | Logging: AudioPlayerBridge DEBUG 保护 | P1 | F-030, AC-105 | ✅ |
+| T-181 | Logging: 其他 Bridge 层审查 | P2 | F-030, AC-106 | ✅ |
+| T-182 | Test: VideoShaderConstants 单元测试 | P0 | F-028, AC-100 | ✅ |
+| T-183 | Test: MainActor 边界集成测试 | P1 | F-029, AC-101~103 | ✅ |
+| T-189 | Theme: ChiakiTheme 品牌色迁移 | P2 | F-031, AC-107 | ✅ |
+| T-190 | Theme: 全局 chiakiPurple 替换 | P2 | F-031, AC-108 | ✅ |
+| T-191 | Theme: 主题适配验证 | P2 | F-031, AC-109~110 | ✅ |
+| T-192 | Discovery: HostListView 自动发现 | P2 | F-032, AC-111, AC-114 | ✅ |
+| T-193 | Discovery: 移除发现按钮 | P2 | F-032, AC-113, AC-115 | ✅ |
+| T-194 | Discovery: 生命周期优化 | P2 | F-032, AC-112 | ✅ |
+| T-195 | Layout: macOS ContentView TabView 迁移 | P2 | F-033, AC-116~117 | ✅ |
+| T-196 | Layout: 移除 NavigationSplitView 相关代码 | P2 | F-033, AC-118 | ✅ |
+| T-197 | Layout: macOS 窗口样式调整 | P2 | F-033, AC-119~120 | ✅ |
+| T-198 | Layout: 跨平台布局验证 | P2 | F-033, AC-116~120 | ✅ |
+
+## M13 关键提交
+
+| 功能 | 任务 | 提交 | 描述 |
+|------|------|------|------|
+| F-028 HDR | T-171, T-172, T-182 | `cf958bd` | feat(video): add VideoUniforms HDR fields and VideoShaderConstants |
+| F-028 HDR | T-173, T-174 | `b736a4c` | feat(video): integrate HDR configuration into shader pipeline |
+| F-029 MainActor | T-175 | `83444ad` | feat(storage): add @MainActor to SettingsStore |
+| F-029 MainActor | T-176 | `61866a3` | feat(storage): add @MainActor to HostStore |
+| F-029 MainActor | T-177 | `6f6e6eb` | feat(network): add @MainActor to NetworkMonitor |
+| F-029 MainActor | T-183 | `452f1eb` | test(integration): add MainActor boundary tests |
+| F-030 Logging | T-178~T-181 | `8c975cd` | refactor(logging): standardize logging across bridge layer |
+| F-031 Theme | T-189~T-191 | `6ae26c5` | refactor(theme): migrate to system accent color |
+| F-032 Discovery | T-192~T-194 | `e6a08d7` | feat(discovery): auto-start discovery on view appear |
+| F-033 Layout | T-195~T-198 | `b1ce996` | refactor(layout): unify macOS/iOS with TabView |
+
+## M13 涉及文件
+
+**HDR 配置落地 (F-028)**:
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` (修改 - VideoUniforms 扩展)
+- `Chiaki/Core/Video/VideoShaderConstants.swift` (新建)
+- `ChiakiTests/VideoShaderConstantsTests.swift` (新建)
+- `ChiakiTests/VideoUniformsTests.swift` (新建)
+- `ChiakiTests/MetalVideoRendererHDRTests.swift` (新建)
+
+**MainActor 边界规范化 (F-029)**:
+- `Chiaki/Core/Storage/SettingsStore.swift` (修改)
+- `Chiaki/Core/Storage/HostStore.swift` (修改)
+- `Chiaki/Core/Network/NetworkMonitor.swift` (修改)
+- `ChiakiTests/SettingsStoreMainActorTests.swift` (新建)
+- `ChiakiTests/HostStoreMainActorTests.swift` (新建)
+- `ChiakiTests/MainActorBoundaryTests.swift` (新建)
+
+**日志输出规范化 (F-030)**:
+- `Chiaki/Core/Bridge/ChiakiSession.swift` (修改)
+- `Chiaki/Core/Video/VideoToolboxDecoder.swift` (修改)
+- `Chiaki/Core/Audio/AudioPlayer.swift` (修改)
+- `Chiaki/Core/Bridge/ChiakiRegist.swift` (修改)
+- `Chiaki/Utilities/Logger.swift` (修改 - 添加 regist 类别)
+
+**主题色系统化 (F-031)**:
+- `Chiaki/Utilities/ChiakiTheme.swift` (修改)
+- `Chiaki/App/ChiakiApp.swift` (修改)
+- `Chiaki/Features/HostList/HostRowView.swift` (修改)
+- `Chiaki/Features/HostList/TVHostCardView.swift` (修改)
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
+- `Chiaki/Features/Streaming/StreamingControlsView.swift` (修改)
+- `Chiaki/Features/Streaming/QuickSettingsSection.swift` (修改)
+- `Chiaki/Features/Streaming/TouchableSlider.swift` (修改)
+
+**自动发现主机 (F-032)**:
+- `Chiaki/Features/HostList/HostListView.swift` (修改)
+- `Chiaki/Features/HostList/HostListViewModel.swift` (修改)
+- `ChiakiTests/DiscoveryLifecycleTests.swift` (新建)
+
+**macOS TabView 布局 (F-033)**:
+- `Chiaki/App/ContentView.swift` (修改)
+- `Chiaki/App/NavigationManager.swift` (修改)
+- `Chiaki/App/ChiakiApp.swift` (修改)
 
 ---
 
