@@ -9,14 +9,18 @@ import SwiftUI
 import Observation
 import Combine
 
-enum SidebarItem: Hashable {
+/// App navigation tabs
+/// [requirement] F-033
+enum AppTab: Hashable {
     case hosts
     case settings
 }
 
 @Observable class NavigationManager {
-    // Sidebar Navigation
-    var sidebarSelection: SidebarItem? = .hosts
+    // Tab Navigation
+    /// Current selected tab
+    /// [satisfies] AC-117
+    var selectedTab: AppTab = .hosts
 
     // Command Triggers
     var showAddHostSheet: Bool = false
@@ -36,21 +40,18 @@ enum SidebarItem: Hashable {
     // Actions
     func openAddHost() {
         // Ensure we are on the hosts view
-        sidebarSelection = .hosts
+        selectedTab = .hosts
         // Trigger the sheet
         showAddHostSheet = true
     }
     
     func navigateToSettings() {
-        sidebarSelection = .settings
+        selectedTab = .settings
     }
     
     func refreshDiscovery() {
-        sidebarSelection = .hosts
+        selectedTab = .hosts
         refreshDiscoveryTrigger = true
-        // Reset trigger after a short delay or let the view handle it
-        // Ideally, the view watches this value or we use a PassthroughSubject
-        // For simplicity with @Published, we can toggle it
     }
     
     func wakeUpSelectedHost() {

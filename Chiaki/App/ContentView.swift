@@ -30,45 +30,32 @@ struct ContentView: View {
 
     @ViewBuilder
     private var mainContentView: some View {
-        #if os(macOS)
         @Bindable var manager = navigationManager
-        NavigationSplitView {
-            List(selection: $manager.sidebarSelection) {
-                NavigationLink(value: SidebarItem.hosts) {
-                    Label("Hosts", systemImage: "gamecontroller")
-                }
-                NavigationLink(value: SidebarItem.settings) {
-                    Label("Settings", systemImage: "gear")
-                }
-            }
-            .navigationTitle("Chiaki")
-        } detail: {
-            NavigationStack {
-                switch navigationManager.sidebarSelection {
-                case .hosts:
-                    HostListView()
-                case .settings:
-                    SettingsView()
-                case nil:
-                    WelcomeView()
-                }
-            }
-        }
-        #else
-        TabView {
+        TabView(selection: $manager.selectedTab) {
+            /**
+             * Main host list tab
+             * @requirement F-033
+             * @satisfies AC-116
+             */
             NavigationStack {
                 HostListView()
             }
             .tabItem {
                 Label("Hosts", systemImage: "gamecontroller")
             }
+            .tag(AppTab.hosts)
 
+            /**
+             * App settings tab
+             * @requirement F-033
+             * @satisfies AC-116
+             */
             SettingsView()
-            .tabItem {
-                Label("Settings", systemImage: "gear")
-            }
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+                .tag(AppTab.settings)
         }
-        #endif
     }
 
     @ViewBuilder
@@ -119,24 +106,6 @@ struct ContentView: View {
 
         // Start auto-connect
         navigationManager.startAutoConnect(host: host)
-    }
-}
-
-struct WelcomeView: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "gamecontroller.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("Chiaki")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            Text("PlayStation Remote Play")
-                .foregroundStyle(.secondary)
-            Text("Select a host to start streaming")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
     }
 }
 

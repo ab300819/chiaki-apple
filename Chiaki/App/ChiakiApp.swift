@@ -38,8 +38,9 @@ struct ChiakiApp: App {
                 }
         }
         #if os(macOS)
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1280, height: 720)
+        // [requirement] F-033
+        // [satisfies] AC-120 - 窗口样式调整
+        .defaultSize(width: 1000, height: 700)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Add Host...") {
@@ -114,7 +115,7 @@ struct ChiakiApp: App {
                 .disabled(!navigationManager.isStreaming)
             }
 
-            SidebarCommands()
+            // SidebarCommands removed - no longer using NavigationSplitView (T-197)
         }
         #endif
     }
