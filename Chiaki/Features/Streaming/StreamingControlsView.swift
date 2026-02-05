@@ -214,7 +214,7 @@ private struct AudioControlSection: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
 
-                TouchableSlider(value: $volume, range: 0...1, tint: .chiakiPurple)
+                TouchableSlider(value: $volume, range: 0...1, tint: .accentColor)
                     .focused(focusedControl, equals: .volumeSlider)
 
                 Image(systemName: "speaker.wave.3.fill")
@@ -290,7 +290,7 @@ private struct DisplayModeSection: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(displayMode == mode ? Color.chiakiPurple.opacity(0.3) : Color.clear)
+                        .background(displayMode == mode ? Color.accentColor.opacity(0.3) : Color.clear)
                         .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(FocusableButtonStyle(cornerRadius: 8))
@@ -321,7 +321,7 @@ private struct DisplayModeSection: View {
                             .foregroundStyle(.secondary)
                             .font(.caption)
 
-                        TouchableSlider(value: $zoomFactor, range: 1.0...2.0, tint: .chiakiPurple)
+                        TouchableSlider(value: $zoomFactor, range: 1.0...2.0, tint: .accentColor)
                             .focused(focusedControl, equals: .zoomSlider) 
 
                         Image(systemName: "plus.magnifyingglass")
@@ -367,7 +367,7 @@ private struct VideoPresetSection: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(preset == presetOption ? Color.chiakiPurple.opacity(0.3) : Color.clear)
+                        .background(preset == presetOption ? Color.accentColor.opacity(0.3) : Color.clear)
                         .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(FocusableButtonStyle(cornerRadius: 8))

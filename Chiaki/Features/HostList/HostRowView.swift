@@ -15,7 +15,7 @@ struct HostRowView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: ChiakiTheme.Touch.minTargetSize, height: ChiakiTheme.Touch.minTargetSize)
-                .foregroundStyle(Color.chiakiPurple)
+                .foregroundStyle(Color.accentColor)
                 .contentShape(Circle())
                 .padding(.trailing, 8)
             

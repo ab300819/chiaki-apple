@@ -26,7 +26,7 @@ struct ChiakiApp: App {
                 .environment(settingsStore)
                 .environment(navigationManager)
                 .environment(hostStore)
-                .tint(ChiakiTheme.brandPurple)
+                .tint(ChiakiTheme.brandColor)
                 .onAppear {
                     checkForCrashReport()
                 }

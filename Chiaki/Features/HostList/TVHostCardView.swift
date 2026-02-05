@@ -33,7 +33,7 @@ struct TVHostCardView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 80, height: 80)
-                        .foregroundStyle(isFocused ? .white : Color.chiakiPurple)
+                        .foregroundStyle(isFocused ? .white : Color.accentColor)
                         .shadow(radius: isFocused ? 10 : 0)
                     
                     VStack(spacing: 4) {
@@ -129,7 +129,7 @@ struct TVHostCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(
-                        isFocused ? Color.chiakiPurple : Color.clear,
+                        isFocused ? Color.accentColor : Color.clear,
                         lineWidth: isFocused ? 4 : 0
                     )
             )

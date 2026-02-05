@@ -33,7 +33,7 @@ struct ControllerSettingsView: View {
                     ForEach(controllers) { controller in
                         HStack {
                             Image(systemName: controllerIcon(for: controller))
-                                .foregroundStyle(controller.isActive ? Color.chiakiPurple : .secondary)
+                                .foregroundStyle(controller.isActive ? Color.accentColor : .secondary)
                             VStack(alignment: .leading) {
                                 Text(controller.name)
                                     .fontWeight(controller.isActive ? .semibold : .regular)
@@ -48,7 +48,7 @@ struct ControllerSettingsView: View {
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 2)
-                                    .background(Color.chiakiPurple)
+                                    .background(Color.accentColor)
                                     .clipShape(.rect(cornerRadius: 4))
                             }
                         }
@@ -82,7 +82,7 @@ struct ControllerSettingsView: View {
                         in: 0...0.3,
                         step: 0.01
                     )
-                    .tint(Color.chiakiPurple)
+                    .tint(Color.accentColor)
                 }
 
                 Toggle(String(localized: "settings.controller.swapCrossCircle"), isOn: $store.streamSettings.swapCrossCircle)
@@ -108,7 +108,7 @@ struct ControllerSettingsView: View {
                             in: 0.3...1.0,
                             step: 0.1
                         )
-                        .tint(Color.chiakiPurple)
+                        .tint(Color.accentColor)
                     }
                 }
             } header: {

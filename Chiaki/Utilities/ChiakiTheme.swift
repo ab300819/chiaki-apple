@@ -11,8 +11,10 @@ import SwiftUI
 enum ChiakiTheme {
     // MARK: - Brand Colors
     
-    /// Main Chiaki purple brand color (#6750A4)
-    static let brandPurple = Color(red: 0.404, green: 0.314, blue: 0.643)
+    /// Main Chiaki brand color (using system accent color)
+    /// [requirement] F-031
+    /// [satisfies] AC-107
+    static let brandColor = Color.accentColor
     
     /// Secondary accent color
     static let accent = Color.blue
@@ -64,5 +66,11 @@ enum ChiakiTheme {
 }
 
 extension Color {
-    static let chiakiPurple = ChiakiTheme.brandPurple
+    /// 应用主题色（使用系统强调色）
+    /// [satisfies] AC-107
+    static let chiakiAccent = ChiakiTheme.brandColor
+
+    /// 向后兼容别名（已废弃，请使用 chiakiAccent）
+    @available(*, deprecated, renamed: "chiakiAccent")
+    static let chiakiPurple = chiakiAccent
 }

@@ -162,7 +162,7 @@ struct QuickSettingsSection: View {
                 }) {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(bitrate > QuickSettingsConfig.minBitrate ? Color.chiakiPurple : Color.gray)
+                        .foregroundStyle(bitrate > QuickSettingsConfig.minBitrate ? Color.accentColor : Color.gray)
                 }
                 .buttonStyle(FocusableButtonStyle(cornerRadius: 20))
                 .focused(focusedControl, equals: .bitrateDecrease)
@@ -175,7 +175,7 @@ struct QuickSettingsSection: View {
                             .fill(Color.gray.opacity(0.3))
 
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.chiakiPurple)
+                            .fill(Color.accentColor)
                             .frame(width: bitrateProgress * geometry.size.width)
                     }
                 }
@@ -188,7 +188,7 @@ struct QuickSettingsSection: View {
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(bitrate < QuickSettingsConfig.maxBitrate ? Color.chiakiPurple : Color.gray)
+                        .foregroundStyle(bitrate < QuickSettingsConfig.maxBitrate ? Color.accentColor : Color.gray)
                 }
                 .buttonStyle(FocusableButtonStyle(cornerRadius: 20))
                 .focused(focusedControl, equals: .bitrateIncrease)
@@ -224,7 +224,7 @@ struct QuickSettingsSection: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
 
-                TouchableSlider(value: $volume, range: 0...1, tint: .chiakiPurple)
+                TouchableSlider(value: $volume, range: 0...1, tint: .accentColor)
                     .focused(focusedControl, equals: .quickSettingsVolume)
 
                 Image(systemName: "speaker.wave.3.fill")
@@ -264,7 +264,7 @@ struct QuickSettingsSection: View {
                             .font(.caption)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(pendingResolution == resolution ? Color.chiakiPurple.opacity(0.3) : Color.clear)
+                            .background(pendingResolution == resolution ? Color.accentColor.opacity(0.3) : Color.clear)
                             .clipShape(.rect(cornerRadius: 8))
                     }
                     .buttonStyle(FocusableButtonStyle(cornerRadius: 8))
