@@ -4801,12 +4801,22 @@ final class HDRConfigRenderingIntegrationTests: XCTestCase {
 
 ### 23.5 需求追溯矩阵
 
-| 验收标准 | 单元测试 | 集成测试 | E2E 测试 |
-|----------|----------|----------|----------|
-| AC-097: Shader 动态分支 | UT-042.1~4, UT-043.1~2 | IT-015.1~2 | - |
-| AC-098: EDR 强度应用 | UT-043.1, UT-043.3 | IT-015.1 | E2E-012.1 |
-| AC-099: 色域映射开关 | UT-043.2, UT-043.4 | IT-015.2 | E2E-012.1 |
-| AC-100: 单元测试覆盖 | UT-044.1~10 | - | - |
+| 验收标准 | 单元测试 | 集成测试 | E2E 测试 | 满足文件 (@satisfies) | 验证文件 (@verifies) |
+|----------|----------|----------|----------|----------------------|---------------------|
+| AC-097: Shader 动态分支 | UT-042.1~4, UT-043.1~2 | IT-015.1~2 | - | `Chiaki/Core/Video/MetalVideoRenderer.swift` | `ChiakiTests/VideoUniformsTests.swift`<br>`ChiakiTests/VideoRendererSyncTests.swift` |
+| AC-098: EDR 强度应用 | UT-043.1, UT-043.3 | IT-015.1 | E2E-012.1 | `Chiaki/Core/Video/MetalVideoRenderer.swift` | `ChiakiTests/VideoRendererSyncTests.swift` |
+| AC-099: 色域映射开关 | UT-043.2, UT-043.4 | IT-015.2 | E2E-012.1 | `Chiaki/Core/Video/MetalVideoRenderer.swift` | `ChiakiTests/VideoRendererSyncTests.swift` |
+| AC-100: 单元测试覆盖 | UT-044.1~10 | - | - | `Chiaki/Core/Video/VideoShaderConstants.swift` | `ChiakiTests/VideoShaderConstantsTests.swift` |
+
+### 23.6 实现状态
+
+| 任务 | 状态 | 测试通过 | 提交 |
+|------|------|----------|------|
+| T-171: VideoUniforms 扩展 | ✅ 完成 | UT-042.1~4 ✅ | cf958bd |
+| T-172: VideoShaderConstants CPU 验证 | ✅ 完成 | UT-044.1~10 ✅ | cf958bd |
+| T-173: MetalVideoRenderer 配置同步 | ✅ 完成 | UT-043.1~3 ✅ | b736a4c |
+| T-174: Shader 动态分支 | ✅ 完成 | (已验证) | b736a4c |
+| T-182: VideoShaderConstants 单元测试 | ✅ 完成 | UT-044.1~10 ✅ | cf958bd |
 
 ---
 
