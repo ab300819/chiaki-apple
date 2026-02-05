@@ -181,6 +181,55 @@ private extension SettingsView {
     }
 }
 
+// MARK: - Settings Category (macOS)
+
+#if os(macOS)
+/**
+ * Settings navigation categories for macOS sidebar
+ * @requirement F-034
+ * @satisfies AC-122 - 左侧列表显示所有设置分类
+ * @satisfies AC-125 - 设置分类保持与现有顺序一致
+ */
+enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
+    case general
+    case video
+    case audio
+    case controller
+    case account
+    case consoles
+    case logs
+    case data
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: L10n.Nav.general
+        case .video: L10n.Nav.video
+        case .audio: L10n.Nav.audio
+        case .controller: L10n.Nav.controller
+        case .account: L10n.Nav.account
+        case .consoles: L10n.Nav.consoles
+        case .logs: L10n.Nav.logs
+        case .data: L10n.Nav.data
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .general: "gearshape"
+        case .video: "display"
+        case .audio: "speaker.wave.2"
+        case .controller: "gamecontroller"
+        case .account: "person.crop.circle"
+        case .consoles: "server.rack"
+        case .logs: "doc.text"
+        case .data: "externaldrive"
+        }
+    }
+}
+#endif
+
 // MARK: - Data Settings View (macOS)
 
 #if os(macOS)
