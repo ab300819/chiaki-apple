@@ -10,13 +10,11 @@ import Foundation
 import Network
 import Observation
 
-/**
- * 网络状态监控器
- * @requirement F-016 - 网络弹性与自动重连
- * @satisfies AC-045 - 自动重连机制
- * @satisfies AC-054 - 核心流程日志覆盖
- */
+/// 网络状态监控器
+/// [requirement] F-016, F-029
+/// [satisfies] AC-045, AC-054, AC-103
 @Observable
+@MainActor
 final class NetworkMonitor {
     // MARK: - Singleton
     
