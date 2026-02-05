@@ -10,6 +10,13 @@ struct SettingsView: View {
     @State private var showImportError = false
     @State private var importErrorMessage = ""
 
+    #if os(macOS)
+    /// Selected settings category for sidebar navigation
+    /// @requirement F-034
+    /// @satisfies AC-121 - NavigationSplitView + List 替代 TabView
+    @State private var selectedCategory: SettingsCategory = .general
+    #endif
+
     var body: some View {
         #if os(iOS) || os(tvOS)
         NavigationStack {
@@ -96,49 +103,24 @@ struct SettingsView: View {
             }
         }
         #elseif os(macOS)
-        TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.general, systemImage: "gearshape")
-                }
-
-            VideoSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.video, systemImage: "display")
-                }
-
-            AudioSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.audio, systemImage: "speaker.wave.2")
-                }
-
-            ControllerSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.controller, systemImage: "gamecontroller")
-                }
-
-            AccountSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.account, systemImage: "person.crop.circle")
-                }
-
-            ConsolesSettingsView()
-                .tabItem {
-                    Label(L10n.Nav.consoles, systemImage: "server.rack")
-                }
-
-            LogViewerView()
-                .tabItem {
-                    Label(L10n.Nav.logs, systemImage: "doc.text")
-                }
-
-            DataSettingsView(store: store)
-                .tabItem {
-                    Label(L10n.Nav.data, systemImage: "externaldrive")
-                }
+        /**
+         * macOS Settings with sidebar navigation
+         * @requirement F-034
+         * @satisfies AC-121 - NavigationSplitView + List 替代 TabView
+         * @satisfies AC-122 - 左侧列表显示所有设置分类
+         * @satisfies AC-123 - 右侧显示选中分类的设置内容
+         */
+        NavigationSplitView {
+            List(SettingsCategory.allCases, selection: $selectedCategory) { category in
+                Label(category.title, systemImage: category.systemImage)
+                    .tag(category)
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
+        } detail: {
+            settingsDetailView(for: selectedCategory)
         }
-        .padding()
-        .frame(minWidth: 500, minHeight: 400)
+        .frame(minWidth: 600, minHeight: 400)
         #endif
     }
 }
@@ -179,6 +161,36 @@ private extension SettingsView {
             showImportError = true
         }
     }
+
+    #if os(macOS)
+    /**
+     * Returns the detail view for the selected settings category
+     * @requirement F-034
+     * @satisfies AC-123 - 右侧显示选中分类的设置内容
+     * @satisfies AC-124 - iOS/tvOS 保持现有结构不变
+     */
+    @ViewBuilder
+    func settingsDetailView(for category: SettingsCategory) -> some View {
+        switch category {
+        case .general:
+            GeneralSettingsView()
+        case .video:
+            VideoSettingsView()
+        case .audio:
+            AudioSettingsView()
+        case .controller:
+            ControllerSettingsView()
+        case .account:
+            AccountSettingsView()
+        case .consoles:
+            ConsolesSettingsView()
+        case .logs:
+            LogViewerView()
+        case .data:
+            DataSettingsView(store: store)
+        }
+    }
+    #endif
 }
 
 // MARK: - Settings Category (macOS)
