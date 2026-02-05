@@ -2,9 +2,12 @@ import Foundation
 import Observation
 
 /// Settings storage managing persistence to UserDefaults
+/// [requirement] F-029
+/// [satisfies] AC-101
 @Observable
+@MainActor
 class SettingsStore {
-    @MainActor static let shared = SettingsStore()
+    static let shared = SettingsStore()
 
     var streamSettings: StreamSettings {
         didSet {
