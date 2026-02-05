@@ -141,7 +141,9 @@ struct VideoSettingsView: View {
                                 ),
                                 in: 100...10000,
                                 step: 100
-                            )
+                            ) {
+                                Text(String(localized: "settings.video.peakBrightness"))
+                            }
                         }
                     }
 
@@ -165,7 +167,9 @@ struct VideoSettingsView: View {
                                 value: hdrContrastBinding,
                                 in: 1000...100000,
                                 step: 1000
-                            )
+                            ) {
+                                Text(String(localized: "settings.video.contrastRatio"))
+                            }
                         }
                     }
                 } header: {
@@ -209,7 +213,9 @@ struct VideoSettingsView: View {
                             Text(String(format: "%.1fx", store.streamSettings.zoomFactor))
                                 .foregroundStyle(.secondary)
                         }
-                        Slider(value: $store.streamSettings.zoomFactor, in: 1.0...2.0, step: 0.1)
+                        Slider(value: $store.streamSettings.zoomFactor, in: 1.0...2.0, step: 0.1) {
+                            Text(L10n.StreamingControls.zoomLevel)
+                        }
                     }
                 }
             } header: {

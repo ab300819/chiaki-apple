@@ -43,7 +43,9 @@ struct AudioSettingsView: View {
                         ),
                         in: 10...100,
                         step: 5
-                    )
+                    ) {
+                        Text(String(localized: "settings.audio.bufferSize"))
+                    }
                 }
             } header: {
                 Text(L10n.Settings.Video.advanced)
