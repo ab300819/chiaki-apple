@@ -109,15 +109,15 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     private var uniforms = VideoUniforms.default
 
     /// HDR configuration
-    /// [requirement] F-025
-    /// [satisfies] AC-088
+    /// [requirement] F-025, F-028
+    /// [satisfies] AC-088, AC-097, AC-098, AC-099
     var hdrConfiguration: HDRConfiguration = .sdr {
         didSet {
             uniforms.colorSpace = hdrConfiguration.colorSpace.rawValue
             uniforms.colorRange = hdrConfiguration.colorRange.rawValue
             uniforms.tonemapMode = hdrConfiguration.tonemapMode.rawValue
-            // brightness/saturation/edrIntensity are handled separately via their setters if needed, 
-            // or we could sync them here too. 
+            uniforms.edrIntensity = hdrConfiguration.edrIntensity
+            uniforms.gamutMappingEnabled = hdrConfiguration.gamutMappingEnabled ? 1 : 0
             triggerRedraw()
         }
     }
@@ -142,6 +142,33 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             uniforms.tonemapMode = newValue.rawValue
             triggerRedraw()
         }
+    }
+
+    /**
+     * Set EDR output intensity (0.5 - 2.0)
+     * @requirement F-028
+     * @satisfies AC-098
+     */
+    func setEDRIntensity(_ value: Float) {
+        let clamped = max(0.5, min(2.0, value))
+        frameLock.lock()
+        uniforms.edrIntensity = clamped
+        hdrConfiguration.edrIntensity = clamped
+        frameLock.unlock()
+        triggerRedraw()
+    }
+
+    /**
+     * Set gamut mapping enabled
+     * @requirement F-028
+     * @satisfies AC-099
+     */
+    func setGamutMappingEnabled(_ enabled: Bool) {
+        frameLock.lock()
+        uniforms.gamutMappingEnabled = enabled ? 1 : 0
+        hdrConfiguration.gamutMappingEnabled = enabled
+        frameLock.unlock()
+        triggerRedraw()
     }
 
     /// Current display mode
@@ -1030,31 +1057,33 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         float3 yuv = float3(y, uv.x, uv.y);
         float3 rgb = m * yuv;
 
-        // For HDR (BT.2020), apply PQ EOTF to convert to linear light
-        if (uniforms.colorSpace == 2u) {
-            // Clamp to valid PQ range before EOTF
-            rgb = clamp(rgb, 0.0, 1.0);
-            // Apply PQ EOTF to get linear light
-            rgb = pqEOTF(rgb);
-            // Gamut mapping: Rec.2020 -> P3 (AC-080)
-            rgb = applyGamutMapping(rgb);
-            
-            if (uniforms.tonemapMode == 1u) {
-                // ACES Tone Mapping (SDR Output)
-                rgb = acesTonemap(rgb);
+            // For HDR (BT.2020), apply PQ EOTF to convert to linear light
+            if (uniforms.colorSpace == 2u) {
+                // Clamp to valid PQ range before EOTF
+                rgb = clamp(rgb, 0.0, 1.0);
+                // Apply PQ EOTF to get linear light
+                rgb = pqEOTF(rgb);
+                // Gamut mapping: Rec.2020 -> P3 (AC-080)
+                if (uniforms.gamutMappingEnabled == 1u) {
+                    rgb = applyGamutMapping(rgb);
+                }
+                
+                if (uniforms.tonemapMode == 1u) {
+                    // ACES Tone Mapping (SDR Output)
+                    rgb = acesTonemap(rgb);
+                } else {
+                    // HDR Output (EDR Scaling)
+                    rgb = linearToEDR(rgb);
+                    rgb = rgb * uniforms.edrHeadroom * uniforms.edrIntensity;
+                }
+                
+                // Apply color adjustments in linear space
+                rgb = rgb * uniforms.brightness;
+                float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+                rgb = mix(float3(gray), rgb, uniforms.saturation);
+                // Clamp lower bound only (allow EDR values > 1.0)
+                rgb = max(rgb, 0.0);
             } else {
-                // HDR Output (EDR Scaling)
-                rgb = linearToEDR(rgb);
-                rgb = rgb * uniforms.edrHeadroom;
-            }
-            
-            // Apply color adjustments in linear space
-            rgb = rgb * uniforms.brightness;
-            float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
-            rgb = mix(float3(gray), rgb, uniforms.saturation);
-            // Clamp lower bound only (allow EDR values > 1.0)
-            rgb = max(rgb, 0.0);
-        } else {
             // SDR: apply adjustments in gamma space
             rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
             rgb = rgb * uniforms.brightness;
@@ -1081,7 +1110,9 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = clamp(rgb, 0.0, 1.0);
             rgb = pqEOTF(rgb);
             // Gamut mapping: Rec.2020 -> P3 (AC-080)
-            rgb = applyGamutMapping(rgb);
+            if (uniforms.gamutMappingEnabled == 1u) {
+                rgb = applyGamutMapping(rgb);
+            }
 
             if (uniforms.tonemapMode == 1u) {
                 // ACES Tone Mapping (SDR Output)
@@ -1089,7 +1120,7 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             } else {
                 // HDR Output (EDR Scaling)
                 rgb = linearToEDR(rgb);
-                rgb = rgb * uniforms.edrHeadroom;
+                rgb = rgb * uniforms.edrHeadroom * uniforms.edrIntensity;
             }
 
             // Apply color adjustments in linear space
