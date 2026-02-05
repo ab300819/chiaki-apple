@@ -450,3 +450,66 @@ private init(forPreview: Bool = false) {
 2. `Chiaki/Features/Settings/ControllerSettingsView.swift` - 使用 preview 实例
 
 ---
+
+## BUG-009: ControllerSettingsView 运行时崩溃（缺少环境对象）
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 手动测试 |
+| **关联功能** | F-004 (控制器设置) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-05 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+点击"设置-手柄"时应用崩溃，错误信息：
+```
+SwiftUICore/Environment+Objects.swift:34: Fatal error: No Observable object of type ControllerManager found. A View.environmentObject(_:) for ControllerManager may be missing as an ancestor of this view.
+```
+
+### 复现步骤
+
+1. 启动应用
+2. 点击"设置"标签
+3. 点击"手柄"设置项
+4. 应用崩溃
+
+### 根因分析
+
+`ControllerSettingsView` 使用 `@Environment(ControllerManager.self)` 获取控制器管理器，但 `ChiakiApp.swift` 中只注入了 `settingsStore`、`navigationManager`、`hostStore`，缺少 `ControllerManager` 的环境注入。
+
+**代码对比**：
+
+```swift
+// ControllerSettingsView.swift:17
+@Environment(ControllerManager.self) var controllerManager
+
+// ChiakiApp.swift (修复前)
+ContentView()
+    .environment(settingsStore)
+    .environment(navigationManager)
+    .environment(hostStore)  // 缺少 controllerManager
+```
+
+### 解决方案
+
+在 `ChiakiApp.swift` 中添加 `ControllerManager` 环境注入：
+
+1. 添加 `@State private var controllerManager = ControllerManager.shared`
+2. 在 `ContentView()` 链式调用中添加 `.environment(controllerManager)`
+
+### 回归测试
+
+- 编译验证：`xcodebuild build` 成功
+- 手动验证：点击"设置-手柄"正常显示
+
+### 经验教训
+
+在使用 `@Environment` 注入依赖时，必须确保在视图层级的祖先视图中通过 `.environment()` 提供对应的实例。建议：
+
+1. 在添加新的 `@Environment` 依赖时，检查 App 入口是否已注入
+2. 考虑使用编译时检查或运行时断言提前发现缺失的依赖
+
+---

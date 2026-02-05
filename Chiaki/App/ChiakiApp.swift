@@ -13,7 +13,8 @@ struct ChiakiApp: App {
     @State private var settingsStore = SettingsStore.shared
     @State private var navigationManager = NavigationManager()
     @State private var hostStore = HostStore.shared
-    
+    @State private var controllerManager = ControllerManager.shared
+
     @State private var pendingCrashReport: String?
     
     init() {
@@ -26,6 +27,7 @@ struct ChiakiApp: App {
                 .environment(settingsStore)
                 .environment(navigationManager)
                 .environment(hostStore)
+                .environment(controllerManager)
                 .tint(ChiakiTheme.brandColor)
                 .onAppear {
                     checkForCrashReport()
