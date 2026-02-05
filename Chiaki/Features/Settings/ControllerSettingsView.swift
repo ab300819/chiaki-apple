@@ -82,7 +82,6 @@ struct ControllerSettingsView: View {
                         in: 0...0.3,
                         step: 0.01
                     )
-                    .tint(Color.accentColor)
                 }
 
                 Toggle(String(localized: "settings.controller.swapCrossCircle"), isOn: $store.streamSettings.swapCrossCircle)
@@ -108,7 +107,6 @@ struct ControllerSettingsView: View {
                             in: 0.3...1.0,
                             step: 0.1
                         )
-                        .tint(Color.accentColor)
                     }
                 }
             } header: {
