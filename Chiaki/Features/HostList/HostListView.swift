@@ -59,20 +59,6 @@ struct HostListView: View {
             StreamingView(host: host)
         }
         .toolbar {
-            #if !os(tvOS)
-            ToolbarItem(placement: .navigation) {
-                Button(action: {
-                    HapticFeedback.button()
-                    viewModel.toggleDiscovery()
-                }) {
-                    Label(
-                        viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery,
-                        systemImage: viewModel.isDiscovering ? "wifi" : "wifi.slash"
-                    )
-                }
-                .help(viewModel.isDiscovering ? L10n.HostList.stopDiscovery : L10n.HostList.startDiscovery)
-            }
-            #endif
             #if os(macOS)
             // macOS: Delete selected hosts (use Cmd+Click to multi-select in list)
             ToolbarItem(placement: .destructiveAction) {
@@ -127,6 +113,10 @@ struct HostListView: View {
         }
         .task {
             viewModel.initializeIfNeeded()
+            viewModel.startDiscoveryIfNeeded()
+        }
+        .onDisappear {
+            viewModel.stopDiscoveryIfNeeded()
         }
     }
     
@@ -211,20 +201,6 @@ struct HostListView: View {
             }
         }
         .navigationTitle(L10n.HostList.title)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 8) {
-                    if viewModel.isDiscovering {
-                        Image(systemName: "wifi")
-                            .foregroundStyle(.green)
-                            .symbolEffect(.pulse)
-                    }
-                    Button(action: { viewModel.toggleDiscovery() }) {
-                        Text(viewModel.isDiscovering ? L10n.HostList.stop : L10n.HostList.discover)
-                    }
-                }
-            }
-        }
         .onAppear {
             if focusedHost == nil {
                 focusedHost = viewModel.hosts.first?.id

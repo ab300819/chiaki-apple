@@ -82,9 +82,29 @@ final class HostListViewModel {
         hostManager.startDiscovery()
     }
 
+    /**
+     * Start discovery if not already running (Auto-discovery)
+     * @requirement F-032
+     * @satisfies AC-111
+     */
+    func startDiscoveryIfNeeded() {
+        guard !isDiscovering else { return }
+        startDiscovery()
+    }
+
     /// Stop discovering PlayStation consoles
     func stopDiscovery() {
         hostManager.stopDiscovery()
+    }
+
+    /**
+     * Stop discovery if running (Lifecycle optimization)
+     * @requirement F-032
+     * @satisfies AC-112
+     */
+    func stopDiscoveryIfNeeded() {
+        guard isDiscovering else { return }
+        stopDiscovery()
     }
 
     /// Toggle discovery on/off
