@@ -338,9 +338,12 @@ final class AudioPlayer {
                 (requestedSamples - poppedSamples) * MemoryLayout<Float>.size
             )
             underrunCount += 1
+            // [satisfies] AC-105 - DEBUG 保护
+            #if DEBUG
             if underrunCount % 100 == 0 {
                 logWarning("AudioPlayer: Buffer underrun count: \(underrunCount)")
             }
+            #endif
         }
 
         // De-interleave to separate channel buffers

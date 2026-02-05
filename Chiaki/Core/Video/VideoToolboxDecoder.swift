@@ -401,9 +401,12 @@ final class VideoToolboxDecoder {
                 let (buffer, time) = self.frameReorderBuffer.removeFirst()
                 self.decodedFrameCount += 1
                 
+                // [satisfies] AC-105 - DEBUG 保护
+                #if DEBUG
                 if self.decodedFrameCount % 100 == 0 {
                     logDebug("VideoToolboxDecoder: Decoded \(self.decodedFrameCount) frames, dropped \(self.droppedFrameCount)")
                 }
+                #endif
                 
                 self.onFrameDecoded?(buffer, time)
             }

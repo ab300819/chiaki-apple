@@ -337,19 +337,21 @@ final class ChiakiSessionWrapper {
         // succeed from Swift's perspective but C code sees NULL values.
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
 
-        // Debug: Print struct layout info and callback addresses
-        print("[DEBUG] === CALLBACK SETUP START ===")
-        print("[DEBUG] Swift sizeof(ChiakiSession): \(MemoryLayout<chiaki_session_t>.size)")
-        print("[DEBUG] Swift stride(ChiakiSession): \(MemoryLayout<chiaki_session_t>.stride)")
+        // [satisfies] AC-104 - 统一日志
+        #if DEBUG
+        logDebug("[DEBUG] === CALLBACK SETUP START ===")
+        logDebug("[DEBUG] Swift sizeof(ChiakiSession): \(MemoryLayout<chiaki_session_t>.size)")
+        logDebug("[DEBUG] Swift stride(ChiakiSession): \(MemoryLayout<chiaki_session_t>.stride)")
         // Calculate offset of event_cb using pointer arithmetic
         let baseAddr = UInt(bitPattern: session)
         let eventCbAddr = UInt(bitPattern: withUnsafePointer(to: &session.pointee.event_cb) { $0 })
         let eventCbUserAddr = UInt(bitPattern: withUnsafePointer(to: &session.pointee.event_cb_user) { $0 })
-        print("[DEBUG] Swift offset(event_cb): \(eventCbAddr - baseAddr)")
-        print("[DEBUG] Swift offset(event_cb_user): \(eventCbUserAddr - baseAddr)")
-        print("[DEBUG] session pointer: \(session)")
-        print("[DEBUG] selfPointer: \(selfPointer)")
-        print("[DEBUG] event_cb BEFORE: \(String(describing: session.pointee.event_cb))")
+        logDebug("[DEBUG] Swift offset(event_cb): \(eventCbAddr - baseAddr)")
+        logDebug("[DEBUG] Swift offset(event_cb_user): \(eventCbUserAddr - baseAddr)")
+        logDebug("[DEBUG] session pointer: \(session)")
+        logDebug("[DEBUG] selfPointer: \(selfPointer)")
+        logDebug("[DEBUG] event_cb BEFORE: \(String(describing: session.pointee.event_cb))")
+        #endif
 
         // Direct struct field assignment (do NOT use chiaki_session_set_event_cb inline function)
         session.pointee.event_cb = sessionEventCallback
@@ -358,10 +360,12 @@ final class ChiakiSessionWrapper {
         session.pointee.video_sample_cb_user = selfPointer
 
         // Debug: Print callback addresses after setting
-        print("[DEBUG] event_cb AFTER: \(String(describing: session.pointee.event_cb))")
-        print("[DEBUG] event_cb_user AFTER: \(String(describing: session.pointee.event_cb_user))")
-        print("[DEBUG] video_sample_cb AFTER: \(String(describing: session.pointee.video_sample_cb))")
-        print("[DEBUG] === CALLBACK SETUP END ===")
+        #if DEBUG
+        logDebug("[DEBUG] event_cb AFTER: \(String(describing: session.pointee.event_cb))")
+        logDebug("[DEBUG] event_cb_user AFTER: \(String(describing: session.pointee.event_cb_user))")
+        logDebug("[DEBUG] video_sample_cb AFTER: \(String(describing: session.pointee.video_sample_cb))")
+        logDebug("[DEBUG] === CALLBACK SETUP END ===")
+        #endif
 
         // Setup Opus decoder and audio sink
         // The Opus decoder decodes compressed audio from PS4/PS5 to PCM Int16
@@ -746,11 +750,13 @@ final class ChiakiSessionWrapper {
 // MARK: - C Callbacks (must use @convention(c) for C interop)
 
 private let sessionEventCallback: ChiakiEventCallback = { event, userData in
-    // Debug: Log that callback was invoked
-    print("[ChiakiSession] sessionEventCallback invoked!")
+    // [satisfies] AC-104 - 统一日志
+    #if DEBUG
+    logDebug("[ChiakiSession] sessionEventCallback invoked!")
+    #endif
 
     guard let event = event, let userData = userData else {
-        print("[ChiakiSession] sessionEventCallback: nil parameters")
+        logError("[ChiakiSession] sessionEventCallback: nil parameters")
         return
     }
 
@@ -758,7 +764,9 @@ private let sessionEventCallback: ChiakiEventCallback = { event, userData in
 
     // Process event - copy data since event pointer is only valid during callback
     let eventCopy = event.pointee
-    print("[ChiakiSession] sessionEventCallback: event type = \(eventCopy.type.rawValue)")
+    #if DEBUG
+    logDebug("[ChiakiSession] sessionEventCallback: event type = \(eventCopy.type.rawValue)")
+    #endif
     DispatchQueue.main.async {
         session.handleEvent(eventCopy)
     }

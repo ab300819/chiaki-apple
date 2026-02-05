@@ -41,13 +41,13 @@ final class ChiakiRegistWrapper {
     
     init() {
         setupChiakiLog()
-        logInfo("ChiakiRegistWrapper: Initialized")
+        Logger.regist.info("ChiakiRegistWrapper: Initialized")
     }
     
     deinit {
         cleanup()
         cleanupChiakiLog()
-        logInfo("ChiakiRegistWrapper: Deinitialized")
+        Logger.regist.info("ChiakiRegistWrapper: Deinitialized")
     }
     
     // MARK: - Registration Flow
@@ -128,7 +128,7 @@ final class ChiakiRegistWrapper {
             throw error
         }
         
-        logInfo("ChiakiRegistWrapper: Registration started for \(host)")
+        Logger.regist.info("ChiakiRegistWrapper: Registration started for \(host)")
     }
     
     /// Stop registration process
@@ -142,7 +142,7 @@ final class ChiakiRegistWrapper {
         cleanup()
         
         updateState(.idle)
-        logInfo("ChiakiRegistWrapper: Registration stopped")
+        Logger.regist.info("ChiakiRegistWrapper: Registration stopped")
     }
     
     // MARK: - Private Methods
@@ -185,22 +185,22 @@ final class ChiakiRegistWrapper {
             if let hostInfo = event.registered_host?.pointee {
                 let registKey = withUnsafeBytes(of: hostInfo.rp_regist_key) { Data($0) }
                 let rpKey = withUnsafeBytes(of: hostInfo.rp_key) { Data($0) }
-                logInfo("ChiakiRegistWrapper: Registration successful")
+                Logger.regist.info("ChiakiRegistWrapper: Registration successful")
                 updateState(.success(registKey: registKey, rpKey: rpKey))
             } else {
                 updateState(.error("Registration succeeded but host info is missing"))
             }
             
         case CHIAKI_REGIST_EVENT_TYPE_FINISHED_FAILED:
-            logError("ChiakiRegistWrapper: Registration failed")
+            Logger.regist.error("ChiakiRegistWrapper: Registration failed")
             updateState(.error("Registration failed. Please check your PIN and network connection."))
             
         case CHIAKI_REGIST_EVENT_TYPE_FINISHED_CANCELED:
-            logInfo("ChiakiRegistWrapper: Registration canceled")
+            Logger.regist.info("ChiakiRegistWrapper: Registration canceled")
             updateState(.idle)
             
         default:
-            logWarning("ChiakiRegistWrapper: Unknown event type: \(event.type)")
+            Logger.regist.warning("ChiakiRegistWrapper: Unknown event type: \(event.type)")
         }
         
         // Once finished, we can cleanup
@@ -240,14 +240,14 @@ private func chiakiRegistLogCallback(
     
     switch severity {
     case .error:
-        logError("[libchiaki-regist] \(message)")
+        Logger.regist.error("[libchiaki-regist] \(message)")
     case .warning:
-        logWarning("[libchiaki-regist] \(message)")
+        Logger.regist.warning("[libchiaki-regist] \(message)")
     case .info:
-        logInfo("[libchiaki-regist] \(message)")
+        Logger.regist.info("[libchiaki-regist] \(message)")
     case .verbose:
-        logVerbose("[libchiaki-regist] \(message)")
+        Logger.regist.debug("[libchiaki-regist] \(message)")
     case .debug:
-        logDebug("[libchiaki-regist] \(message)")
+        Logger.regist.debug("[libchiaki-regist] \(message)")
     }
 }

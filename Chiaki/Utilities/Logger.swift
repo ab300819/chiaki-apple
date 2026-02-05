@@ -214,6 +214,9 @@ extension Logger {
 
     /// Logger for PSN authentication events
     static let psn = CategoryLogger(category: "PSN")
+
+    /// Logger for host registration events
+    static let regist = CategoryLogger(category: "Regist")
 }
 
 /// A category-specific logger that uses OSLog directly
