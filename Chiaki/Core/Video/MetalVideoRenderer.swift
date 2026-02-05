@@ -264,16 +264,7 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             guard let self = self, let view = self.mtkView else { return }
             
             view.preferredFramesPerSecond = currentTarget
-            
-            #if (os(iOS) || os(tvOS)) && !targetEnvironment(simulator)
-            if #available(iOS 15.0, tvOS 15.0, *) {
-                if let metalLayer = view.layer as? CAMetalLayer {
-                    let range = CAFrameRateRange(minimum: 10, maximum: Float(currentTarget), preferred: Float(currentTarget))
-                    metalLayer.preferredFrameRateRange = range
-                }
-            }
-            #endif
-            
+
             if ProcessInfo.processInfo.isLowPowerModeEnabled {
                 view.preferredFramesPerSecond = min(currentTarget, 30)
                 logDebug("🔋 VRR: Low Power Mode active, capping to 30fps")

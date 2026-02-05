@@ -513,3 +513,59 @@ ContentView()
 2. 考虑使用编译时检查或运行时断言提前发现缺失的依赖
 
 ---
+
+## BUG-010: MetalVideoRenderer 使用不存在的 CAMetalLayer API 导致编译失败
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 编译失败 |
+| **关联功能** | F-001 (核心流媒体), F-017 (能效管理) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-06 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+iOS 编译报错：`value of type 'CAMetalLayer' has no member 'preferredFrameRateRange'`
+
+### 复现步骤
+
+1. 运行 `xcodebuild build -scheme Chiaki -destination "generic/platform=iOS"`
+2. 编译失败，报错位于 `MetalVideoRenderer.swift:272`
+
+### 根因分析
+
+代码错误地尝试在 `CAMetalLayer` 上设置 `preferredFrameRateRange` 属性：
+
+```swift
+#if (os(iOS) || os(tvOS)) && !targetEnvironment(simulator)
+if #available(iOS 15.0, tvOS 15.0, *) {
+    if let metalLayer = view.layer as? CAMetalLayer {
+        metalLayer.preferredFrameRateRange = range  // ❌ 此属性不存在
+    }
+}
+#endif
+```
+
+**问题**：
+1. `preferredFrameRateRange` 是 `CAMetalDisplayLink` 的属性（macOS 14.0+），不是 `CAMetalLayer` 的属性
+2. 条件编译 `#if (os(iOS) || os(tvOS))` 是错误的，因为该 API 根本不存在于 `CAMetalLayer`
+3. 这段代码是无效的，`MTKView.preferredFramesPerSecond` 已经在前面设置了帧率
+
+参考：[Apple Developer Documentation - CAMetalDisplayLink.preferredFrameRateRange](https://developer.apple.com/documentation/quartzcore/cametaldisplaylink/preferredframeraterange)
+
+### 解决方案
+
+移除无效的 `CAMetalLayer.preferredFrameRateRange` 调用，`MTKView.preferredFramesPerSecond` 已足够控制渲染帧率。
+
+### 回归测试
+
+- 编译验证：macOS 和 iOS 均 `BUILD SUCCEEDED`
+
+### 经验教训
+
+1. 使用平台特定 API 前，应查阅官方文档确认 API 的真实可用性和所属类型
+2. 条件编译不能替代正确的 API 使用 - 错误的 API 在任何平台都不会工作
+
+---
