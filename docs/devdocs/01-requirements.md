@@ -62,6 +62,7 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-031** | 主题色系统化 | P2 | 迁移至 Apple 系统强调色 [视觉优化] |
 | **F-032** | 自动发现主机 | P2 | 进入主机列表自动启动发现，移除手动按钮 [体验优化] |
 | **F-033** | macOS TabView 布局 | P2 | macOS 采用 TabView 替代侧边栏，跨平台一致 [体验优化] |
+| **F-034** | macOS 设置侧边栏导航 | P2 | macOS 设置页采用侧边栏替代顶部 TabView [体验优化] |
 
 ---
 
@@ -498,6 +499,28 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - **AC-118**: 移除欢迎页：移除 `WelcomeView`（无需侧边栏空状态）
 - **AC-119**: 菜单栏保留：macOS 菜单栏功能（Cmd+N 添加主机等）保持不变
 - **AC-120**: 窗口样式调整：评估是否需要调整 `.windowStyle(.hiddenTitleBar)`
+
+---
+
+### US-034: macOS 设置侧边栏导航
+> 关联功能: F-034
+> 来源: INS-001 (💡 内部反馈)
+
+**作为** macOS 用户
+**我希望** 设置页面使用侧边栏导航替代顶部 TabView
+**以便** 避免双层 Tab 视觉混淆，符合 macOS System Settings 的设计惯例
+
+**现状问题**:
+- `ContentView` 有主 TabView（Hosts / Settings）
+- `SettingsView` 内有子 TabView（General / Video / Audio 等 8 个 Tab）
+- 两层 Tab 在同一视觉行，容易混淆
+
+**验收标准**:
+- **AC-121**: macOS 设置页使用 `NavigationSplitView` + List 替代内部 TabView
+- **AC-122**: 左侧列表显示所有设置分类（General、Video、Audio、Controller、Account、Consoles、Logs、Data）
+- **AC-123**: 右侧显示选中分类的设置内容
+- **AC-124**: iOS/iPadOS/tvOS 保持现有 NavigationStack + Form 结构不变
+- **AC-125**: 设置分类保持与现有顺序一致
 
 ---
 

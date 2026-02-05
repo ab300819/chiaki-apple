@@ -1,6 +1,6 @@
 # 洞察收集
 
-> **状态更新**: 2026-02-04
+> **状态更新**: 2026-02-06
 > **已归档洞察**: [archive/05-insights-archive.md](archive/05-insights-archive.md) (INS-001 ~ INS-031)
 
 ---
@@ -1146,3 +1146,63 @@ HDR 功能已实现，但存在以下可优化点：
 - [x] INS-049: 已完成 (M12 T-159~T-170)
 - [x] INS-050: 已确认 → F-029 / AC-101~AC-103
 - [x] INS-051: 已确认 → F-030 / AC-104~AC-106
+
+---
+
+## 洞察收集：macOS 设置布局优化
+
+**收集时间**: 2026-02-06
+**来源类型**: 💡 内部反馈 (UI/UX 审查)
+
+### 背景
+
+用户反馈 macOS 上存在双层 TabView 视觉层级混淆问题：
+1. `ContentView` 的主 TabView（Hosts / Settings）
+2. `SettingsView` 内部的子 TabView（General / Video / Audio 等 8 个 Tab）
+
+两层 Tab 在同一视觉行，用户容易混淆主 Tab 和设置子 Tab。
+
+### 建议汇总
+
+| 编号 | 标题 | 来源 | 优先级 | 状态 |
+|------|------|------|--------|------|
+| INS-052 | macOS 设置子 Tab 改为侧边栏导航 | 💡 | P2 | 🔄 已转化 |
+
+### 详细建议
+
+#### INS-052: macOS 设置子 Tab 改为侧边栏导航
+
+- **来源**: 💡 内部反馈 (UI/UX 审查)
+- **现状**: macOS `SettingsView` 使用 `TabView` 显示 8 个设置分类，与主 TabView 形成双层 Tab 结构
+- **建议**: macOS 设置页改用 `NavigationSplitView` + List 侧边栏，符合 macOS System Settings 设计惯例
+- **影响范围**: SettingsView.swift (macOS 分支)
+- **预期收益**:
+  - 更清晰的视觉层级区分
+  - 符合 macOS 系统设置的设计惯例
+  - 减少用户对 Tab 层级的认知负担
+- **实现要点**:
+  ```swift
+  #if os(macOS)
+  NavigationSplitView {
+      List(selection: $selectedCategory) {
+          Label(L10n.Nav.general, systemImage: "gearshape")
+              .tag(SettingsCategory.general)
+          Label(L10n.Nav.video, systemImage: "display")
+              .tag(SettingsCategory.video)
+          // ... 其他分类
+      }
+  } detail: {
+      switch selectedCategory {
+      case .general: GeneralSettingsView()
+      case .video: VideoSettingsView()
+      // ...
+      }
+  }
+  #endif
+  ```
+
+---
+
+### 确认结果
+
+- [x] INS-052: 已确认 → F-034 / AC-121~AC-125

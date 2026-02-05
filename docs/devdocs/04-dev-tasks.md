@@ -1,7 +1,7 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
-> **状态更新**: 2026-02-05
-> **当前里程碑**: M13 已归档，待规划 M14
+> **状态更新**: 2026-02-06
+> **当前里程碑**: M14 规划中
 > **归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (M11: 35 任务, M12: 24 任务, M13: 23 任务)
 
 ---
@@ -85,15 +85,174 @@
 
 ---
 
-## 下一步
+## M14 任务：F-034 macOS 设置侧边栏导航
 
-项目当前处于 **Beta 1 就绪状态**。建议：
+> **阶段目标**: macOS 设置页面布局优化，消除双层 TabView 混淆
+> **来源**: INS-052 (UI/UX 审查)
+> **优先级**: P2
 
-1. 运行 `/devdocs-onboard --update` 更新项目上下文
-2. 规划 M14 里程碑任务（如有新需求）
-3. 考虑发布 Beta 1 版本
-4. 等待 T-115 设计师资产
+### 依赖关系图
+
+```
+T-199 (SettingsCategory 枚举)
+   │
+   ▼
+T-200 (侧边栏列表)
+   │
+   ▼
+T-201 (详情视图切换)
+   │
+   ▼
+T-202 (验证与调整)
+```
 
 ---
 
-*文档由 `/devdocs-sync --archive` 更新 (2026-02-05)*
+### T-199: 定义 SettingsCategory 枚举 ✅
+
+- **关联需求**: F-034, AC-122, AC-125
+- **优先级**: P2
+- **依赖**: 无
+- **TDD 模式**: 🟢 可选
+- **提交**: 9f94de7
+
+**描述**：
+创建 `SettingsCategory` 枚举，定义所有设置分类及其图标、标题映射。
+
+**涉及文件**：
+- `Chiaki/Features/Settings/SettingsView.swift`
+
+**验收标准**：
+- [ ] 枚举包含 8 个分类：general, video, audio, controller, account, consoles, logs, data
+- [ ] 每个分类有对应的 `title` (使用 L10n) 和 `systemImage`
+- [ ] 枚举遵循 `CaseIterable, Identifiable, Hashable` 协议
+
+**测试方法**：
+- 编译通过，枚举可正常使用
+
+**Review 要点**：
+- 枚举命名与现有 Tab 顺序一致
+- 使用 L10n 本地化字符串
+
+---
+
+### T-200: 实现侧边栏列表视图 ✅
+
+- **关联需求**: F-034, AC-121, AC-122
+- **优先级**: P2
+- **依赖**: T-199 ✅
+- **TDD 模式**: 🟢 可选
+- **提交**: 88ba705
+
+**描述**：
+在 macOS 分支中，将 `TabView` 替换为 `NavigationSplitView`，左侧显示设置分类列表。
+
+**涉及文件**：
+- `Chiaki/Features/Settings/SettingsView.swift`
+
+**验收标准**：
+- [ ] macOS 使用 `NavigationSplitView` 替代 `TabView`
+- [ ] 左侧 List 显示所有 8 个设置分类
+- [ ] 列表项使用 Label 显示图标和标题
+- [ ] 列表支持单选 (`selection: $selectedCategory`)
+
+**测试方法**：
+- macOS 运行，验证侧边栏正常显示
+- 点击列表项可选中
+
+**Review 要点**：
+- `#if os(macOS)` 条件编译正确
+- iOS/tvOS 保持原有实现不变
+
+---
+
+### T-201: 实现详情视图切换逻辑 ✅
+
+- **关联需求**: F-034, AC-123, AC-124
+- **优先级**: P2
+- **依赖**: T-200 ✅
+- **TDD 模式**: 🟢 可选
+- **提交**: 88ba705
+
+**描述**：
+根据选中的分类，在 NavigationSplitView 的 detail 区域显示对应的设置视图。
+
+**涉及文件**：
+- `Chiaki/Features/Settings/SettingsView.swift`
+
+**验收标准**：
+- [ ] 选中 general 显示 `GeneralSettingsView`
+- [ ] 选中 video 显示 `VideoSettingsView`
+- [ ] 选中 audio 显示 `AudioSettingsView`
+- [ ] 选中 controller 显示 `ControllerSettingsView`
+- [ ] 选中 account 显示 `AccountSettingsView`
+- [ ] 选中 consoles 显示 `ConsolesSettingsView`
+- [ ] 选中 logs 显示 `LogViewerView`
+- [ ] 选中 data 显示 `DataSettingsView`
+- [ ] 默认选中 general
+
+**测试方法**：
+- macOS 运行，验证切换分类时内容正确更新
+- 验证 iOS/tvOS 未受影响
+
+**Review 要点**：
+- switch 语句完整覆盖所有 case
+- 无 default 分支（保证编译时检查）
+
+---
+
+### T-202: 布局验证与样式调整 ✅
+
+- **关联需求**: F-034, AC-121~AC-125
+- **优先级**: P2
+- **依赖**: T-201 ✅
+- **TDD 模式**: 🟢 可选
+- **备注**: 验证通过，无需额外修改
+
+**描述**：
+验证整体布局效果，调整侧边栏宽度、间距等样式参数。
+
+**涉及文件**：
+- `Chiaki/Features/Settings/SettingsView.swift`
+
+**验收标准**：
+- [ ] 侧边栏宽度合适（建议 200-250pt）
+- [ ] 内容区域保持原有样式
+- [ ] 窗口最小尺寸合理（保持 500x400）
+- [ ] 无双层 Tab 视觉混淆
+- [ ] 编译无警告
+
+**测试方法**：
+- macOS 运行完整测试：
+  1. 切换所有设置分类
+  2. 调整窗口大小验证响应式
+  3. 与 iOS 版本对比，确认功能一致
+
+**Review 要点**：
+- 移除 macOS 分支中的 `.padding()` 如果不再需要
+- 确认 `DataSettingsView` 正常显示（macOS 专有）
+
+---
+
+## 任务汇总
+
+| 编号 | 名称 | 关联 | 状态 | 提交 |
+|------|------|------|------|------|
+| T-199 | 定义 SettingsCategory 枚举 | F-034, AC-122 | ✅ | 9f94de7 |
+| T-200 | 实现侧边栏列表视图 | F-034, AC-121 | ✅ | 88ba705 |
+| T-201 | 实现详情视图切换逻辑 | F-034, AC-123 | ✅ | 88ba705 |
+| T-202 | 布局验证与样式调整 | F-034, AC-125 | ✅ | - |
+
+---
+
+## 下一步
+
+F-034 macOS 设置侧边栏导航已完成 (4/4 任务)。
+
+1. 运行 `/devdocs-sync --trace` 同步追溯状态
+2. 等待 T-115 设计师资产
+3. 规划下一个功能需求
+
+---
+
+*文档由 `/devdocs-dev-workflow` 更新 (2026-02-06)*
