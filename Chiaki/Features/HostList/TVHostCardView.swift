@@ -42,7 +42,11 @@ struct TVHostCardView: View {
                             .fontWeight(.bold)
                             .foregroundStyle(isFocused ? .white : .primary)
 
-                        // Running app info (when online)
+                        /**
+                         * Running app info (when online)
+                         * @requirement F-036
+                         * @satisfies AC-131 - 使用语义色替代硬编码颜色
+                         */
                         if let runningApp = host.runningApp, host.state == .online {
                             HStack(spacing: 4) {
                                 Image(systemName: "play.fill")
@@ -50,7 +54,7 @@ struct TVHostCardView: View {
                                 Text(runningApp)
                             }
                             .font(.caption2)
-                            .foregroundStyle(isFocused ? .white : .blue)
+                            .foregroundStyle(isFocused ? .white : Color.accentColor)
                             .lineLimit(1)
                         }
 
@@ -81,7 +85,11 @@ struct TVHostCardView: View {
                         }
                     }
                     
-                        // Status Badge
+                        /**
+                         * Status Badge with VoiceOver support
+                         * @requirement F-036
+                         * @satisfies AC-132 - tvOS 状态徽章添加 accessibilityLabel
+                         */
                     Group {
                         if !host.isRegistered {
                             Text(L10n.HostList.registerNeeded)
@@ -91,6 +99,7 @@ struct TVHostCardView: View {
                                 .background(Color.red)
                                 .foregroundStyle(.white)
                                 .clipShape(Capsule())
+                                .accessibilityLabel(String(localized: "accessibility.hostStatus.needsRegistration"))
                         } else {
                             switch host.state {
                             case .online:
@@ -101,14 +110,16 @@ struct TVHostCardView: View {
                                     .background(Color.green)
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
+                                    .accessibilityLabel(String(localized: "accessibility.hostStatus.online"))
                             case .standby:
-                                Text(L10n.Common.standby) // Wake Up handled by action, but badge shows state
+                                Text(L10n.Common.standby)
                                     .font(.caption2)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
                                     .background(Color.orange)
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
+                                    .accessibilityLabel(String(localized: "accessibility.hostStatus.standby"))
                             case .offline:
                                 Text(L10n.Common.offline)
                                     .font(.caption2)
@@ -117,6 +128,7 @@ struct TVHostCardView: View {
                                     .background(Color.gray)
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
+                                    .accessibilityLabel(String(localized: "accessibility.hostStatus.offline"))
                             case .unknown:
                                 EmptyView()
                             }

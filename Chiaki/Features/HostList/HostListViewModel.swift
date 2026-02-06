@@ -27,6 +27,13 @@ final class HostListViewModel {
 
     var isLoading: Bool = true  // Start with loading state
 
+    /**
+     * Track if this is the initial load (before any hosts have been shown)
+     * @requirement F-036
+     * @satisfies AC-130 - 区分首次加载和刷新状态
+     */
+    var isInitialLoading: Bool = true
+
     /// Local error message for ViewModel-specific errors
     private var localErrorMessage: String?
 
@@ -73,6 +80,10 @@ final class HostListViewModel {
         isInitialized = true
         _hostManager = HostManager.shared
         isLoading = false
+        // isInitialLoading stays true until first refresh completes or hosts are loaded
+        if !hosts.isEmpty {
+            isInitialLoading = false
+        }
     }
 
     // MARK: - Discovery
@@ -117,6 +128,7 @@ final class HostListViewModel {
         isLoading = true
         await hostManager.refresh()
         isLoading = false
+        isInitialLoading = false  // After first refresh, no longer initial
     }
 
     // MARK: - Host Management

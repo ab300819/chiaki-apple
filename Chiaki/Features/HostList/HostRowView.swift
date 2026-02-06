@@ -23,7 +23,11 @@ struct HostRowView: View {
                 Text(host.nickname)
                     .font(.headline)
 
-                // Running app info (when online)
+                /**
+                 * Running app info (when online)
+                 * @requirement F-036
+                 * @satisfies AC-131 - 使用语义色替代硬编码颜色
+                 */
                 if let runningApp = host.runningApp, host.state == .online {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
@@ -35,7 +39,7 @@ struct HostRowView: View {
                         }
                     }
                     .font(.caption)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color.accentColor)
                 }
 
                 HStack(spacing: 8) {
@@ -84,6 +88,11 @@ struct HostRowView: View {
                             .foregroundStyle(.green)
                             .clipShape(Capsule())
                     case .standby:
+                        /**
+                         * Wake Up button with Apple HIG compliant touch target
+                         * @requirement F-036
+                         * @satisfies AC-129 - 触摸区域 ≥ 44pt
+                         */
                         Button(action: {
                             HapticFeedback.button()
                             onWakeUp()
@@ -97,6 +106,8 @@ struct HostRowView: View {
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .frame(minHeight: ChiakiTheme.Touch.minTargetSize)
+                        .contentShape(Rectangle())
                     case .offline:
                         Text(L10n.Common.offline)
                             .font(.caption)

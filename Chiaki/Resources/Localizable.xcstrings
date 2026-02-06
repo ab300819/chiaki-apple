@@ -47,6 +47,74 @@
         }
       }
     },
+    "accessibility.hostStatus.needsRegistration" : {
+      "comment" : "Host status badge accessibility label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status: Registration required"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态：需要注册"
+          }
+        }
+      }
+    },
+    "accessibility.hostStatus.offline" : {
+      "comment" : "Host status badge accessibility label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status: Offline"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态：离线"
+          }
+        }
+      }
+    },
+    "accessibility.hostStatus.online" : {
+      "comment" : "Host status badge accessibility label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status: Online"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态：在线"
+          }
+        }
+      }
+    },
+    "accessibility.hostStatus.standby" : {
+      "comment" : "Host status badge accessibility label",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status: Standby, can wake up"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态：待机，可唤醒"
+          }
+        }
+      }
+    },
     "accessibility.disconnectStream" : {
       "comment" : "MARK: - Accessibility",
       "localizations" : {

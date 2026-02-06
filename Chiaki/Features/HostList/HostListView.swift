@@ -209,9 +209,15 @@ struct HostListView: View {
     }
     #endif
 
+    /**
+     * iOS/macOS host list body
+     * @requirement F-036
+     * @satisfies AC-130 - 首次加载居中 ProgressView，刷新时保留列表
+     */
     private var iOSBody: some View {
         List(selection: $selectedHostIds) {
-            if viewModel.isLoading {
+            if viewModel.isInitialLoading && viewModel.hosts.isEmpty {
+                // Initial loading: show centered ProgressView
                 HStack {
                     Spacer()
                     ProgressView()
