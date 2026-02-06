@@ -11,6 +11,19 @@ struct AddHostView: View {
     var body: some View {
         NavigationStack {
             Form {
+                /// macOS sheet 自定义标题视图
+                /// @requirement F-037
+                /// @satisfies AC-138 - macOS sheet 标题居中突出显示
+                #if os(macOS)
+                Text(String(localized: "addHost.title"))
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                #endif
+
                 Section {
                     TextField(String(localized: "addHost.nickname"), text: $nickname)
                     TextField(String(localized: "addHost.address"), text: $address)
@@ -23,15 +36,12 @@ struct AddHostView: View {
                     }
                 }
             }
-            /**
-             * macOS 表单分组样式
-             * @requirement F-037
-             * @satisfies AC-137 - macOS 表单有正确的分组边距
-             */
             #if os(macOS)
             .formStyle(.grouped)
-            #endif
+            .navigationTitle("")
+            #else
             .navigationTitle(String(localized: "addHost.title"))
+            #endif
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
