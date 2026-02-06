@@ -71,6 +71,11 @@ struct ConsolePinView: View {
                     }
                 }
             }
+            /// @requirement F-037
+            /// @satisfies AC-141 - macOS 表单分组样式
+            #if os(macOS)
+            .formStyle(.grouped)
+            #endif
             .navigationTitle(String(localized: "consolePin.title"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
