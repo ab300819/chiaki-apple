@@ -23,6 +23,14 @@ struct AddHostView: View {
                     }
                 }
             }
+            /**
+             * macOS 表单分组样式
+             * @requirement F-037
+             * @satisfies AC-137 - macOS 表单有正确的分组边距
+             */
+            #if os(macOS)
+            .formStyle(.grouped)
+            #endif
             .navigationTitle(String(localized: "addHost.title"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
