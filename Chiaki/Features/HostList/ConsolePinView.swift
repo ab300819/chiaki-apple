@@ -27,13 +27,23 @@ struct ConsolePinView: View {
     var body: some View {
         NavigationStack {
             Form {
+                #if os(macOS)
+                Text(String(localized: "consolePin.title"))
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                #endif
+
                 Section {
                     HStack {
                         if showPin {
-                            TextField("0000", text: $pin)
+                            TextField(String(localized: "consolePin.placeholder"), text: $pin)
                                 .focused($isPinFieldFocused)
                         } else {
-                            SecureField("0000", text: $pin)
+                            SecureField(String(localized: "consolePin.placeholder"), text: $pin)
                                 .focused($isPinFieldFocused)
                         }
 
@@ -75,8 +85,10 @@ struct ConsolePinView: View {
             /// @satisfies AC-141 - macOS 表单分组样式
             #if os(macOS)
             .formStyle(.grouped)
-            #endif
+            .navigationTitle("")
+            #else
             .navigationTitle(String(localized: "consolePin.title"))
+            #endif
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -240,10 +252,10 @@ struct ConsolePinEntryView: View {
         VStack(spacing: 8) {
             HStack {
                 if showPin {
-                    TextField("0000", text: $pin)
+                    TextField(String(localized: "consolePin.placeholder"), text: $pin)
                         .focused($isPinFieldFocused)
                 } else {
-                    SecureField("0000", text: $pin)
+                    SecureField(String(localized: "consolePin.placeholder"), text: $pin)
                         .focused($isPinFieldFocused)
                 }
 
