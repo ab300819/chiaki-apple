@@ -74,14 +74,17 @@ struct ControllerSettingsView: View {
                     HStack {
                         Text(String(localized: "settings.controller.stickDeadzone"))
                         Spacer()
-                        Text(String(format: "%.0f%%", store.streamSettings.stickDeadzone * 100))
+                        Text(String(localized: "settings.audio.percent \(Int(store.streamSettings.stickDeadzone * 100))"))
                             .foregroundStyle(.secondary)
+                            .monospacedDigit()
                     }
                     Slider(
                         value: $store.streamSettings.stickDeadzone,
                         in: 0...0.3,
                         step: 0.01
-                    )
+                    ) {
+                        Text(String(localized: "settings.controller.stickDeadzone"))
+                    }
                 }
 
                 Toggle(String(localized: "settings.controller.swapCrossCircle"), isOn: $store.streamSettings.swapCrossCircle)
@@ -99,14 +102,17 @@ struct ControllerSettingsView: View {
                         HStack {
                             Text(String(localized: "settings.controller.touchControllerOpacity"))
                             Spacer()
-                            Text(String(format: "%.0f%%", store.streamSettings.touchControllerOpacity * 100))
+                            Text(String(localized: "settings.audio.percent \(Int(store.streamSettings.touchControllerOpacity * 100))"))
                                 .foregroundStyle(.secondary)
+                                .monospacedDigit()
                         }
                         Slider(
                             value: $store.streamSettings.touchControllerOpacity,
                             in: 0.3...1.0,
                             step: 0.1
-                        )
+                        ) {
+                            Text(String(localized: "settings.controller.touchControllerOpacity"))
+                        }
                     }
                 }
             } header: {
