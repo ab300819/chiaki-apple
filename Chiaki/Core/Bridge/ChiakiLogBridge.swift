@@ -14,26 +14,32 @@ final class ChiakiLogBridge: @unchecked Sendable {
     /// Singleton instance
     static let shared = ChiakiLogBridge()
 
-    /// The underlying C log structure
-    private var chiakiLog: ChiakiLog
+    /// The underlying C log structure (heap allocated for stable pointer lifetime)
+    /// @requirement F-038
+    /// @satisfies AC-146 - 堆分配替代 withUnsafeMutablePointer 逃逸指针
+    private let chiakiLog: UnsafeMutablePointer<ChiakiLog>
 
     /// Reference to self for C callback context
     private var contextPointer: UnsafeMutableRawPointer?
 
     private init() {
-        chiakiLog = ChiakiLog()
-        // Store reference to self for C callback
+        chiakiLog = .allocate(capacity: 1)
+        chiakiLog.initialize(to: ChiakiLog())
+        // SAFETY: passUnretained is safe because ChiakiLogBridge is a singleton.
+        // The callback context remains valid for app lifetime.
         contextPointer = Unmanaged.passUnretained(self).toOpaque()
     }
 
     deinit {
         contextPointer = nil
+        chiakiLog.deinitialize(count: 1)
+        chiakiLog.deallocate()
     }
 
     /// Initialize the chiaki log with the given level mask
     func initialize(levelMask: ChiakiLogLevelMask = .all) {
         chiaki_log_init(
-            &chiakiLog,
+            chiakiLog,
             levelMask.rawValue,
             chiakiLogCallback,
             contextPointer
@@ -42,12 +48,12 @@ final class ChiakiLogBridge: @unchecked Sendable {
 
     /// Update the log level mask
     func setLevelMask(_ mask: ChiakiLogLevelMask) {
-        chiaki_log_set_level(&chiakiLog, mask.rawValue)
+        chiaki_log_set_level(chiakiLog, mask.rawValue)
     }
 
     /// Get a pointer to the underlying ChiakiLog for use with C APIs
     func getLogPointer() -> UnsafeMutablePointer<ChiakiLog> {
-        withUnsafeMutablePointer(to: &chiakiLog) { $0 }
+        chiakiLog
     }
 }
 

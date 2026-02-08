@@ -335,6 +335,10 @@ final class ChiakiSessionWrapper {
         // NOTE: We use DIRECT struct field assignment instead of static inline functions
         // because Swift cannot reliably call C static inline functions - they appear to
         // succeed from Swift's perspective but C code sees NULL values.
+        // SAFETY: passUnretained is safe here because:
+        // 1) session callback lifetime is bounded by chiaki_session_fini() in disconnect()/deinit
+        // 2) self owns `session` and stays alive while callbacks are registered
+        // 3) sessionLock guards teardown against concurrent access to native session state
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
 
         // [satisfies] AC-104 - 统一日志
@@ -576,6 +580,10 @@ final class ChiakiSessionWrapper {
         chiakiLog = UnsafeMutablePointer<ChiakiLog>.allocate(capacity: 1)
         guard let log = chiakiLog else { return }
 
+        // SAFETY: passUnretained is safe here because:
+        // 1) log callback lifetime is bounded by wrapper lifetime and log pointer teardown
+        // 2) self outlives chiakiLog callback registrations
+        // 3) callback only uses wrapper for logging and does not transfer ownership
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
         chiaki_log_init(log, ChiakiLogLevelMask.all.rawValue, chiakiLogCallback, selfPointer)
     }
@@ -768,6 +776,8 @@ private let sessionEventCallback: ChiakiEventCallback = { event, userData in
         return
     }
 
+    // SAFETY: userData was created via passUnretained(self) when callbacks were installed.
+    // chiaki_session_fini() in disconnect/deinit bounds callback lifetime before wrapper release.
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
 
     // Process event - copy data since event pointer is only valid during callback
@@ -783,6 +793,8 @@ private let sessionEventCallback: ChiakiEventCallback = { event, userData in
 private let videoSampleCallback: ChiakiVideoSampleCallback = { buf, bufSize, framesLost, frameRecovered, userData in
     guard let buf = buf, let userData = userData else { return false }
 
+    // SAFETY: matches passUnretained(self) used for video_sample_cb_user.
+    // Wrapper outlives native callback registration and teardown.
     let session = Unmanaged<ChiakiSessionWrapper>.fromOpaque(userData).takeUnretainedValue()
     return session.handleVideoSample(buf: buf, bufSize: Int(bufSize), framesLost: framesLost, frameRecovered: frameRecovered)
 }

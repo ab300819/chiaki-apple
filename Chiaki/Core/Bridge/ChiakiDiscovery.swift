@@ -115,6 +115,9 @@ final class DiscoveryService {
         options.ping_initial_ms = 1000
         options.cb = { hosts, count, user in
             guard let user = user else { return }
+            // SAFETY: `user` comes from passUnretained(self) in startDiscovery().
+            // DiscoveryService calls chiaki_discovery_service_fini() in stop/deinit,
+            // so callbacks stop before object teardown.
             let service = Unmanaged<DiscoveryService>.fromOpaque(user).takeUnretainedValue()
             
             var discovered: [DiscoveredHost] = []
@@ -130,6 +133,9 @@ final class DiscoveryService {
                 service.updateDiscoveredHosts(discovered)
             }
         }
+        // SAFETY: passUnretained is safe because callback lifetime is bounded by
+        // chiaki_discovery_service_fini() in stopDiscovery()/deinit, and self remains
+        // alive while discovery is active.
         options.cb_user = Unmanaged.passUnretained(self).toOpaque()
         
         var sendAddr = sockaddr_in()

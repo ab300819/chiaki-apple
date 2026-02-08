@@ -113,6 +113,10 @@ final class ChiakiRegistWrapper {
         }
         
         // Callback
+        // SAFETY: passUnretained is safe here because:
+        // 1) registration callback lifetime is bounded by chiaki_regist_fini() in cleanup()/deinit
+        // 2) self owns `regist` and remains alive while registration is active
+        // 3) registLock protects teardown ordering for native pointer access
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
         
         updateState(.registering)
@@ -156,6 +160,10 @@ final class ChiakiRegistWrapper {
         chiakiLog = UnsafeMutablePointer<ChiakiLog>.allocate(capacity: 1)
         guard let log = chiakiLog else { return }
         
+        // SAFETY: passUnretained is safe here because:
+        // 1) log callback lifetime is bounded by chiakiLog pointer lifetime on this wrapper
+        // 2) self outlives chiaki_log_init registration and cleanup
+        // 3) callback does not retain or transfer ownership of self
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
         chiaki_log_init(log, ChiakiLogLevelMask.all.rawValue, chiakiRegistLogCallback, selfPointer)
     }
@@ -229,6 +237,8 @@ private func registrationCallback(
 ) {
     guard let event = event, let userData = userData else { return }
     
+    // SAFETY: userData was created via passUnretained(self) at registration start.
+    // cleanup()/deinit calls chiaki_regist_fini() to stop callbacks before wrapper release.
     let wrapper = Unmanaged<ChiakiRegistWrapper>.fromOpaque(userData).takeUnretainedValue()
     
     // Process event - copy data if needed
