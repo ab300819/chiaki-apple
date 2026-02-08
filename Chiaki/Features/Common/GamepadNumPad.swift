@@ -287,6 +287,7 @@ private struct NumPadKeyButton: View {
  * PIN display with masked/visible toggle
  * @requirement F-022 - 手柄操控 UI/UX 优化
  * @satisfies AC-067 - PIN 显示使用占位符
+ * @satisfies AC-136 - PIN 输入状态无障碍播报
  */
 struct PINDisplay: View {
     let value: String
@@ -303,12 +304,18 @@ struct PINDisplay: View {
                 )
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(pinProgressAccessibilityLabel)
     }
 
     private func digit(at index: Int) -> String {
         guard index < value.count else { return "" }
         let stringIndex = value.index(value.startIndex, offsetBy: index)
         return String(value[stringIndex])
+    }
+
+    private var pinProgressAccessibilityLabel: String {
+        String(localized: "accessibility.pinProgress \(value.count) \(maxLength)")
     }
 }
 

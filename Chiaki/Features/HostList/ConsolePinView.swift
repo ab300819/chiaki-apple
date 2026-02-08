@@ -177,8 +177,13 @@ struct ConsolePinEntryView: View {
 
                 if showError {
                     Text(String(localized: "consolePin.incorrectPin \(maxAttempts - attempts)"))
-                        .font(.caption)
+                        .font(.callout)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.red)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red.opacity(0.15))
+                        .clipShape(Capsule())
                 }
 
                 #if !os(tvOS)

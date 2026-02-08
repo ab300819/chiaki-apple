@@ -218,6 +218,22 @@
         }
       }
     },
+    "accessibility.pinProgress %lld %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld digits entered"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已输入 %lld 位，共 %lld 位"
+          }
+        }
+      }
+    },
     "Add Host..." : {
       "localizations" : {
         "en" : {
