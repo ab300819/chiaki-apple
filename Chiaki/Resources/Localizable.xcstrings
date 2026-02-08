@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "%lld%%" : {
       "localizations" : {
         "en" : {
@@ -22,6 +25,7 @@
       }
     },
     "0000" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -43,6 +47,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "手动添加新主机"
+          }
+        }
+      }
+    },
+    "accessibility.disconnectStream" : {
+      "comment" : "MARK: - Accessibility",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnect and close stream"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "断开连接并关闭串流"
           }
         }
       }
@@ -111,23 +132,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "状态：待机，可唤醒"
-          }
-        }
-      }
-    },
-    "accessibility.disconnectStream" : {
-      "comment" : "MARK: - Accessibility",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disconnect and close stream"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "断开连接并关闭串流"
           }
         }
       }
@@ -202,22 +206,6 @@
         }
       }
     },
-    "accessibility.volumeLevel %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Volume %lld percent"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "音量 %lld%%"
-          }
-        }
-      }
-    },
     "accessibility.pinProgress %lld %lld" : {
       "localizations" : {
         "en" : {
@@ -230,6 +218,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已输入 %lld 位，共 %lld 位"
+          }
+        }
+      }
+    },
+    "accessibility.volumeLevel %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume %lld percent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量 %lld%%"
           }
         }
       }
@@ -944,23 +948,6 @@
         }
       }
     },
-    "consolePin.placeholder" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter 4-digit PIN"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "输入 4 位数字 PIN"
-          }
-        }
-      }
-    },
     "consolePin.pinRequired" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1007,6 +994,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "连接到 %@ 需要输入 PIN"
+          }
+        }
+      }
+    },
+    "consolePin.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter 4-digit PIN"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入 4 位数字 PIN"
           }
         }
       }

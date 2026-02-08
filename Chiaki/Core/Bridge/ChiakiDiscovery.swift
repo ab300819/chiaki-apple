@@ -92,7 +92,14 @@ final class DiscoveryService {
         Logger.discovery.info("DiscoveryService initialized")
     }
 
+    /// @requirement F-038
+    /// @satisfies AC-143 - deinit 调用 stopDiscovery() 确保 C 层回调不触发已释放对象
     deinit {
+        MainActor.assumeIsolated {
+            if isDiscovering {
+                stopDiscovery()
+            }
+        }
     }
 
     func startDiscovery() {
@@ -250,5 +257,3 @@ enum DiscoveryError: Error, LocalizedError {
         }
     }
 }
-
-
