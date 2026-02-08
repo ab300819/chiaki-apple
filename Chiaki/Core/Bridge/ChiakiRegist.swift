@@ -174,10 +174,19 @@ final class ChiakiRegistWrapper {
         }
     }
     
+    /// @requirement F-038
+    /// @satisfies AC-145 - 属性写入统一到 MainActor，消除线程一致性隐患
     private func updateState(_ newState: RegistrationState) {
-        state = newState
-        DispatchQueue.main.async { [weak self] in
-            self?.onStateChanged?(newState)
+        let applyStateChange = { [weak self] in
+            guard let self = self else { return }
+            self.state = newState
+            self.onStateChanged?(newState)
+        }
+
+        if Thread.isMainThread {
+            applyStateChange()
+        } else {
+            DispatchQueue.main.async(execute: applyStateChange)
         }
     }
     
