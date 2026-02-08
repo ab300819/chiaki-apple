@@ -82,9 +82,16 @@ final class ChiakiRegistWrapper {
         // Target
         info.target = isPS5 ? CHIAKI_TARGET_PS5_1 : CHIAKI_TARGET_PS4_10 // Use sensible defaults
         
-        // Host
+        /// Host - strdup + defer 确保所有退出路径释放
+        /// @requirement F-038
+        /// @satisfies AC-144 - 早退路径正确释放 strdup 分配的内存
         let hostCString = host.cString(using: .utf8)!
-        info.host = UnsafePointer(strdup(hostCString))
+        guard let duplicatedHost = strdup(hostCString) else {
+            cleanup()
+            throw ChiakiError.memory
+        }
+        info.host = UnsafePointer(duplicatedHost)
+        defer { free(duplicatedHost) }
         info.broadcast = false
         
         // PIN
@@ -117,9 +124,6 @@ final class ChiakiRegistWrapper {
         } else {
             result = CHIAKI_ERR_SUCCESS
         }
-        
-        // Free host string (it's copied in chiaki_regist_start)
-        free(UnsafeMutablePointer(mutating: info.host))
         
         guard result == CHIAKI_ERR_SUCCESS else {
             cleanup()
