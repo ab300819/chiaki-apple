@@ -33,21 +33,27 @@ final class NetworkMonitor {
     
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.isConnected = path.status == .satisfied
-                self?.isCellular = path.isExpensive || path.usesInterfaceType(.cellular)
-                
-                if path.usesInterfaceType(.wifi) {
-                    self?.currentInterfaceType = .wifi
-                } else if path.usesInterfaceType(.cellular) {
-                    self?.currentInterfaceType = .cellular
-                } else if path.usesInterfaceType(.wiredEthernet) {
-                    self?.currentInterfaceType = .wiredEthernet
-                } else {
-                    self?.currentInterfaceType = .other
-                }
-                
-                Logger.network.info("Network status changed: isConnected=\(path.status == .satisfied), type=\(self?.currentInterfaceType ?? .other), isCellular=\(self?.isCellular ?? false)")
+            guard let self else { return }
+
+            let isConnected = path.status == .satisfied
+            let isCellular = path.isExpensive || path.usesInterfaceType(.cellular)
+            let interfaceType: NWInterface.InterfaceType
+            if path.usesInterfaceType(.wifi) {
+                interfaceType = .wifi
+            } else if path.usesInterfaceType(.cellular) {
+                interfaceType = .cellular
+            } else if path.usesInterfaceType(.wiredEthernet) {
+                interfaceType = .wiredEthernet
+            } else {
+                interfaceType = .other
+            }
+
+            Task { @MainActor [self, isConnected, isCellular, interfaceType] in
+                self.isConnected = isConnected
+                self.isCellular = isCellular
+                self.currentInterfaceType = interfaceType
+
+                Logger.network.info("Network status changed: isConnected=\(isConnected), type=\(interfaceType), isCellular=\(isCellular)")
             }
         }
         monitor.start(queue: queue)

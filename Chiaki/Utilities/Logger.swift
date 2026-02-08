@@ -192,58 +192,58 @@ final class Logger: Sendable {
 /// Category-specific loggers for different subsystems
 extension Logger {
     /// Logger for session/streaming related events
-    static let session = CategoryLogger(category: "Session")
+    nonisolated static let session = CategoryLogger(category: "Session")
 
     /// Logger for discovery related events
-    static let discovery = CategoryLogger(category: "Discovery")
+    nonisolated static let discovery = CategoryLogger(category: "Discovery")
 
     /// Logger for storage related events
-    static let storage = CategoryLogger(category: "Storage")
+    nonisolated static let storage = CategoryLogger(category: "Storage")
 
     /// Logger for video related events
-    static let video = CategoryLogger(category: "Video")
+    nonisolated static let video = CategoryLogger(category: "Video")
 
     /// Logger for audio related events
-    static let audio = CategoryLogger(category: "Audio")
+    nonisolated static let audio = CategoryLogger(category: "Audio")
 
     /// Logger for controller input events
-    static let controller = CategoryLogger(category: "Controller")
+    nonisolated static let controller = CategoryLogger(category: "Controller")
 
     /// Logger for network events
-    static let network = CategoryLogger(category: "Network")
+    nonisolated static let network = CategoryLogger(category: "Network")
 
     /// Logger for PSN authentication events
-    static let psn = CategoryLogger(category: "PSN")
+    nonisolated static let psn = CategoryLogger(category: "PSN")
 
     /// Logger for host registration events
-    static let regist = CategoryLogger(category: "Regist")
+    nonisolated static let regist = CategoryLogger(category: "Regist")
 }
 
 /// A category-specific logger that uses OSLog directly
 struct CategoryLogger: Sendable {
     private let logger: os.Logger
 
-    init(category: String) {
+    nonisolated init(category: String) {
         self.logger = os.Logger(subsystem: "ltd.hotter.chiaki", category: category)
     }
 
-    func debug(_ message: String) {
+    nonisolated func debug(_ message: String) {
         logger.debug("\(message, privacy: .public)")
     }
 
-    func info(_ message: String) {
+    nonisolated func info(_ message: String) {
         logger.info("\(message, privacy: .public)")
     }
 
-    func warning(_ message: String) {
+    nonisolated func warning(_ message: String) {
         logger.warning("\(message, privacy: .public)")
     }
 
-    func error(_ message: String) {
+    nonisolated func error(_ message: String) {
         logger.error("\(message, privacy: .public)")
     }
 
-    func trace(_ message: String) {
+    nonisolated func trace(_ message: String) {
         logger.trace("\(message, privacy: .public)")
     }
 }
