@@ -1,7 +1,121 @@
 # 开发任务归档
 
-> **最后更新**: 2026-02-05
-> **归档版本**: M11 + M12 + M13
+> **最后更新**: 2026-02-08
+> **归档版本**: M11 + M12 + M13 + M14 + M15
+
+---
+
+# M15 归档 - UI/UX 质量优化 + Swift/C Bridge 安全加固
+
+> **归档时间**: 2026-02-08
+> **归档原因**: M15 任务 100% 完成
+> **任务数量**: 18
+
+## M15 归档任务汇总
+
+| 编号 | 名称 | 优先级 | 关联需求 | 完成状态 |
+|------|------|--------|----------|----------|
+| T-203 | 统一 Slider tint 样式 | P2 | F-035, AC-126 | ✅ |
+| T-204 | 为 Slider 添加 VoiceOver label | P2 | F-035, AC-127 | ✅ |
+| T-205 | 统一百分比数值格式 | P2 | F-035, AC-128 | ✅ |
+| T-206 | 扩大 Wake Up 按钮触摸区域 | P2 | F-036, AC-129 | ✅ |
+| T-207 | 优化首次加载状态位置 | P2 | F-036, AC-130 | ✅ |
+| T-208 | 颜色优化与无障碍标签 | P2 | F-036, AC-131, AC-132 | ✅ |
+| T-209 | HostListView 优化验证 | P2 | F-036, AC-129~132 | ✅ |
+| T-210 | AddHostView macOS 表单样式 | P2 | F-037, AC-137 | ✅ |
+| T-211 | AddHostView 标题布局优化 | P3 | F-037, AC-138 | ✅ |
+| T-212 | ConsolePinView macOS 表单样式 | P2 | F-037, AC-141 | ✅ |
+| T-213 | ConsolePinView 标题和 placeholder | P2 | F-037, AC-139, AC-142 | ✅ |
+| T-214 | ConsolePinView 本地化格式修复 | P1 | F-037, AC-140 | ✅ |
+| T-215 | 错误提示增强与 PINDisplay 无障碍 | P2 | F-037, AC-135, AC-136 | ✅ |
+| T-216 | DiscoveryService deinit 生命周期收口 | P0 | F-038, AC-143 | ✅ |
+| T-217 | ChiakiRegist strdup 内存释放修复 | P1 | F-038, AC-144 | ✅ |
+| T-218 | Bridge updateState() 线程边界统一 | P1 | F-038, AC-145 | ✅ |
+| T-219 | ChiakiLogBridge 指针安全改进 | P2 | F-038, AC-146 | ✅ |
+| T-220 | Bridge userdata 所有权策略文档化 | P2 | F-038, AC-147 | ✅ |
+
+## M15 关键提交
+
+| 功能 | 任务 | 提交 | 描述 |
+|------|------|------|------|
+| F-035 Slider 规范化 | T-203 | `acfb854` | refactor(T-203): remove redundant Slider tint modifiers |
+| F-035 Slider 规范化 | T-204 | `424b723` | feat(T-204): add VoiceOver labels to all Sliders |
+| F-035 Slider 规范化 | T-205 | `d61eefe` | refactor(T-205): unify percentage display format with L10n |
+| F-036 HostListView 优化 | T-206~T-209 | `f25b371` | feat(T-206~T-209): improve HostListView UI/UX and accessibility |
+| F-037 AddHost/ConsolePin | T-210 | `1f7cd13` | feat(T-210): add macOS form style to AddHostView |
+| F-037 AddHost/ConsolePin | T-211 | `d18b643` | feat(T-211): optimize AddHostView title layout for macOS sheet |
+| F-037 AddHost/ConsolePin | T-212 | `63eec5d` | feat(T-212): add macOS form style to ConsolePinView |
+| F-037 AddHost/ConsolePin | T-213 | `6f52cae` | feat(T-213): optimize ConsolePinView title and placeholder |
+| F-037 AddHost/ConsolePin | T-214 | `b96cb05` | fix(T-214): add missing zh-Hans translations for ConsolePinView |
+| F-037 AddHost/ConsolePin | T-215 | `26779d1` | feat(T-215): enhance error visibility and PINDisplay accessibility |
+| F-038 Bridge 安全加固 | T-216 | `e5f6a15` | fix(T-216): add DiscoveryService deinit lifecycle cleanup |
+| F-038 Bridge 安全加固 | T-217 | `065cfca` | fix(T-217): fix strdup memory leak in ChiakiRegist early-exit path |
+| F-038 Bridge 安全加固 | T-218 | `99f5b59` | fix(T-218): unify updateState() thread boundary to MainActor |
+| F-038 Bridge 安全加固 | T-219, T-220 | `14559c6` | fix(T-219,T-220): heap-allocate ChiakiLogBridge pointer and document SAFETY contracts |
+
+## M15 涉及文件
+
+**Slider 布局规范化 (F-035)**:
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/VideoSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/AudioSettingsView.swift` (验证)
+- `Chiaki/Resources/Localizable.xcstrings` (修改)
+
+**HostListView UI/UX 优化 (F-036)**:
+- `Chiaki/Features/HostList/HostListView.swift` (修改)
+- `Chiaki/Features/HostList/HostListViewModel.swift` (修改)
+- `Chiaki/Features/HostList/HostRowView.swift` (修改)
+- `Chiaki/Features/HostList/TVHostCardView.swift` (修改)
+
+**AddHostView/ConsolePinView 优化 (F-037)**:
+- `Chiaki/Features/HostList/AddHostView.swift` (修改)
+- `Chiaki/Features/HostList/ConsolePinView.swift` (修改)
+- `Chiaki/Features/Common/GamepadNumPad.swift` (修改)
+- `Chiaki/Resources/Localizable.xcstrings` (修改)
+
+**Swift/C Bridge 安全加固 (F-038)**:
+- `Chiaki/Core/Bridge/ChiakiDiscovery.swift` (修改)
+- `Chiaki/Core/Bridge/ChiakiRegist.swift` (修改)
+- `Chiaki/Core/Bridge/ChiakiSession.swift` (修改)
+- `Chiaki/Core/Bridge/ChiakiLogBridge.swift` (修改)
+
+---
+
+# M14 归档 - macOS 设置侧边栏导航
+
+> **归档时间**: 2026-02-06
+> **归档原因**: M14 任务 100% 完成
+> **任务数量**: 4
+
+## M14 归档任务汇总
+
+| 编号 | 名称 | 优先级 | 关联需求 | 完成状态 |
+|------|------|--------|----------|----------|
+| T-199 | SettingsCategory 枚举 | P2 | F-034, AC-121 | ✅ |
+| T-200 | macOS 侧边栏导航实现 | P2 | F-034, AC-122~125 | ✅ |
+| T-201 | 跨平台适配验证 | P2 | F-034, AC-121~125 | ✅ |
+| T-202 | NavigationSplitView 迁移 | P2 | F-034, AC-133~134 | ✅ |
+
+## M14 关键提交
+
+| 功能 | 任务 | 提交 | 描述 |
+|------|------|------|------|
+| F-034 macOS 侧边栏 | T-199 | `9f94de7` | feat(settings): add SettingsCategory enum for macOS sidebar navigation |
+| F-034 macOS 侧边栏 | T-200, T-201, T-202 | `88ba705` | feat(settings): implement macOS sidebar navigation for settings |
+
+## M14 涉及文件
+
+**macOS 设置侧边栏导航 (F-034)**:
+- `Chiaki/Features/Settings/SettingsCategory.swift` (新建)
+- `Chiaki/Features/Settings/SettingsView.swift` (重构)
+- `Chiaki/App/ContentView.swift` (修改)
+- `Chiaki/Features/Settings/AccountSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/VideoSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/AudioSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/ControllerSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/ConsolesSettingsView.swift` (修改)
+- `Chiaki/Features/Settings/LogsView.swift` (修改)
+- `Chiaki/Features/Settings/AboutView.swift` (修改)
 
 ---
 
@@ -387,11 +501,16 @@
 
 | 指标 | 数量 |
 |------|------|
-| 归档任务 | 35 |
-| 完成任务 | 30 |
+| M11 归档任务 | 35 |
+| M12 归档任务 | 24 |
+| M13 归档任务 | 23 |
+| M14 归档任务 | 4 |
+| M15 归档任务 | 18 |
+| **总归档任务** | **104** |
+| 完成任务 | 99 |
 | 早前归档任务 | 5 |
 | 进行中任务 | 1 (T-115) |
-| Git 提交 | 20+ |
+| Git 提交 | 50+ |
 
 ---
 

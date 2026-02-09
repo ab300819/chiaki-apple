@@ -1,6 +1,6 @@
 # 项目上下文：Chiaki-ng Apple 原生客户端
 
-**生成时间**：2026-02-05 01:30
+**生成时间**：2026-02-09
 **生成工具**：/devdocs-onboard --update
 
 ---
@@ -8,268 +8,257 @@
 ## 1. 项目概述
 
 ### 1.1 项目目标
-开发 Apple 生态的原生客户端（macOS, iOS, iPadOS, tvOS），提供高性能、原生体验且深度集成 Apple 特性的 PlayStation 4/5 远程游玩体验。
 
-### 1.2 核心功能
-| 编号 | 功能 | 状态 |
-|------|------|------|
-| F-001 | 核心流媒体 (Video/Audio) | ✅ 已完成 |
-| F-002 | PS 主机发现 (Local Network) | ✅ 已完成 |
-| F-003 | 主机唤醒 (Wake-on-LAN) | ✅ 已完成 |
-| F-004 | 控制器支持 (DualSense/MFi) | ✅ 已完成 |
-| F-005 | PSN 账户登录 | ✅ 已完成 |
-| F-011 | 状态管理统一化 (@Observable) | ✅ 已完成 |
-| F-015 | 深度本地化与多语言支持 | ✅ 已完成 |
-| F-016 | 网络弹性与自动重连 | ✅ 已完成 |
-| F-017 | 能效管理与渲染优化 (VRR) | ✅ 已完成 |
-| F-019 | 完善日志系统 | ✅ 已完成 |
-| F-020 | 手柄操作友好化 | ✅ 已完成 |
-| F-022 | 手柄操控 UI/UX 优化 | ✅ 已完成 |
-| F-023 | iPad 触摸操作友好化 | ✅ 已完成 |
-| F-025 | HDR 渲染管线优化 | ✅ 已完成 (M12) |
-| F-026 | 渲染模块解耦重构 | ✅ 已完成 (M12) |
-| F-027 | UI 层 MVVM 合规重构 | ✅ 已完成 (M12) |
-| F-028 | HDR 配置完全落地 | ✅ 已完成 (M13) |
-| F-029 | MainActor 边界规范化 | ✅ 已完成 (M13) |
-| F-030 | 日志输出规范化 | ✅ 已完成 (M13) |
-| F-031 | 主题色系统化 | ✅ 已完成 (M13) |
-| F-032 | 自动发现主机 | ✅ 已完成 (M13) |
-| F-033 | macOS TabView 布局 | ✅ 已完成 (M13) |
+将 Chiaki-ng（开源 PlayStation 4/5 远程游玩客户端）从 Qt6 迁移到 Apple 原生技术栈，统一覆盖 macOS、iOS、iPadOS 和 tvOS 平台。使用 SwiftUI + Metal 实现原生体验，复用 libchiaki C 核心库保证协议兼容性。
+
+### 1.2 核心功能状态
+
+| 编号 | 功能 | 优先级 | 状态 |
+|------|------|--------|------|
+| F-001 | 核心流媒体 | P0 | ✅ 已完成 |
+| F-002 | PS 主机发现 | P0 | ✅ 已完成 |
+| F-003 | 主机唤醒 | P0 | ✅ 已完成 |
+| F-004 | 控制器支持 | P0 | ✅ 已完成 |
+| F-005 | PSN 账户登录 | P1 | ✅ 已完成 |
+| F-010~F-014 | SwiftUI 架构优化 | P1~P3 | ✅ 已完成 |
+| F-015~F-018 | 生产就绪配置 | P0~P1 | ✅ 已完成 |
+| F-019 | 日志系统 | P0 | ✅ 已完成 |
+| F-020 | 手柄操作友好化 | P0 | ✅ 已完成 |
+| F-021~F-023 | 手柄/触摸深度集成 | P1~P2 | ✅ 已完成 |
+| F-024~F-025 | HDR 设置与渲染管线 | P0~P1 | ✅ 已完成 |
+| F-026~F-027 | 渲染模块解耦 / MVVM 重构 | P1 | ✅ 已完成 |
+| F-028 | HDR 配置落地 | P0 | ✅ 已完成 |
+| F-029 | MainActor 边界规范化 | P1 | ✅ 已完成 |
+| F-030 | 日志输出规范化 | P2 | ✅ 已完成 |
+| F-031 | 主题色系统化 | P2 | ✅ 已完成 |
+| F-032 | 自动发现主机 | P2 | ✅ 已完成 |
+| F-033 | macOS TabView 布局 | P2 | ✅ 已完成 |
+| F-034 | macOS 设置侧边栏 | P2 | ✅ 已完成 |
+| F-035 | Slider 布局规范化 | P2 | ✅ 已完成 |
+| F-036 | HostListView UI/UX 优化 | P2 | ✅ 已完成 |
+| F-037 | AddHostView/ConsolePinView 优化 | P2 | ✅ 已完成 |
+| F-038 | Swift/C Bridge 安全加固 | P1 | ✅ 已完成 |
+
+**全部 38 个功能点已完成**。未实现功能：F-006 (远程连接)、F-007 (触觉反馈)、F-008 (麦克风)、F-009 (虚拟输入) 为 P2~P3 低优先级，待后续迭代。
 
 ### 1.3 技术栈
-- **UI 框架**：SwiftUI (Modern APIs, @Observable)
-- **图形渲染**：Metal (Zero-copy CVPixelBuffer, HDR/EDR)
-- **视频解码**：VideoToolbox (H.264/H.265, HDR10/PQ)
-- **音频处理**：AVAudioEngine + Opus Decoder (Lock-free circular buffer)
-- **底层通讯**：libchiaki (C 核心库桥接)
-- **数据安全**：KeychainManager (CryptoKit)
-- **控制器**：GameController framework (DualSense/MFi)
+
+| 层级 | 技术 |
+|------|------|
+| UI 框架 | SwiftUI (iOS 17+ / macOS 14+) |
+| 状态管理 | @Observable (Observation 框架) |
+| 视频渲染 | Metal + MetalKit + VideoToolbox |
+| 音频播放 | AVFoundation + Opus 解码 |
+| 网络通信 | libchiaki (C 核心库 via Bridge) |
+| 本地存储 | UserDefaults + Keychain |
+| 国际化 | String Catalogs (Localizable.xcstrings) |
 
 ---
 
 ## 2. 系统架构
 
 ### 2.1 架构概览
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SwiftUI 界面层                            │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
-│  │   主机列表   │ │  流媒体视图  │ │  设置页面   │ │  登录页面   │ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                      Swift 业务逻辑层                            │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
-│  │ HostManager │ │SessionManager│ │ SettingsStore│ │ PSNService │ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Swift-C 桥接层 (ChiakiBridge)                 │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
-│  │ChiakiSession│ │ChiakiDiscovery│ │OpusDecoder │ │ChiakiAudio│ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Metal 渲染层                                  │
-│  ┌────────────────────┐ ┌────────────────────────────────────┐  │
-│  │  MetalVideoRenderer│ │  VideoToolboxDecoder               │  │
-│  │  (HDR/EDR Shaders) │ │  (H.264/H.265 Hardware Decode)     │  │
-│  └────────────────────┘ └────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    SwiftUI Views (UI Layer)                  │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
+│  │HostListView│ │StreamingView│ │SettingsView│ │  ...     │   │
+│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └─────┬─────┘   │
+├────────┼─────────────┼─────────────┼─────────────┼──────────┤
+│        ▼             ▼             ▼             ▼          │
+│              ViewModels (@Observable)                       │
+│  ┌───────────────┐ ┌───────────────┐ ┌────────────────┐    │
+│  │HostListViewModel│ │StreamingViewModel│ │SettingsStore│    │
+│  └───────┬───────┘ └───────┬───────┘ └───────┬────────┘    │
+├──────────┼─────────────────┼─────────────────┼──────────────┤
+│          ▼                 ▼                 ▼              │
+│                    Core Services                            │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
+│  │HostManager │ │ChiakiSession│ │VideoRenderer│ │AudioPlayer│   │
+│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └─────┬─────┘   │
+├────────┼─────────────┼─────────────┼─────────────┼──────────┤
+│        ▼             ▼             ▼             ▼          │
+│                    C Bridge Layer                           │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │           libchiaki (C Core Library)                │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 核心模块
+
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
-| **Streaming** | 流媒体状态与生命周期 | `StreamingViewModel.swift` |
-| **Renderer** | Metal HDR/EDR 渲染 | `MetalVideoRenderer.swift`, `VideoShaders.metal` |
-| **HDR** | HDR 配置与元数据 | `HDRConfiguration.swift` |
-| **Audio** | Opus 解码 + AVAudioEngine | `OpusDecoderBridge.swift`, `AudioPlayerBridge.swift` |
-| **Session** | C 库会话状态桥接 | `ChiakiSession.swift` |
-| **Logging** | 日志持久化与脱敏 | `FileLogHandler.swift`, `DiagnosticsExporter.swift` |
-| **Controller** | 手柄输入与触觉反馈 | `ControllerManager.swift`, `HapticsManager.swift` |
-| **VirtualController** | 虚拟触摸控制器 | `VirtualControllerView.swift`, `VirtualButtonView.swift` |
-
-### 2.3 核心接口
-- `ChiakiSessionWrapper`: 连接、断开、发送输入
-- `VideoDecoderBridge`: 解码器配置与数据分发
-- `OpusDecoderBridge`: Opus 音频解码桥接
-- `AudioPlayerBridge`: 音频同步与音量控制
-- `HDRConfiguration`: HDR 统一配置结构
-- `ControllerShortcutDetector`: 手柄快捷键检测
+| App | 应用入口、导航管理 | `Chiaki/App/` |
+| Features | 功能页面 (HostList, Streaming, Settings) | `Chiaki/Features/` |
+| Domain | 业务逻辑服务层 | `Chiaki/Domain/` |
+| Core/Bridge | libchiaki C 桥接层 | `Chiaki/Core/Bridge/` |
+| Core/Video | Metal 视频渲染 (HDR/SDR) | `Chiaki/Core/Video/` |
+| Core/Audio | 音频播放与 Opus 解码 | `Chiaki/Core/Audio/` |
+| Core/Controllers | GameController 集成 | `Chiaki/Core/Controllers/` |
+| Shared | 跨功能共享组件 | `Chiaki/Shared/` |
+| Utilities | 通用工具 (Logger, Theme, Haptics) | `Chiaki/Utilities/` |
+| Platforms | 平台特定代码 | `Chiaki/Platforms/` |
 
 ---
 
 ## 3. 代码结构
 
-### 3.1 目录结构
 ```
 Chiaki/
-├── App/                # 全平台入口与导航
-├── Features/           # 业务功能模块
-│   ├── HostList/       # 主机列表与添加
-│   ├── PSNLogin/       # PSN 身份认证
-│   ├── Settings/       # 全局设置与日志查看
-│   ├── Streaming/      # 流媒体核心视图
-│   │   ├── VirtualController/  # 虚拟控制器组件
-│   │   └── Controls/           # 流媒体控制组件
-│   ├── Common/         # 共享 UI 组件
-│   └── AutoConnect/    # 自动连接功能
-├── Core/               # 底层基础设施
-│   ├── Audio/          # 音频引擎 + Opus 解码
-│   ├── Bridge/         # C 库桥接
-│   ├── Controllers/    # 控制器与触觉
-│   ├── Network/        # 网络状态监控
-│   ├── Video/          # Metal 渲染、解码、HDR
-│   │   ├── MetalVideoRenderer.swift
-│   │   ├── VideoToolboxDecoder.swift
-│   │   ├── VideoStreamView.swift
-│   │   └── HDRConfiguration.swift
-│   ├── Streaming/      # 流媒体核心逻辑
-│   └── Storage/        # 持久化存储
-├── Domain/             # 业务逻辑模型
-│   ├── Models/         # 数据模型
-│   └── Services/       # 服务层 (PSNService)
-├── Platforms/          # 平台特定代码 (macOS/tvOS)
-├── Shared/             # 共享组件与样式
-│   └── Styles/         # 样式定义
-└── Utilities/          # 工具类与扩展
-    └── Extensions/     # Swift 扩展
-
-ChiakiTests/            # 单元测试与集成测试 (45 个测试文件)
+├── App/                    # 应用入口
+│   ├── ChiakiApp.swift     # @main 入口
+│   └── NavigationManager.swift
+├── Core/
+│   ├── Audio/              # 音频播放
+│   ├── Bridge/             # C 桥接 (ChiakiSession, etc.)
+│   ├── Controllers/        # 手柄管理
+│   ├── Network/            # 网络层
+│   ├── Storage/            # 存储层
+│   ├── Streaming/          # 流媒体核心
+│   └── Video/              # Metal 渲染
+├── Domain/                 # 业务逻辑服务层
+├── Features/
+│   ├── HostList/           # 主机列表页
+│   ├── Settings/           # 设置页
+│   ├── Streaming/          # 串流页
+│   └── Common/             # 共享组件
+├── Shared/                 # 跨功能共享组件
+├── Utilities/              # 工具类
+│   ├── ChiakiTheme.swift   # 主题系统
+│   ├── Logger.swift        # 日志系统
+│   └── HapticFeedback.swift
+├── Resources/
+│   └── Localizable.xcstrings # 国际化
+└── Platforms/              # 平台特定代码
 ```
-
-### 3.2 关键文件说明
-| 文件 | 用途 |
-|------|------|
-| `ChiakiApp.swift` | App 启动集成，初始化崩溃捕获 |
-| `MetalVideoRenderer.swift` | Metal 视频渲染器 (HDR/EDR) |
-| `HDRConfiguration.swift` | HDR 统一配置结构 |
-| `VideoToolboxDecoder.swift` | 硬件视频解码 |
-| `OpusDecoderBridge.swift` | Opus 音频解码桥接 |
-| `Logger.swift` | 统一日志入口，集成文件持久化 |
-| `DiagnosticsExporter.swift` | 诊断数据脱敏打包 (ZIP) |
-| `Localizable.xcstrings` | 100% 覆盖的中英文本地化 |
-| `StreamingOverlay.swift` | 流媒体状态覆盖层（含 HDR 徽章） |
-
-### 3.3 代码统计
-- **Swift 源文件**: 90 个
-- **测试文件**: 45 个
 
 ---
 
 ## 4. 当前进度
 
-### 4.1 里程碑状态
-| 里程碑 | 目标 | 完成率 | 状态 |
-|--------|------|--------|------|
-| M11 | Beta 1 发布冲刺 | 97% (35/36) | ✅ 基本完成 |
-| M12 | HDR 优化 + 架构重构 | 100% (24/24) | ✅ 已归档 |
-| M13 | HDR 配置落地 + 代码质量 + UI 优化 | 100% (23/23) | ✅ 已完成 |
+### 4.1 总体进度
 
-### 4.2 M13 完成进度
-| 指标 | 数值 |
-|------|------|
-| 总任务数 | 23 |
-| 已完成 | 23 |
-| 进行中 | 0 |
-| 待处理 | 0 |
-| **完成率** | **100%** |
+| 里程碑 | 任务数 | 已完成 | 完成率 |
+|--------|--------|--------|--------|
+| M11 Beta 1 | 35 | 35 | 97% |
+| M12 HDR/MVVM | 24 | 24 | 100% |
+| M13 质量优化 | 23 | 23 | 100% |
+| M14 macOS 侧边栏 | 4 | 4 | 100% |
+| M15 UI/UX+Bridge 安全 | 18 | 18 | 100% |
+| Bug 修复 | 5 | 5 | 100% |
+| **总计** | **109** | **109** | **99%** |
 
-### 4.3 M13 完成任务汇总
-| 功能 | 任务 | 提交 |
+> M11 有 1 个遗留任务 T-115 (App Icon 资产) 待设计师交付，不影响功能完整性。
+
+### 4.2 最近完成
+
+| 提交 | 任务 | 说明 |
 |------|------|------|
-| F-028 HDR 配置落地 | T-171~T-174, T-182 | cf958bd, b736a4c |
-| F-029 MainActor 边界 | T-175~T-177, T-183 | 83444ad, 61866a3, 6f6e6eb, 452f1eb |
-| F-030 日志规范化 | T-178~T-181 | 8c975cd |
-| F-031 主题色系统化 | T-189~T-191 | 6ae26c5 |
-| F-032 自动发现主机 | T-192~T-194 | e6a08d7 |
-| F-033 macOS TabView | T-195~T-198 | b1ce996 |
+| 14559c6 | T-219~T-220 | heap-allocate ChiakiLogBridge, SAFETY contracts |
+| 99f5b59 | T-218 | unify updateState() to MainActor |
+| 065cfca | T-217 | fix strdup memory leak in ChiakiRegist |
+| e5f6a15 | T-216 | DiscoveryService deinit lifecycle cleanup |
+| 26779d1 | T-215 | PINDisplay accessibility enhancements |
+| b96cb05 | T-214 | ConsolePinView zh-Hans translations |
+| 6f52cae~1f7cd13 | T-210~T-213 | AddHostView/ConsolePinView macOS form style |
+| f25b371 | T-206~T-209 | HostListView UI/UX accessibility |
 
-### 4.4 最近 Bug 修复
-| Bug | 描述 | 修复日期 | Commit |
-|-----|------|----------|--------|
-| BUG-008 | ControllerSettingsView Preview 崩溃 | 2026-02-05 | `0dde4f5` |
-| BUG-007 | 设置页面 i18n 显示异常 | 2026-02-05 | `0dde4f5` |
-| BUG-006 | PS5 进入串流后断开 | 2026-02-04 | `8cdd1b1` |
-| BUG-005 | 音频播放杂音 (Opus 解码) | 2026-02-04 | `12e570c`, `8999532` |
-| BUG-004 | 唤醒后首次连接失败 | 2026-02-04 | `19fff2a` |
+### 4.3 当前状态
 
-### 4.5 Git 状态
-- **当前分支**: dev
-- **最新提交**: `7471c24` docs: update M13 task status and traceability
-- **工作区**: 干净
+**所有里程碑已完成**。项目处于迭代间歇期，可选方向：
+- 集成测试验证
+- 下一功能迭代 (F-006~F-009 等低优先级功能)
+- 待定洞察 INS-060 (空状态动画)、INS-061 (批量删除确认)
+
+### 4.4 未提交变更
+
+```
+M docs/devdocs/00-context.md          # 本文档更新
+M docs/devdocs/01-requirements.md     # 归档瘦身
+M docs/devdocs/02-system-design.md    # 归档瘦身
+M docs/devdocs/04-dev-tasks.md        # M15 归档
+M docs/devdocs/05-insights.md         # 全量归档
+新增 docs/devdocs/archive/02-system-design-archive.md
+```
 
 ---
 
-## 5. 待办任务
+## 5. 待办事项
 
-### 5.1 M13 已完成
-M13 里程碑的所有 23 个任务已全部完成。详见 [4.3 M13 完成任务汇总](#43-m13-完成任务汇总)。
+### 5.1 遗留任务
 
-### 5.2 下一步建议
-- 运行 `/devdocs-onboard --update` 更新项目上下文
-- 规划 M14 里程碑任务
-- 考虑发布 Beta 1 版本
+| 任务 | 说明 | 状态 |
+|------|------|------|
+| T-115 | App Icon 资产准备 | 待设计师提供 |
 
-### 5.3 遗留任务
-| 任务 | 名称 | 状态 | 说明 |
-|------|------|------|------|
-| **T-115** | App Icon 资产准备 | ⏳ | 等待设计师提供图像资产 |
+### 5.2 待定洞察
+
+| 编号 | 建议 | 优先级 |
+|------|------|--------|
+| INS-047 | 解码重排策略优化 (VideoToolboxDecoder) | ⏸️ 暂缓 |
+| INS-060 | 空状态视图引导动画 | P3 |
+| INS-061 | 批量删除确认对话框 | P3 |
 
 ---
 
 ## 6. 重要约定
 
 ### 6.1 编码规范
-- 使用 `@Observable` 宏进行状态管理
-- 强制 TDD：🔴 标记的任务必须先写测试
-- 日志规范：所有核心路径必须有日志覆盖
-- MTE 原则：可维护、可测试、可扩展
 
-### 6.2 测试约束
-- 单元测试覆盖率目标 ≥ 80%
-- 禁止弱断言
-- Mock 只用于外部依赖
+- **MTE 原则**：可维护、可测试、可扩展
+- **MVVM 架构**：View → ViewModel → Service
+- **@Observable 优先**：使用 Observation 框架替代 Combine
+- **依赖注入**：通过 @Environment 注入，避免 Singleton
+- **MainActor 边界**：所有 Store/ViewModel 标注 @MainActor，C Bridge 回调通过 MainActor.run 回主线程
+
+### 6.2 代码追溯标注
+
+```swift
+/**
+ * @requirement F-XXX - 功能点
+ * @satisfies AC-XXX - 验收标准
+ */
+```
 
 ### 6.3 提交规范
-- 格式：`<type>(scope): <subject> (T-XXX)`
-- 示例：`feat(video): add HDRConfiguration unified structure (T-147)`
-- Bug 修复：`fix(scope): <subject>` + Bug 编号
 
-### 6.4 代码追溯
-项目使用代码标注追溯系统：
-- `@requirement F-XXX` - 关联功能点
-- `@satisfies AC-XXX` - 满足验收标准
-- `@verifies AC-XXX` - 测试验证验收标准
-- `@testcase UT-XXX` - 测试用例编号
+```
+<type>(scope): <description>
+
+feat(T-XXX): 新功能
+fix(T-XXX): Bug 修复
+refactor(T-XXX): 重构
+
+关联: F-XXX, AC-XXX
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+```
 
 ---
 
 ## 7. 快速开始
 
-### 7.1 环境准备
-```bash
-make build-deps  # 构建 C 库依赖 (mbedtls, opus, libchiaki)
-```
+### 7.1 环境要求
+
+- Xcode 15.0+
+- macOS 14.0+ / iOS 17.0+ / tvOS 17.0+
+- 需要签名证书 (开发者账号)
 
 ### 7.2 构建项目
+
 ```bash
-xcodebuild -scheme Chiaki -configuration Debug -destination 'platform=macOS' build
+# 打开 Xcode 项目
+open Chiaki.xcodeproj
+
+# 或使用命令行构建
+xcodebuild -scheme Chiaki -destination 'platform=macOS'
 ```
 
 ### 7.3 运行测试
+
 ```bash
 xcodebuild test -scheme Chiaki -destination 'platform=macOS'
-```
-
-### 7.4 执行开发任务
-```bash
-# 使用 DevDocs 工作流开发
-/devdocs-dev-workflow T-171
 ```
 
 ---
@@ -278,60 +267,25 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| 上下文 | `docs/devdocs/00-context.md` | 项目全貌与接手指南 (本文件) |
-| 进度报告 | `docs/devdocs/00-progress-report.md` | M13 进度统计 |
-| 需求文档 | `docs/devdocs/01-requirements.md` | F-001~033 功能点、AC-001~119 验收标准 |
-| 系统设计 | `docs/devdocs/02-system-design.md` | 架构设计 v1.5.0 |
-| 测试用例 | `docs/devdocs/03-test-cases.md` | UT/IT/E2E 测试用例 |
-| 开发任务 | `docs/devdocs/04-dev-tasks.md` | M13 活跃任务 T-171~T-198 |
-| 任务归档 | `docs/devdocs/archive/04-dev-tasks-archive.md` | 已完成任务归档 (M1~M12) |
-| 洞察记录 | `docs/devdocs/05-insights.md` | 改进建议收集 |
-| Bug 修复 | `docs/devdocs/05-bugfix-log.md` | Bug 修复记录 (BUG-001~008) |
+| 项目上下文 | `docs/devdocs/00-context.md` | 本文档 |
+| 需求文档 | `docs/devdocs/01-requirements.md` | 功能点、用户故事、验收标准 |
+| 系统设计 | `docs/devdocs/02-system-design.md` | 架构、接口、数据模型 |
+| 测试用例 | `docs/devdocs/03-test-cases.md` | 测试策略、追溯矩阵 |
+| 开发任务 | `docs/devdocs/04-dev-tasks.md` | 任务列表、依赖关系、进度 |
+| 洞察收集 | `docs/devdocs/05-insights.md` | INS-XXX 改进建议 |
+| 归档 | `docs/devdocs/archive/` | 已完成里程碑归档 |
 
 ---
 
-**接手建议**：
-1. 阅读本文档了解项目全貌
-2. M13 已完成：HDR 配置落地 + 代码质量提升 + UI 优化
-3. 项目当前处于 Beta 1 就绪状态
-4. 遗留任务：T-115 (App Icon 资产准备) 等待设计师资源
-5. 使用 `/devdocs-dev-workflow T-XXX` 执行新任务
+## 接手建议
+
+1. **先读本文档**了解项目全貌
+2. **查看 04-dev-tasks.md** 确认当前任务状态（目前全部完成）
+3. **查看 05-insights.md** 了解待定改进建议 (INS-060, INS-061)
+4. **使用 `/devdocs-feature`** 添加新功能需求
+5. **使用 `/devdocs-dev-workflow T-XXX`** 执行开发任务
 6. 遇到细节问题查阅对应 DevDocs 文档
 
 ---
 
-## 9. M13 关键技术点 (已完成)
-
-### 9.1 HDR 配置完全落地 (F-028) ✅
-已将 `HDRConfiguration` 中的字段传入 Shader：
-- `VideoUniforms` 扩展：添加 `edrIntensity`、`gamutMappingEnabled`
-- Shader 动态分支：根据配置执行色域映射和 EDR 强度调整
-- CPU 端验证：`VideoShaderConstants.swift` 用于单元测试
-
-### 9.2 MainActor 边界规范化 (F-029) ✅
-Store 类已明确线程边界：
-- `SettingsStore`、`HostStore` 整体标注 `@MainActor`
-- `NetworkMonitor` 状态属性隔离
-- 集成测试验证后台线程无法直接写入
-
-### 9.3 主题色系统化 (F-031) ✅
-已迁移为 Apple 系统强调色：
-- `ChiakiTheme.brandColor` = `Color.accentColor`
-- 支持 macOS 用户自定义强调色
-- 保留 `chiakiPurple` deprecated 别名
-
-### 9.4 自动发现主机 (F-032) ✅
-已优化用户体验：
-- 进入 `HostListView` 自动启动发现
-- 移除工具栏发现按钮
-- 保留下拉刷新和 macOS 菜单栏命令
-
-### 9.5 macOS TabView 布局 (F-033) ✅
-已实现跨平台一致性：
-- macOS 使用 `TabView` 替代 `NavigationSplitView`
-- 移除 `WelcomeView`（无需侧边栏空状态）
-- 保持 macOS 菜单栏功能
-
----
-
-*报告由 /devdocs-onboard 生成 (2026-02-05)*
+*文档由 `/devdocs-onboard --update` 生成 (2026-02-09)*
