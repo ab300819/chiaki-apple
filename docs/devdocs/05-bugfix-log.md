@@ -775,3 +775,36 @@ macOS 26 上按下 DualSense 的 PS 键没有任何响应——既不触发系�
 3. **参照已有模式**：touchpad 按钮已经使用了独立 handler 模式，新增的可选按钮应遵循同样的模式。
 
 ---
+
+## BUG-015: 串流画面偏暗、色彩失真、模糊
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 |
+| **关联功能** | F-001, F-024, F-025 |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-09 |
+| **状态** | 🔧 修复中 |
+
+### 问题描述
+
+串流画面整体偏暗，色彩有失真感，且画面看起来比较模糊（比 PS5 直连显示器的效果差很多）。
+
+### 根因分析
+
+**1. 画面偏暗 + 色彩失真 — SDR 色彩空间缺失**
+
+`VideoStreamView` 在 SDR 模式下将 `CAMetalLayer.colorspace` 设为 `nil`（第 256 行），导致系统使用默认色彩空间（可能是 Display P3 或 unmanaged）。SDR 视频经 YUV→RGB 转换后输出的是 sRGB gamma 编码值，但 Metal 渲染目标未声明 sRGB，macOS 窗口合成器可能对像素值做了额外的色彩管理转换，导致亮度偏低和色彩偏移。
+
+此外，当前使用 `bgra8Unorm`（线性）像素格式，sRGB gamma 编码的像素值被当作线性值渲染。如果改用 `bgra8Unorm_srgb`，Metal 会自动在写入时对 sRGB gamma 做正确的处理。
+
+**2. 画面模糊 — Retina 缩放未处理**
+
+`MTKView` 未设置 `layer.contentsScale`。macOS 上 `CAMetalLayer.contentsScale` 默认为 1.0（非 Retina），即使在 Retina 显示器（2x/3x）上，drawable 也只有 1x 分辨率，拉伸显示后造成模糊。iOS 的 `UIView` 默认会自动处理 scale，但 macOS 需要手动设置。
+
+### 修复方案
+
+见 T-227、T-228 任务拆分。
+
+---

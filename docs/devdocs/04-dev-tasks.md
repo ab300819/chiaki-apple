@@ -315,6 +315,82 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 
 ---
 
+### BUG-015: 串流画面偏暗、色彩失真、模糊 🔧
+
+> **关联 Bug 记录**: [05-bugfix-log.md#BUG-015](05-bugfix-log.md#bug-015-串流画面偏暗色彩失真模糊)
+
+| 编号 | 名称 | 状态 |
+|------|------|------|
+| T-227 | SDR 色彩空间修复 (sRGB + pixel format) | ⏳ |
+| T-228 | macOS Retina drawable 分辨率修复 | ⏳ |
+
+### 依赖关系
+
+```
+T-227 (SDR 色彩空间修复) ← 修复暗/色彩失真
+T-228 (Retina drawable 分辨率) ← 修复模糊
+两个任务互相独立
+```
+
+### T-227: SDR 色彩空间修复 ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-001, F-025, BUG-015 |
+| **优先级** | P0 |
+| **TDD** | 🟢 可选 (视觉验证) |
+| **依赖** | 无 |
+
+**描述**：
+
+SDR 模式下 `CAMetalLayer.colorspace` 为 `nil`，`MTKView.colorPixelFormat` 为 `.bgra8Unorm`（线性）。YUV→RGB 转换输出的 sRGB gamma 编码值被当作线性值渲染，导致画面偏暗和色彩失真。
+
+**涉及文件**：
+- `Chiaki/Core/Video/VideoStreamView.swift` — SDR 色彩空间配置
+
+**实现要点**：
+1. SDR 模式下将 `mtkView.colorPixelFormat` 改为 `.bgra8Unorm_srgb`，让 Metal 自动处理 sRGB gamma
+2. SDR 模式下显式设置 `layer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)`
+3. HDR 模式保持不变（`.rgba16Float` / `.rgb10a2Unorm` + extended linear Display P3）
+
+**验收标准**：
+- 串流画面亮度和色彩与 PS5 直连显示器基本一致
+- HDR 模式不受影响
+- 所有平台编译通过
+
+**Review 要点**：
+- `bgra8Unorm_srgb` 会在着色器写入时自动做 linear→sRGB 转换，确认着色器输出的 SDR RGB 值是否处于线性空间（如果着色器输出已经是 gamma 编码的 sRGB 值，则不应使用 `_srgb` 后缀，而应保持 `bgra8Unorm` + 设置 `layer.colorspace = sRGB`）
+
+---
+
+### T-228: macOS Retina drawable 分辨率修复 ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-001, BUG-015 |
+| **优先级** | P0 |
+| **TDD** | 🟢 可选 (视觉验证) |
+| **依赖** | 无 |
+
+**描述**：
+
+macOS 上 `MTKView` 的 `CAMetalLayer.contentsScale` 默认为 1.0，在 Retina 显示器上 drawable 只有 1x 分辨率。iOS/tvOS 的 `UIView` 默认处理 scale，但 macOS 需要手动设置。
+
+**涉及文件**：
+- `Chiaki/Core/Video/VideoStreamView.swift` — macOS Retina 缩放配置
+
+**实现要点**：
+1. 在 `createMTKView()` 中，macOS 平台下设置 `mtkView.layer?.contentsScale = mtkView.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0`
+2. 由于 MTKView 创建时可能还未加入 window，需在 `updateMTKView()` 中也检查并更新 `contentsScale`
+3. iOS/tvOS 不需要此处理
+
+**验收标准**：
+- macOS Retina 显示器上串流画面清晰锐利
+- iOS/tvOS 不受影响
+- 所有平台编译通过
+
+---
+
 ## 任务汇总
 
 | 里程碑 | 任务数 | 完成率 | 状态 |
@@ -325,15 +401,16 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
-| Bug 修复 | 9 | 100% | ✅ |
-| **总计** | **115** | — | ✅ |
+| Bug 修复 | 11 | 82% | 🔧 |
+| **总计** | **117** | — | 🔧 |
 
 ---
 
 ## 下一步
 
-1. T-115 App Icon 资产准备仍待设计师交付
-2. 真机验证 BUG-011、BUG-012、BUG-013、BUG-014 修复
+1. **T-227 + T-228**: BUG-015 串流画面质量修复
+2. T-115 App Icon 资产准备仍待设计师交付
+3. 真机验证 BUG-011、BUG-012、BUG-013、BUG-014 修复
 
 ---
 
