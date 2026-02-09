@@ -816,3 +816,47 @@ macOS 26 上按下 DualSense 的 PS 键没有任何响应——既不触发系�
 见 T-227（HDR EDR 亮度映射修复）、T-228（macOS Retina drawable 分辨率修复）任务拆分。
 
 ---
+
+## BUG-016: 快速运动时画面先糊后清晰
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 |
+| **关联功能** | F-001 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+快速运动场景中画面先变模糊，然后恢复清晰。对比 chiaki-ng Qt6 桌面版无此问题。
+
+### 根因分析
+
+`VideoToolboxDecoder` 中有一个 4 帧重排缓冲区 (`maxReorderBufferSize = 4`)，设计用于处理 B 帧重排。但 PlayStation Remote Play 使用的是 I/P-only 编码（无 B 帧），帧按显示顺序到达，不需要重排。
+
+该缓冲区引入约 67ms（@60fps）的额外延迟，导致：
+1. 运动场景中解码后的帧被延迟输出，感知上的"模糊持续时间"延长
+2. PS5 发送的 IDR 恢复帧也被缓冲延迟，清晰度恢复变慢
+
+对比 chiaki-ng 的 FFmpeg 解码器 (`chiaki_ffmpeg_decoder_pull_frame()`)，它采用"只取最新帧"策略，零缓冲延迟。
+
+### 解决方案
+
+移除帧重排缓冲区，改为解码完成后直接交付帧：
+- 删除 `frameReorderBuffer` 和 `maxReorderBufferSize` 属性
+- 简化 `handleDecodedFrame()` 为直接调用 `onFrameDecoded`
+- `flush()` 改为空操作（无待处理帧）
+
+### 回归测试
+
+- 视觉验证：快速运动场景恢复速度提升
+- 关联 commit：待提交
+
+### 经验教训
+
+1. 远程串流协议不一定使用标准视频编码的所有特性（如 B 帧），为"可能需要"的功能预设缓冲会引入不必要的延迟
+2. 参考同项目的其他平台实现（chiaki-ng FFmpeg decoder）可以快速定位架构差异
+
+---

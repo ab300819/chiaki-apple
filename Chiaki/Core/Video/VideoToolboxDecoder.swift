@@ -68,9 +68,10 @@ final class VideoToolboxDecoder {
     private var decodeStartTimes: [UInt64: CFTimeInterval] = [:]
     private let timingLock = NSLock()
 
-    // Frame reorder buffer (for B-frames)
-    private var frameReorderBuffer: [(CVPixelBuffer, CMTime)] = []
-    private let maxReorderBufferSize = 4
+    // Note: No frame reorder buffer — PlayStation Remote Play uses I/P-only
+    // encoding (no B-frames), so frames arrive in display order. Buffering
+    // would add latency (~67ms at 60fps with 4-frame buffer) and delay IDR
+    // recovery during fast motion scenes.
 
     // MARK: - Codec Configuration
 
@@ -164,7 +165,6 @@ final class VideoToolboxDecoder {
         // Reset statistics
         decodedFrameCount = 0
         droppedFrameCount = 0
-        frameReorderBuffer.removeAll()
 
         logInfo("VideoToolboxDecoder: Initialized successfully")
     }
@@ -278,23 +278,13 @@ final class VideoToolboxDecoder {
             decompressionSession = nil
         }
         formatDescription = nil
-        frameReorderBuffer.removeAll()
 
         logInfo("VideoToolboxDecoder: Shutdown complete")
     }
 
-    /// Flush pending frames from reorder buffer
+    /// Flush — no-op since frames are delivered immediately (no reorder buffer)
     func flush() {
-        outputQueue.async { [weak self] in
-            guard let self = self else { return }
-
-            // Output all buffered frames in order
-            self.frameReorderBuffer.sort { $0.1 < $1.1 }
-            for (buffer, time) in self.frameReorderBuffer {
-                self.onFrameDecoded?(buffer, time)
-            }
-            self.frameReorderBuffer.removeAll()
-        }
+        // With zero-buffer delivery, there are no pending frames to flush
     }
 
     /// Reset statistics
@@ -390,26 +380,20 @@ final class VideoToolboxDecoder {
         outputQueue.async { [weak self] in
             guard let self = self else { return }
 
-            // Add to reorder buffer
-            self.frameReorderBuffer.append((pixelBuffer, presentationTime))
+            // Deliver decoded frame immediately — no reorder buffer needed.
+            // PlayStation Remote Play uses I/P-only encoding (no B-frames),
+            // so frames arrive in display order. Zero-buffer delivery minimizes
+            // latency and accelerates IDR recovery during motion scenes.
+            self.decodedFrameCount += 1
 
-            // Sort by PTS
-            self.frameReorderBuffer.sort { $0.1 < $1.1 }
-
-            // Output oldest frame when buffer is full
-            while self.frameReorderBuffer.count > self.maxReorderBufferSize {
-                let (buffer, time) = self.frameReorderBuffer.removeFirst()
-                self.decodedFrameCount += 1
-                
-                // [satisfies] AC-105 - DEBUG 保护
-                #if DEBUG
-                if self.decodedFrameCount % 100 == 0 {
-                    logDebug("VideoToolboxDecoder: Decoded \(self.decodedFrameCount) frames, dropped \(self.droppedFrameCount)")
-                }
-                #endif
-                
-                self.onFrameDecoded?(buffer, time)
+            // [satisfies] AC-105 - DEBUG 保护
+            #if DEBUG
+            if self.decodedFrameCount % 100 == 0 {
+                logDebug("VideoToolboxDecoder: Decoded \(self.decodedFrameCount) frames, dropped \(self.droppedFrameCount)")
             }
+            #endif
+
+            self.onFrameDecoded?(pixelBuffer, presentationTime)
         }
     }
 }
