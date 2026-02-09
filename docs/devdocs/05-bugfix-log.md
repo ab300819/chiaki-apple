@@ -702,13 +702,13 @@ BUG-012 修复后手柄按键已有响应，但存在三个子问题：
 
 **振动反馈无效**：`ControllerManager.applyRumble()` 委托给 `HapticsManager.shared.applyRumble()`，后者使用 `CoreHaptics` 的 `CHHapticEngine` —— 这是设备自身的触觉引擎（iPhone 震动马达），而非物理手柄的马达。正确做法是使用 `GCController.haptics` API 获取控制器专属的 `CHHapticEngine` 实例。
 
-**PS 键无响应（iOS + macOS）**：`GCExtendedGamepad.buttonHome` 在 iOS 上被系统完全拦截用于系统级功能（截屏/快捷操作），应用层无法接收此按键事件。macOS 上系统默认拦截 Home 按键用于打开 Launchpad，导致 `valueChangedHandler` 不会为 `buttonHome` 触发。这是 Apple 全平台的已知限制。macOS 用户可通过终端命令关闭系统拦截：`defaults write com.apple.GameController bluetoothPrefsMenuLongPressAction -integer 0`（macOS 13+ 已移除 GUI 开关）。此外，键盘 Esc 键已映射为 PS 按键的备选方案。
+**PS 键无响应（iOS）**：`GCExtendedGamepad.buttonHome` 在 iOS 上被系统完全拦截用于系统级功能（截屏/快捷操作），应用层无法接收此按键事件。这是 iOS 平台已知限制。键盘 Esc 键已映射为 PS 按键的备选方案。macOS 上的 PS 键问题另见 BUG-014。
 
 ### 修复方案
 
 1. **摇杆 Y 轴**：在 `handleExtendedGamepadInput()` 中将 Y 轴值乘以 `-32767` 取反
 2. **振动反馈**：重写 `ControllerManager.applyRumble()`，优先使用 `GCController.haptics.createEngine(withLocality: .handles)` 获取控制器马达引擎，缓存引擎实例避免重复创建；无物理手柄时回退到 CoreHaptics 设备震动
-3. **PS 键**：记录为 iOS/macOS/tvOS 全平台已知限制。macOS 用户可执行 `defaults write com.apple.GameController bluetoothPrefsMenuLongPressAction -integer 0` 关闭系统拦截。键盘 Esc 键已映射为 PS 按键备选方案
+3. **PS 键**：iOS 记录为已知限制（系统拦截）。macOS 另见 BUG-014 修复
 
 ### 修改文件清单
 
@@ -729,6 +729,49 @@ BUG-012 修复后手柄按键已有响应，但存在三个子问题：
 
 1. **平台 API 约定差异**：不同框架对同一物理量（如 Y 轴方向）可能有相反的约定，必须在桥接层显式转换。
 2. **CoreHaptics 有两种用途**：`CHHapticEngine()` 创建的是设备引擎（手机震动），`GCController.haptics.createEngine()` 创建的是控制器引擎（手柄马达），两者 API 相同但作用对象不同。
-3. **Apple 全平台 buttonHome 拦截**：iOS 完全拦截，macOS 默认拦截（可通过 `defaults write` 关闭），tvOS 完全拦截。需提供键盘映射等备选方案。
+3. **iOS buttonHome 拦截**：`buttonHome` 被 iOS 系统保留，应用层不可用。macOS 上的问题另见 BUG-014。
+
+---
+
+## BUG-014: macOS 上 PS 键（buttonHome）无响应
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 (macOS 26) |
+| **关联功能** | F-004, BUG-013 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+macOS 26 上按下 DualSense 的 PS 键没有任何响应——既不触发系统动作（Launchpad），也不被应用接收。
+
+### 根因分析
+
+`buttonHome` 是 `GCExtendedGamepad` 的可选属性（`GCControllerButtonInput?`），与 touchpad 按钮类似，它**不会触发主 `valueChangedHandler`**。当前代码仅在 `gamepad.valueChangedHandler` 回调中通过 `buttonHome?.isPressed` 轮询状态，但该回调根本不会因 `buttonHome` 的变化而被调用。
+
+对比已正常工作的 touchpad 按钮，它在 `setupDualSenseHandlers()` 中单独注册了 `dualSense.touchpadButton.valueChangedHandler`，所以能独立接收事件。`buttonHome` 缺少同样的独立 handler 注册。
+
+### 修复方案
+
+在 `setupExtendedGamepadHandlers()` 中为 `buttonHome` 注册独立的 `pressedChangedHandler`，与 touchpad 按钮采用相同模式：直接更新 `currentInput` 并通过 `onInputChanged` 发出。
+
+### 修改文件清单
+
+1. `Chiaki/Core/Controllers/ControllerManager.swift`:
+   - 在 `setupExtendedGamepadHandlers()` 中添加 `gamepad.buttonHome?.pressedChangedHandler` 注册
+
+### 回归测试
+
+- 编译验证：macOS 和 iOS 均 `BUILD SUCCEEDED`
+- 手动验证：需真机测试
+
+### 经验教训
+
+1. **可选按钮需要独立 handler**：`GCExtendedGamepad` 的可选按钮（`buttonHome`、`buttonOptions`）可能不会触发主 `valueChangedHandler`，必须为它们单独注册 `pressedChangedHandler`。
+2. **轮询 vs 事件驱动**：在事件驱动的回调中轮询可选按钮的 `isPressed` 是无效的——如果该按钮的变化不触发回调，轮询代码永远不会执行。
+3. **参照已有模式**：touchpad 按钮已经使用了独立 handler 模式，新增的可选按钮应遵循同样的模式。
 
 ---

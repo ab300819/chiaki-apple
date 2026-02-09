@@ -253,6 +253,21 @@ final class ControllerManager {
                 self?.handleExtendedGamepadInput(gamepad)
             }
         }
+
+        // buttonHome (PS button) needs a dedicated handler — it's optional and
+        // may not trigger the main valueChangedHandler on some platforms
+        gamepad.buttonHome?.pressedChangedHandler = { [weak self] button, value, pressed in
+            Task { @MainActor in
+                if pressed {
+                    self?.currentInput.buttons.insert(.ps)
+                } else {
+                    self?.currentInput.buttons.remove(.ps)
+                }
+                if let input = self?.currentInput {
+                    self?.onInputChanged?(input)
+                }
+            }
+        }
     }
 
     private func handleExtendedGamepadInput(_ gamepad: GCExtendedGamepad) {

@@ -281,7 +281,37 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 **验收标准**：
 - 摇杆上下方向与 PS5 一致
 - 振动反馈在物理手柄上可感受到
-- PS 键全平台限制已记录（iOS/macOS/tvOS 系统拦截，macOS 可通过 `defaults write` 解除，键盘 Esc 为备选）
+- PS 键 iOS 已知限制已记录
+
+---
+
+### BUG-014: macOS 上 PS 键（buttonHome）无响应 🔧
+
+> **关联 Bug 记录**: [05-bugfix-log.md#BUG-014](05-bugfix-log.md#bug-014-macos-上-ps-键buttonhome无响应)
+
+| 编号 | 名称 | 状态 |
+|------|------|------|
+| T-226 | 为 buttonHome 注册独立 pressedChangedHandler | ✅ |
+
+### T-226: 为 buttonHome 注册独立 pressedChangedHandler ✅
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-004, BUG-014 |
+| **优先级** | P1 |
+| **TDD** | 🟢 可选 (需真机验证) |
+| **依赖** | T-225 |
+
+**描述**：
+
+`buttonHome` 是 `GCExtendedGamepad` 的可选属性，不会触发主 `valueChangedHandler`。需为其注册独立的 `pressedChangedHandler`，与 touchpad 按钮采用相同模式。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/ControllerManager.swift` — `setupExtendedGamepadHandlers()` 添加 handler
+
+**验收标准**：
+- macOS 上 PS 键可被应用接收
+- iOS 上 PS 键仍为系统拦截（已知限制）
 
 ---
 
@@ -295,15 +325,15 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
-| Bug 修复 | 8 | 100% | ✅ |
-| **总计** | **114** | — | ✅ |
+| Bug 修复 | 9 | 100% | ✅ |
+| **总计** | **115** | — | ✅ |
 
 ---
 
 ## 下一步
 
 1. T-115 App Icon 资产准备仍待设计师交付
-2. 真机验证 BUG-011、BUG-012、BUG-013 修复
+2. 真机验证 BUG-011、BUG-012、BUG-013、BUG-014 修复
 
 ---
 
