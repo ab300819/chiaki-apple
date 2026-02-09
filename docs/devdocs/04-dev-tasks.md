@@ -281,7 +281,7 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 **验收标准**：
 - 摇杆上下方向与 PS5 一致
 - 振动反馈在物理手柄上可感受到
-- PS 键限制已记录
+- PS 键全平台限制已记录（iOS/macOS/tvOS 系统拦截，macOS 可通过 `defaults write` 解除，键盘 Esc 为备选）
 
 ---
 

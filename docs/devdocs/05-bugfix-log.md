@@ -702,13 +702,13 @@ BUG-012 修复后手柄按键已有响应，但存在三个子问题：
 
 **振动反馈无效**：`ControllerManager.applyRumble()` 委托给 `HapticsManager.shared.applyRumble()`，后者使用 `CoreHaptics` 的 `CHHapticEngine` —— 这是设备自身的触觉引擎（iPhone 震动马达），而非物理手柄的马达。正确做法是使用 `GCController.haptics` API 获取控制器专属的 `CHHapticEngine` 实例。
 
-**PS 键无响应**：`GCExtendedGamepad.buttonHome` 在 iOS 上被系统拦截用于系统级功能（如截屏/快捷操作），应用层无法接收此按键事件。这是 iOS 平台已知限制。
+**PS 键无响应（iOS + macOS）**：`GCExtendedGamepad.buttonHome` 在 iOS 上被系统完全拦截用于系统级功能（截屏/快捷操作），应用层无法接收此按键事件。macOS 上系统默认拦截 Home 按键用于打开 Launchpad，导致 `valueChangedHandler` 不会为 `buttonHome` 触发。这是 Apple 全平台的已知限制。macOS 用户可通过终端命令关闭系统拦截：`defaults write com.apple.GameController bluetoothPrefsMenuLongPressAction -integer 0`（macOS 13+ 已移除 GUI 开关）。此外，键盘 Esc 键已映射为 PS 按键的备选方案。
 
 ### 修复方案
 
 1. **摇杆 Y 轴**：在 `handleExtendedGamepadInput()` 中将 Y 轴值乘以 `-32767` 取反
 2. **振动反馈**：重写 `ControllerManager.applyRumble()`，优先使用 `GCController.haptics.createEngine(withLocality: .handles)` 获取控制器马达引擎，缓存引擎实例避免重复创建；无物理手柄时回退到 CoreHaptics 设备震动
-3. **PS 键**：记录为 iOS 已知限制，暂不修复
+3. **PS 键**：记录为 iOS/macOS/tvOS 全平台已知限制。macOS 用户可执行 `defaults write com.apple.GameController bluetoothPrefsMenuLongPressAction -integer 0` 关闭系统拦截。键盘 Esc 键已映射为 PS 按键备选方案
 
 ### 修改文件清单
 
@@ -729,6 +729,6 @@ BUG-012 修复后手柄按键已有响应，但存在三个子问题：
 
 1. **平台 API 约定差异**：不同框架对同一物理量（如 Y 轴方向）可能有相反的约定，必须在桥接层显式转换。
 2. **CoreHaptics 有两种用途**：`CHHapticEngine()` 创建的是设备引擎（手机震动），`GCController.haptics.createEngine()` 创建的是控制器引擎（手柄马达），两者 API 相同但作用对象不同。
-3. **iOS 系统级按键拦截**：`buttonHome` 被系统保留，应用层不可用，需在文档中说明此限制。
+3. **Apple 全平台 buttonHome 拦截**：iOS 完全拦截，macOS 默认拦截（可通过 `defaults write` 关闭），tvOS 完全拦截。需提供键盘映射等备选方案。
 
 ---
