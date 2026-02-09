@@ -321,18 +321,18 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 
 | 编号 | 名称 | 状态 |
 |------|------|------|
-| T-227 | SDR 色彩空间修复 (sRGB + pixel format) | ⏳ |
+| T-227 | HDR EDR 亮度映射修复 (linearToEDR 缩放因子) | ⏳ |
 | T-228 | macOS Retina drawable 分辨率修复 | ⏳ |
 
 ### 依赖关系
 
 ```
-T-227 (SDR 色彩空间修复) ← 修复暗/色彩失真
+T-227 (HDR EDR 亮度映射) ← 修复暗/色彩失真
 T-228 (Retina drawable 分辨率) ← 修复模糊
 两个任务互相独立
 ```
 
-### T-227: SDR 色彩空间修复 ⏳
+### T-227: HDR EDR 亮度映射修复 ⏳
 
 | 属性 | 内容 |
 |------|------|
@@ -343,23 +343,27 @@ T-228 (Retina drawable 分辨率) ← 修复模糊
 
 **描述**：
 
-SDR 模式下 `CAMetalLayer.colorspace` 为 `nil`，`MTKView.colorPixelFormat` 为 `.bgra8Unorm`（线性）。YUV→RGB 转换输出的 sRGB gamma 编码值被当作线性值渲染，导致画面偏暗和色彩失真。
+HDR 模式下 `linearToEDR()` 使用硬编码系数 12.5 (= 10000/800)，隐含 SDR 白 = 800 nits。但 Apple EDR 空间中 1.0 = SDR 白（标准约 200~203 nits），正确系数应为 `10000/203 ≈ 49.26`。当前系数导致 SDR 白 (203 nits) 映射到 ~0.76（当 edrHeadroom=3.0）而非 1.0，画面整体偏暗约 25~50%。
+
+此外，着色器中 `rgb * edrHeadroom` 将 EDR headroom 作为乘数放大 HDR 值，但正确做法是不乘 headroom——Apple EDR 中超过 1.0 的值自动以 HDR 亮度显示直到 headroom 上限，无需手动缩放。
+
+EDRHeadroomMonitor 还有初始化时序问题：`currentHeadroom` 从 1.0 开始，用 0.9/0.1 平滑收敛很慢。
 
 **涉及文件**：
-- `Chiaki/Core/Video/VideoStreamView.swift` — SDR 色彩空间配置
+- `Chiaki/Core/Video/VideoShaders.txt` — `linearToEDR()` 缩放因子
+- `Chiaki/Core/Video/MetalVideoRenderer.swift` — 内嵌着色器中的 `linearToEDR()` 和 edrHeadroom 用法
 
 **实现要点**：
-1. SDR 模式下将 `mtkView.colorPixelFormat` 改为 `.bgra8Unorm_srgb`，让 Metal 自动处理 sRGB gamma
-2. SDR 模式下显式设置 `layer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)`
-3. HDR 模式保持不变（`.rgba16Float` / `.rgb10a2Unorm` + extended linear Display P3）
+1. 修改 `linearToEDR()`：将 `linear * 12.5` 改为 `linear * (10000.0 / 203.0)` ≈ `linear * 49.26`
+2. 移除 `* uniforms.edrHeadroom`：在 EDR 输出路径中，不应将 headroom 作为乘数；超过 1.0 的值自然以 HDR 显示
+3. 保留 `* uniforms.edrIntensity`：这是用户可调的强度控制
+4. 同步修改 VideoShaders.txt 和 MetalVideoRenderer.swift 中的内嵌着色器
 
 **验收标准**：
-- 串流画面亮度和色彩与 PS5 直连显示器基本一致
-- HDR 模式不受影响
+- HDR 串流画面亮度与 PS5 直连 P3 显示器基本一致
+- SDR 内容区域（如 PS 菜单）亮度正常（不过亮不过暗）
+- SDR 模式不受影响
 - 所有平台编译通过
-
-**Review 要点**：
-- `bgra8Unorm_srgb` 会在着色器写入时自动做 linear→sRGB 转换，确认着色器输出的 SDR RGB 值是否处于线性空间（如果着色器输出已经是 gamma 编码的 sRGB 值，则不应使用 `_srgb` 后缀，而应保持 `bgra8Unorm` + 设置 `layer.colorspace = sRGB`）
 
 ---
 

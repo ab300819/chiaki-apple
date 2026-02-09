@@ -793,18 +793,26 @@ macOS 26 上按下 DualSense 的 PS 键没有任何响应——既不触发系�
 
 ### 根因分析
 
-**1. 画面偏暗 + 色彩失真 — SDR 色彩空间缺失**
+**1. 画面偏暗 + 色彩失真 — HDR EDR 亮度映射错误**
 
-`VideoStreamView` 在 SDR 模式下将 `CAMetalLayer.colorspace` 设为 `nil`（第 256 行），导致系统使用默认色彩空间（可能是 Display P3 或 unmanaged）。SDR 视频经 YUV→RGB 转换后输出的是 sRGB gamma 编码值，但 Metal 渲染目标未声明 sRGB，macOS 窗口合成器可能对像素值做了额外的色彩管理转换，导致亮度偏低和色彩偏移。
+用户使用 HDR 模式在 P3 色域 Retina 显示器上串流。着色器中 `linearToEDR()` 使用硬编码系数 12.5（= 10000/800），隐含 SDR 白 = 800 nits。但 Apple EDR 空间中 1.0 = SDR 白（标准约 200~203 nits），正确系数应为 10000/203 ≈ 49.26。
 
-此外，当前使用 `bgra8Unorm`（线性）像素格式，sRGB gamma 编码的像素值被当作线性值渲染。如果改用 `bgra8Unorm_srgb`，Metal 会自动在写入时对 sRGB gamma 做正确的处理。
+数学验证（假设 edrHeadroom = 3.0）：
+- SDR 白 (203 nits) → PQ EOTF → ~0.0203 线性
+- `linearToEDR` = 0.0203 * 12.5 = 0.254
+- `* edrHeadroom` = 0.254 * 3.0 = 0.762
+- 结果：SDR 白在 EDR 空间只有 0.76，应该是 1.0 → **画面整体偏暗约 25%**
 
-**2. 画面模糊 — Retina 缩放未处理**
+如果 edrHeadroom 因平滑延迟仍为 ~1.5，SDR 白 = 0.0203 * 12.5 * 1.5 = 0.38 → **画面偏暗超过 60%**
+
+此外 `* uniforms.edrHeadroom` 用法有误：Apple EDR 中超过 1.0 的值自动以 HDR 亮度显示直到 headroom 上限，不需要手动乘以 headroom。
+
+**2. 画面模糊 — macOS Retina 缩放未处理**
 
 `MTKView` 未设置 `layer.contentsScale`。macOS 上 `CAMetalLayer.contentsScale` 默认为 1.0（非 Retina），即使在 Retina 显示器（2x/3x）上，drawable 也只有 1x 分辨率，拉伸显示后造成模糊。iOS 的 `UIView` 默认会自动处理 scale，但 macOS 需要手动设置。
 
 ### 修复方案
 
-见 T-227、T-228 任务拆分。
+见 T-227（HDR EDR 亮度映射修复）、T-228（macOS Retina drawable 分辨率修复）任务拆分。
 
 ---
