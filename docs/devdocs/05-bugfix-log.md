@@ -645,17 +645,21 @@ PS5 刚启动时，Discovery 协议率先报告主机为 `CHIAKI_DISCOVERY_HOST_
 
 ### 根因分析
 
-`ControllerManager` 在 `handleExtendedGamepadInput()` 中正确处理了物理手柄输入，并通过 `onInputChanged?(input)` 回调发出。但 **该回调从未被赋值**（始终为 nil），导致输入被丢弃。
+**双重问题**：
 
-虚拟手柄（触屏控制器）正常工作是因为它通过独立路径 `VirtualControllerView → StreamingView.onInput → StreamingViewModel.handleInput()` 直接调用，不依赖 `onInputChanged` 回调。
+1. **回调未连接**：`ControllerManager.onInputChanged` 回调从未被赋值（始终为 nil），物理手柄输入被丢弃。
+2. **feedbackTimer 覆盖**（首次修复后发现）：即使连接了 `onInputChanged` → `sendControllerInput()`，feedbackTimer 每 8ms 用 `currentControllerState`（全零）调用 `session.sendControllerState()` 覆盖了物理手柄刚发送的输入。`sendControllerInput()` 只调用 `session.sendControllerState(input)` 但不更新 `currentControllerState`，导致物理手柄输入在 8ms 内被零状态覆盖。
 
-此外，`handleRumble()` 方法仅包含 `// TODO: Forward to controller haptics` 注释，振动反馈从未转发到物理手柄。
+虚拟手柄正常工作是因为 `handleInput()` 会累积更新 `currentControllerState` 再发送，与 feedbackTimer 的 `currentControllerState` 保持同步。
+
+此外，`handleRumble()` 仅有 TODO 注释，振动反馈从未转发到物理手柄。
 
 ### 解决方案
 
-1. 新增 `setupControllerInput()` — 在 `StreamingViewModel.init()` 中将 `ControllerManager.shared.onInputChanged` 赋值为 `sendControllerInput()` 闭包
-2. 新增 `teardownControllerInput()` — 在 `disconnect()` 中清除回调，防止悬空引用
-3. 修改 `handleRumble()` — 从 TODO 改为调用 `ControllerManager.shared.applyRumble()`
+1. 新增 `setupControllerInput()` — 连接 `ControllerManager.onInputChanged` → `sendControllerInput()`
+2. 新增 `teardownControllerInput()` — 断开时清除回调
+3. **在 `sendControllerInput()` 中同步 `currentControllerState = input`** — 关键修复：确保 feedbackTimer 发送的是最新的物理手柄状态而非全零
+4. 修改 `handleRumble()` — 转发到 `ControllerManager.shared.applyRumble()`
 
 ### 回归测试
 
@@ -668,7 +672,8 @@ PS5 刚启动时，Discovery 协议率先报告主机为 `CHIAKI_DISCOVERY_HOST_
 
 ### 经验教训
 
-1. **回调管线必须完整连接**：架构中定义了 `onInputChanged` 回调接口，但如果没有在使用方（StreamingViewModel）中赋值，回调就是死代码。新增回调接口时应同时实现消费端。
-2. **TODO 注释不等于实现**：`// TODO: Forward to controller haptics` 长期未被转化为实际代码，导致振动功能缺失。
+1. **回调管线必须完整连接**：架构中定义了 `onInputChanged` 回调接口，但如果没有在使用方中赋值，回调就是死代码。
+2. **心跳定时器与输入状态必须同步**：当存在周期性发送当前状态的定时器时，所有输入路径都必须更新同一个 `currentControllerState`，否则定时器会用过期状态覆盖有效输入。
+3. **TODO 注释不等于实现**：`// TODO: Forward to controller haptics` 长期未被转化为实际代码。
 
 ---

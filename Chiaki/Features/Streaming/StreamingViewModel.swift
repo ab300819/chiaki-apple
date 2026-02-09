@@ -488,6 +488,10 @@ final class StreamingViewModel {
     func sendControllerInput(_ input: ChiakiControllerInput) {
         guard state == .streaming else { return }
 
+        // Sync to currentControllerState so feedbackTimer sends the latest input
+        // Without this, the 8ms feedback timer overwrites physical controller input with stale zeros
+        currentControllerState = input
+
         // Check for volume shortcuts
         shortcutDetector.updateButtons(input.buttons)
 
