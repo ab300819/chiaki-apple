@@ -8,6 +8,7 @@
 
 import Foundation
 import GameController
+import CoreHaptics
 import Combine
 import SwiftUI
 
@@ -82,6 +83,9 @@ final class ControllerManager {
     // MARK: - Private Properties
 
     private var notificationObservers: [NSObjectProtocol] = []
+
+    /// Cached haptic engine for controller rumble (reused across calls)
+    private var rumbleEngine: CHHapticEngine?
 
     // MARK: - Singleton
 
@@ -198,8 +202,9 @@ final class ControllerManager {
 
         Logger.controller.info("Controller disconnected: \(info.name)")
 
-        // If active controller disconnected, select another
+        // If active controller disconnected, reset rumble engine and select another
         if activeController?.controller === controller {
+            rumbleEngine = nil
             activeController = nil
             if let nextController = connectedControllers.first {
                 setActiveController(nextController.controller)
@@ -273,11 +278,11 @@ final class ControllerManager {
         if gamepad.dpad.left.isPressed { input.buttons.insert(.dpadLeft) }
         if gamepad.dpad.right.isPressed { input.buttons.insert(.dpadRight) }
 
-        // Sticks
+        // Sticks (GCController Y+ is up, PlayStation Y+ is down — negate Y axis)
         input.leftStickX = Int16(gamepad.leftThumbstick.xAxis.value * 32767)
-        input.leftStickY = Int16(gamepad.leftThumbstick.yAxis.value * 32767)
+        input.leftStickY = Int16(gamepad.leftThumbstick.yAxis.value * -32767)
         input.rightStickX = Int16(gamepad.rightThumbstick.xAxis.value * 32767)
-        input.rightStickY = Int16(gamepad.rightThumbstick.yAxis.value * 32767)
+        input.rightStickY = Int16(gamepad.rightThumbstick.yAxis.value * -32767)
 
         // Stick buttons
         if let leftThumbstickButton = gamepad.leftThumbstickButton, leftThumbstickButton.isPressed {
@@ -485,11 +490,71 @@ final class ControllerManager {
         HapticsManager.shared.stopEngine()
     }
 
-    /// Apply rumble feedback to the active controller (delegates to HapticsManager)
+    /// Apply rumble feedback to the active physical controller
+    /// Uses GCController haptics for real controller motors, falls back to CoreHaptics for device vibration
     /// @satisfies AC-063 - Haptics 引擎统一
     func applyRumble(left: UInt8, right: UInt8) {
         guard hapticsEnabled else { return }
-        HapticsManager.shared.applyRumble(left: left, right: right)
+        guard left > 0 || right > 0 else { return }
+
+        // Try native controller rumble first (DualSense/DualShock 4)
+        if let controller = activeController?.controller,
+           let haptics = controller.haptics {
+            playControllerRumble(haptics: haptics, left: left, right: right)
+        } else {
+            // Fallback to device haptics
+            HapticsManager.shared.applyRumble(left: left, right: right)
+        }
+    }
+
+    /// Play rumble on physical controller via GCController haptics API
+    private func playControllerRumble(haptics: GCDeviceHaptics, left: UInt8, right: UInt8) {
+        let leftIntensity = Float(left) / 255.0
+        let rightIntensity = Float(right) / 255.0
+
+        // Create haptic engine for controller's handles locality (dual motor rumble)
+        if let engine = rumbleEngine {
+            playRumblePattern(engine: engine, intensity: max(leftIntensity, rightIntensity))
+        } else if let engine = try? haptics.createEngine(withLocality: .handles) {
+            rumbleEngine = engine
+            engine.resetHandler = { [weak self] in
+                Task { @MainActor in
+                    self?.rumbleEngine = nil
+                }
+            }
+            engine.stoppedHandler = { [weak self] _ in
+                Task { @MainActor in
+                    self?.rumbleEngine = nil
+                }
+            }
+            do {
+                try engine.start()
+                playRumblePattern(engine: engine, intensity: max(leftIntensity, rightIntensity))
+            } catch {
+                Logger.controller.error("Failed to start controller rumble engine: \(error)")
+                rumbleEngine = nil
+            }
+        }
+    }
+
+    /// Play a single rumble pattern on a CHHapticEngine
+    private func playRumblePattern(engine: CHHapticEngine, intensity: Float) {
+        do {
+            let event = CHHapticEvent(
+                eventType: .hapticContinuous,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+                ],
+                relativeTime: 0,
+                duration: 0.1
+            )
+            let pattern = try CHHapticPattern(events: [event], parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+        } catch {
+            Logger.controller.debug("Controller rumble pattern failed: \(error)")
+        }
     }
 
     // MARK: - LED Control

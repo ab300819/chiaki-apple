@@ -677,3 +677,58 @@ PS5 刚启动时，Discovery 协议率先报告主机为 `CHIAKI_DISCOVERY_HOST_
 3. **TODO 注释不等于实现**：`// TODO: Forward to controller haptics` 长期未被转化为实际代码。
 
 ---
+
+## BUG-013: 手柄摇杆 Y 轴颠倒 + 振动反馈无效
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 |
+| **关联功能** | F-004, BUG-012 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+BUG-012 修复后手柄按键已有响应，但存在三个子问题：
+1. 左右摇杆上下方向颠倒（推上实际向下）
+2. 振动反馈完全无效（PS5 发送的 rumble 事件无法驱动物理手柄震动）
+3. PS 键无响应（iOS 系统拦截，已知限制）
+
+### 根因分析
+
+**摇杆 Y 轴颠倒**：GCController 框架的 Y 轴约定为正值向上（Y+ = Up），而 PlayStation 协议的 Y 轴约定为正值向下（Y+ = Down）。`handleExtendedGamepadInput()` 直接将 GCController 的 Y 值传递给 PlayStation，未做取反处理。
+
+**振动反馈无效**：`ControllerManager.applyRumble()` 委托给 `HapticsManager.shared.applyRumble()`，后者使用 `CoreHaptics` 的 `CHHapticEngine` —— 这是设备自身的触觉引擎（iPhone 震动马达），而非物理手柄的马达。正确做法是使用 `GCController.haptics` API 获取控制器专属的 `CHHapticEngine` 实例。
+
+**PS 键无响应**：`GCExtendedGamepad.buttonHome` 在 iOS 上被系统拦截用于系统级功能（如截屏/快捷操作），应用层无法接收此按键事件。这是 iOS 平台已知限制。
+
+### 修复方案
+
+1. **摇杆 Y 轴**：在 `handleExtendedGamepadInput()` 中将 Y 轴值乘以 `-32767` 取反
+2. **振动反馈**：重写 `ControllerManager.applyRumble()`，优先使用 `GCController.haptics.createEngine(withLocality: .handles)` 获取控制器马达引擎，缓存引擎实例避免重复创建；无物理手柄时回退到 CoreHaptics 设备震动
+3. **PS 键**：记录为 iOS 已知限制，暂不修复
+
+### 修改文件清单
+
+1. `Chiaki/Core/Controllers/ControllerManager.swift`:
+   - 添加 `import CoreHaptics`
+   - 添加 `rumbleEngine: CHHapticEngine?` 缓存属性
+   - Y 轴值取反（`* -32767`）
+   - 重写 `applyRumble()` 使用 `GCController.haptics` API
+   - 新增 `playControllerRumble()` 和 `playRumblePattern()` 方法
+   - 控制器断开时清除 `rumbleEngine`
+
+### 回归测试
+
+- 编译验证：macOS 和 iOS 均 `BUILD SUCCEEDED`
+- 手动验证：需真机测试
+
+### 经验教训
+
+1. **平台 API 约定差异**：不同框架对同一物理量（如 Y 轴方向）可能有相反的约定，必须在桥接层显式转换。
+2. **CoreHaptics 有两种用途**：`CHHapticEngine()` 创建的是设备引擎（手机震动），`GCController.haptics.createEngine()` 创建的是控制器引擎（手柄马达），两者 API 相同但作用对象不同。
+3. **iOS 系统级按键拦截**：`buttonHome` 被系统保留，应用层不可用，需在文档中说明此限制。
+
+---
