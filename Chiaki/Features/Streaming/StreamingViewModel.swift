@@ -99,6 +99,12 @@ final class StreamingViewModel {
     private var lastSettings: StreamSettings?
     private var lastIsRemote: Bool = false
 
+    /// Connection retry state for handling PS5 startup race condition
+    /// @satisfies BUG-011 - PS5 刚启动时首次连接失败
+    private var connectionRetryCount: Int = 0
+    private static let maxConnectionRetries = 3
+    private static let connectionRetryDelay: UInt64 = 2_000_000_000 // 2 seconds
+
     // MARK: - PIN Management
     /// @requirement F-027 - UI 层 MVVM 合规重构
     /// @satisfies AC-092 - StreamingView Singleton 解耦
@@ -126,6 +132,7 @@ final class StreamingViewModel {
         setupSession()
         setupNetworkMonitoring()
         setupVolumeShortcuts()
+        setupControllerInput()
         Logger.session.info("StreamingViewModel initialized for \(host.nickname)")
     }
     
@@ -212,6 +219,24 @@ final class StreamingViewModel {
         }
     }
 
+    // MARK: - Controller Input Setup
+
+    /// Connect physical controller input to streaming session
+    /// @requirement F-004 - 控制器支持
+    /// @satisfies BUG-012 - 物理手柄输入未接入串流管线
+    private func setupControllerInput() {
+        ControllerManager.shared.onInputChanged = { [weak self] input in
+            self?.sendControllerInput(input)
+        }
+        Logger.controller.info("Physical controller input connected to streaming session")
+    }
+
+    /// Disconnect physical controller input from streaming session
+    private func teardownControllerInput() {
+        ControllerManager.shared.onInputChanged = nil
+        Logger.controller.info("Physical controller input disconnected from streaming session")
+    }
+
     // MARK: - Setup
 
     private func setupSession() {
@@ -270,9 +295,11 @@ final class StreamingViewModel {
 
     /// Connect to the PlayStation host
     /// If host is in standby, will attempt to wake it first
+    /// @satisfies BUG-011 - PS5 刚启动时首次连接失败
     func connect(settings: StreamSettings, isRemote: Bool = false) {
         lastSettings = settings
         lastIsRemote = isRemote
+        connectionRetryCount = 0
 
         guard !state.isActive || state == .reconnecting else {
             Logger.session.warning("Cannot connect: already active")
@@ -408,12 +435,32 @@ final class StreamingViewModel {
         session.configure(stream: streamConfig)
 
         // Start connection
+        // @satisfies BUG-011 - PS5 刚启动时首次连接失败
         do {
             try session.connect(to: hostConfig)
             startStatsUpdate()
         } catch {
-            state = .error(error.localizedDescription)
             Logger.session.error("Connection failed: \(error)")
+            retryOrFail(error: error.localizedDescription, settings: settings, isRemote: isRemote)
+        }
+    }
+
+    /// Retry connection or set error state if max retries exceeded
+    /// @satisfies BUG-011 - PS5 刚启动时首次连接失败
+    private func retryOrFail(error: String, settings: StreamSettings, isRemote: Bool) {
+        connectionRetryCount += 1
+
+        if connectionRetryCount <= Self.maxConnectionRetries {
+            Logger.session.warning("Connection failed (attempt \(connectionRetryCount)/\(Self.maxConnectionRetries)), retrying in 2s...")
+            state = .connecting
+            Task {
+                try? await Task.sleep(nanoseconds: Self.connectionRetryDelay)
+                guard state == .connecting else { return }  // User may have cancelled
+                performConnection(settings: settings, isRemote: isRemote)
+            }
+        } else {
+            Logger.session.error("Connection failed after \(Self.maxConnectionRetries) retries: \(error)")
+            state = .error(error)
         }
     }
 
@@ -422,6 +469,7 @@ final class StreamingViewModel {
         stopFeedbackTimer()
         statsUpdateTimer?.invalidate()
         statsUpdateTimer = nil
+        teardownControllerInput()
 
         session.disconnect()
         state = .disconnected
@@ -565,6 +613,7 @@ final class StreamingViewModel {
 
     // MARK: - State Handling
 
+    /// @satisfies BUG-011 - PS5 刚启动时首次连接失败
     private func handleSessionStateChange(_ sessionState: SessionState) {
         switch sessionState {
         case .idle:
@@ -576,6 +625,7 @@ final class StreamingViewModel {
             state = .connected
         case .streaming:
             state = .streaming
+            connectionRetryCount = 0  // Reset retry count on successful connection
             startFeedbackTimer()  // Start periodic feedback to keep connection alive
             onConnected?()
         case .disconnecting:
@@ -583,7 +633,12 @@ final class StreamingViewModel {
             state = .disconnected
         case .error(let error):
             stopFeedbackTimer()
-            state = .error(error.description)
+            // Try to retry if we haven't exceeded max retries
+            if let settings = lastSettings {
+                retryOrFail(error: error.description, settings: settings, isRemote: lastIsRemote)
+            } else {
+                state = .error(error.description)
+            }
         }
     }
 
@@ -592,9 +647,10 @@ final class StreamingViewModel {
         Logger.session.info("Login PIN requested (incorrect: \(pinIncorrect))")
     }
 
+    /// Forward rumble feedback to physical controller
+    /// @satisfies BUG-012 - 物理手柄输入未接入串流管线
     private func handleRumble(left: UInt8, right: UInt8) {
-        // TODO: Forward to controller haptics
-        Logger.controller.debug("Rumble: L=\(left) R=\(right)")
+        ControllerManager.shared.applyRumble(left: left, right: right)
     }
 
     // MARK: - Statistics Update

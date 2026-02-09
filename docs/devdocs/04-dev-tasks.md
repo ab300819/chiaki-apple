@@ -168,6 +168,86 @@ SwiftUI 无原生方向锁定 API，需通过 `UIApplicationDelegate` 桥接。�
 
 ---
 
+## Bug 修复任务（新增）
+
+### BUG-011: PS5 刚启动时首次连接失败 🔧
+
+> **关联 Bug 记录**: [05-bugfix-log.md#BUG-011](05-bugfix-log.md#bug-011-ps5-刚启动时首次连接失败)
+
+| 编号 | 名称 | 状态 |
+|------|------|------|
+| T-223 | 连接失败自动重试机制 | ✅ |
+
+### T-223: 连接失败自动重试机制 ✅
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-001, F-002, BUG-011 |
+| **优先级** | P1 |
+| **TDD** | 🟢 可选 (网络层，需真机验证) |
+| **依赖** | 无 |
+
+**描述**：
+
+PS5 刚启动时，Discovery 率先报告 `.online` 状态（网络层已就绪），但 Remote Play 服务可能尚需数秒完成初始化。当前 `connect()` 方法在 host 为 `.online` 时直接调用 `performConnection()` 无任何重试，导致首次连接因服务未就绪而失败。
+
+**涉及文件**：
+- `Chiaki/Features/Streaming/StreamingViewModel.swift` — 修改 `connect()` / `performConnection()` 逻辑
+
+**实现要点**：
+1. 在 `performConnection()` 捕获连接失败后，不立即设置 `.error` 状态
+2. 添加重试逻辑：最多重试 3 次，每次间隔 2 秒
+3. 重试期间状态保持 `.connecting`，UI 显示 "Connecting..."
+4. 仅当所有重试都失败后才设置 `.error` 状态
+5. 在 `session.onStateChanged` 中处理：当收到 `.error` 状态时触发重试而非立即显示错误
+
+**验收标准**：
+- PS5 刚启动后首次连接能自动重试并成功
+- 重试次数不超过 3 次，避免无限重试
+- 如果主机确实不可达（如 IP 错误），3 次重试后正常显示错误
+- 不影响从待机唤醒的连接流程（`wakeAndConnect` 路径）
+
+---
+
+### BUG-012: 物理手柄输入未接入串流管线 🔧
+
+> **关联 Bug 记录**: [05-bugfix-log.md#BUG-012](05-bugfix-log.md#bug-012-物理手柄输入未接入串流管线)
+
+| 编号 | 名称 | 状态 |
+|------|------|------|
+| T-224 | 物理手柄输入转发到串流会话 | ✅ |
+
+### T-224: 物理手柄输入转发到串流会话 ✅
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-004, BUG-012 |
+| **优先级** | P0 |
+| **TDD** | 🟢 可选 (需真机验证) |
+| **依赖** | 无 |
+
+**描述**：
+
+`ControllerManager.onInputChanged` 回调从未被赋值。物理手柄输入在 `handleExtendedGamepadInput()` 产生后通过 `onInputChanged?(input)` 发出，但因回调为 nil 而被丢弃。虚拟手柄（触屏）通过 `VirtualControllerView → handleInput()` 正常工作，说明 `sendControllerInput()` 管线本身没问题。
+
+**涉及文件**：
+- `Chiaki/Features/Streaming/StreamingViewModel.swift` — 订阅物理手柄输入
+
+**实现要点**：
+1. 在 `StreamingViewModel.init()` 或 `setupSession()` 中，将 `ControllerManager.shared.onInputChanged` 赋值为 `sendControllerInput(_:)` 的闭包
+2. 确保在 `disconnect()` 中清除回调（`ControllerManager.shared.onInputChanged = nil`），避免悬空引用
+3. 同时连接 `session.onRumble` 到 `ControllerManager.shared.applyRumble()`，实现振动反馈
+4. 使用 `[weak self]` 防止循环引用
+
+**验收标准**：
+- 物理手柄在串流中能正常控制 PS5
+- 断开串流后手柄回调被清除
+- 虚拟手柄功能不受影响
+- DualSense 触控板输入也能正常转发
+- 振动反馈能从 PS5 传递到物理手柄
+
+---
+
 ## 任务汇总
 
 | 里程碑 | 任务数 | 完成率 | 状态 |
@@ -178,16 +258,16 @@ SwiftUI 无原生方向锁定 API，需通过 `UIApplicationDelegate` 桥接。�
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
-| Bug 修复 | 5 | 100% | ✅ |
-| **总计** | **111** | — | M16 进行中 |
+| Bug 修复 | 7 | 100% | ✅ |
+| **总计** | **113** | — | ✅ |
 
 ---
 
 ## 下一步
 
-1. 执行 M16: T-221 → T-222（iPhone 串流横屏锁定）
-2. T-115 App Icon 资产准备仍待设计师交付
+1. T-115 App Icon 资产准备仍待设计师交付
+2. 真机验证 BUG-011 和 BUG-012 修复
 
 ---
 
-*文档由 `/devdocs-sync --archive` 更新 (2026-02-09)*
+*文档由 `/devdocs-bugfix` 更新 (2026-02-09)*

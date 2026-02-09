@@ -569,3 +569,106 @@ if #available(iOS 15.0, tvOS 15.0, *) {
 2. 条件编译不能替代正确的 API 使用 - 错误的 API 在任何平台都不会工作
 
 ---
+
+## BUG-011: PS5 刚启动时首次连接失败
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户手动测试 |
+| **关联功能** | F-001, F-002 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+PS5 刚启动时，HostList 显示主机在线，但首次点击连接显示 error。返回 HostList 后再次进入串流可以成功连接。
+
+### 复现步骤
+
+1. 启动 PS5（从关机状态开机）
+2. 等待 HostList 显示 PS5 为在线状态
+3. 立即点击进入串流
+4. 显示连接错误
+5. 返回 HostList，再次点击进入串流
+6. 连接成功
+
+### 根因分析
+
+PS5 刚启动时，Discovery 协议率先报告主机为 `CHIAKI_DISCOVERY_HOST_STATE_READY`（`.online`），但此时 Remote Play 服务可能尚需数秒完成初始化。`connect()` 方法在 host 为 `.online` 时直接调用 `performConnection()` 无任何重试逻辑，导致首次连接因服务未就绪而被 PS5 拒绝。
+
+与 BUG-004（唤醒后连接失败）不同，BUG-004 是发现服务未启动导致状态未更新，而 BUG-011 是 Discovery 正确报告在线但 Remote Play 服务尚未初始化完成。
+
+### 解决方案
+
+在 `StreamingViewModel` 中添加连接失败自动重试机制：
+
+1. 新增 `connectionRetryCount` 计数器和 `retryOrFail()` 方法
+2. 同步路径（`session.connect()` 抛异常）和异步路径（`handleSessionStateChange(.error)`）均走重试
+3. 最多重试 3 次，每次间隔 2 秒，重试期间状态保持 `.connecting`
+4. 连接成功后重置计数器
+5. 所有重试失败后才显示错误
+
+### 回归测试
+
+- 编译验证：macOS 和 iOS 均 `BUILD SUCCEEDED`
+- 手动验证：需真机测试
+
+### 修改文件清单
+
+1. `Chiaki/Features/Streaming/StreamingViewModel.swift` — 添加重试逻辑
+
+---
+
+## BUG-012: 物理手柄输入未接入串流管线
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户手动测试 |
+| **关联功能** | F-004 |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+物理手柄已连接且设置页正确识别，但在串流界面中手柄输入完全无响应。同时 PS5 侧的振动反馈也无法传递到手柄。
+
+### 复现步骤
+
+1. 通过蓝牙连接 DualSense 手柄
+2. 进入设置 → 手柄，确认手柄已识别
+3. 进入串流界面
+4. 按手柄按钮，PS5 无任何响应
+
+### 根因分析
+
+`ControllerManager` 在 `handleExtendedGamepadInput()` 中正确处理了物理手柄输入，并通过 `onInputChanged?(input)` 回调发出。但 **该回调从未被赋值**（始终为 nil），导致输入被丢弃。
+
+虚拟手柄（触屏控制器）正常工作是因为它通过独立路径 `VirtualControllerView → StreamingView.onInput → StreamingViewModel.handleInput()` 直接调用，不依赖 `onInputChanged` 回调。
+
+此外，`handleRumble()` 方法仅包含 `// TODO: Forward to controller haptics` 注释，振动反馈从未转发到物理手柄。
+
+### 解决方案
+
+1. 新增 `setupControllerInput()` — 在 `StreamingViewModel.init()` 中将 `ControllerManager.shared.onInputChanged` 赋值为 `sendControllerInput()` 闭包
+2. 新增 `teardownControllerInput()` — 在 `disconnect()` 中清除回调，防止悬空引用
+3. 修改 `handleRumble()` — 从 TODO 改为调用 `ControllerManager.shared.applyRumble()`
+
+### 回归测试
+
+- 编译验证：macOS 和 iOS 均 `BUILD SUCCEEDED`
+- 手动验证：需真机测试
+
+### 修改文件清单
+
+1. `Chiaki/Features/Streaming/StreamingViewModel.swift` — 连接物理手柄回调、振动转发
+
+### 经验教训
+
+1. **回调管线必须完整连接**：架构中定义了 `onInputChanged` 回调接口，但如果没有在使用方（StreamingViewModel）中赋值，回调就是死代码。新增回调接口时应同时实现消费端。
+2. **TODO 注释不等于实现**：`// TODO: Forward to controller haptics` 长期未被转化为实际代码，导致振动功能缺失。
+
+---
