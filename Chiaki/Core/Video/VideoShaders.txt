@@ -138,10 +138,11 @@ float3 acesTonemap(float3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-// Convert linear light to EDR (scale for display)
+// Convert PQ linear light (0-1 = 0-10000 nits) to Apple EDR
+// In Apple EDR, 1.0 = SDR reference white (203 nits per ITU-R BT.2408)
+// PQ linear 1.0 = 10000 nits, so scale factor = 10000 / 203 ≈ 49.26
 float3 linearToEDR(float3 linear) {
-    // Scale so that SDR white (203 nits) maps appropriately for EDR
-    return linear * 12.5;
+    return linear * (10000.0 / 203.0);
 }
 
 // MARK: - Vertex Shader
@@ -208,9 +209,10 @@ fragment float4 videoBiplanarFragmentShader(
             // ACES Tone Mapping (SDR Output)
             rgb = acesTonemap(rgb);
         } else {
-            // HDR Output (EDR Scaling)
+            // HDR Output — linearToEDR maps to Apple EDR (1.0 = SDR white)
+            // Display handles values > 1.0 as HDR up to its headroom limit
             rgb = linearToEDR(rgb);
-            rgb = rgb * uniforms.edrHeadroom;
+            rgb = rgb * uniforms.edrIntensity;
         }
         
         rgb = rgb * uniforms.brightness;
@@ -252,9 +254,10 @@ fragment float4 videoBGRAFragmentShader(
             // ACES Tone Mapping (SDR Output)
             rgb = acesTonemap(rgb);
         } else {
-            // HDR Output (EDR Scaling)
+            // HDR Output — linearToEDR maps to Apple EDR (1.0 = SDR white)
+            // Display handles values > 1.0 as HDR up to its headroom limit
             rgb = linearToEDR(rgb);
-            rgb = rgb * uniforms.edrHeadroom;
+            rgb = rgb * uniforms.edrIntensity;
         }
         
         rgb = rgb * uniforms.brightness;

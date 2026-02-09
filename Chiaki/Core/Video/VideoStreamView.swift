@@ -259,6 +259,17 @@ struct VideoStreamView: ViewRepresentable {
             #endif
         }
 
+        // T-228: Match drawable resolution to Retina backing scale on macOS
+        // CAMetalLayer.contentsScale defaults to 1.0, causing blurry output on HiDPI
+        #if os(macOS)
+        if let window = mtkView.window {
+            let scale = window.backingScaleFactor
+            if mtkView.layer?.contentsScale != scale {
+                mtkView.layer?.contentsScale = scale
+            }
+        }
+        #endif
+
         // 3. Update renderer properties and delegate bridge
         if let renderer = renderer {
             renderer.mtkView = mtkView

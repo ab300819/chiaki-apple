@@ -993,16 +993,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
     }
 
-    // Convert linear light to EDR (scale for display)
-    // SDR reference white = 203 nits, EDR 1.0 = 80 nits (SDR white)
-    // So HDR 203 nits should map to EDR 203/80 = 2.5375
+    // Convert PQ linear light (0-1 = 0-10000 nits) to Apple EDR
+    // In Apple EDR, 1.0 = SDR reference white (203 nits per ITU-R BT.2408)
+    // PQ linear 1.0 = 10000 nits, so scale factor = 10000 / 203 ≈ 49.26
     float3 linearToEDR(float3 linear) {
-        // linear is in 0-1 range representing 0-10000 nits
-        // Scale so that SDR white (203 nits) = 1.0 in EDR
-        // 203/10000 in linear = 1.0 in EDR, so multiply by 10000/203
-        // But we also need to account for EDR headroom
-        // Simplified: multiply by ~12.5 to map HDR range to EDR
-        return linear * 12.5;
+        return linear * (10000.0 / 203.0);
     }
 
     vertex VertexOut videoVertexShader(
@@ -1063,9 +1058,10 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
                     // ACES Tone Mapping (SDR Output)
                     rgb = acesTonemap(rgb);
                 } else {
-                    // HDR Output (EDR Scaling)
+                    // HDR Output — linearToEDR maps to Apple EDR (1.0 = SDR white)
+                    // Display handles values > 1.0 as HDR up to its headroom limit
                     rgb = linearToEDR(rgb);
-                    rgb = rgb * uniforms.edrHeadroom * uniforms.edrIntensity;
+                    rgb = rgb * uniforms.edrIntensity;
                 }
                 
                 // Apply color adjustments in linear space

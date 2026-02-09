@@ -315,14 +315,14 @@ BUG-012 修复后手柄按键已有响应，但摇杆 Y 轴颠倒（GCController
 
 ---
 
-### BUG-015: 串流画面偏暗、色彩失真、模糊 🔧
+### BUG-015: 串流画面偏暗、色彩失真、模糊 ✅
 
 > **关联 Bug 记录**: [05-bugfix-log.md#BUG-015](05-bugfix-log.md#bug-015-串流画面偏暗色彩失真模糊)
 
 | 编号 | 名称 | 状态 |
 |------|------|------|
-| T-227 | HDR EDR 亮度映射修复 (linearToEDR 缩放因子) | ⏳ |
-| T-228 | macOS Retina drawable 分辨率修复 | ⏳ |
+| T-227 | HDR EDR 亮度映射修复 (linearToEDR 缩放因子) | ✅ |
+| T-228 | macOS Retina drawable 分辨率修复 | ✅ |
 
 ### 依赖关系
 
@@ -332,7 +332,7 @@ T-228 (Retina drawable 分辨率) ← 修复模糊
 两个任务互相独立
 ```
 
-### T-227: HDR EDR 亮度映射修复 ⏳
+### T-227: HDR EDR 亮度映射修复 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -367,7 +367,7 @@ EDRHeadroomMonitor 还有初始化时序问题：`currentHeadroom` 从 1.0 开�
 
 ---
 
-### T-228: macOS Retina drawable 分辨率修复 ⏳
+### T-228: macOS Retina drawable 分辨率修复 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -405,16 +405,15 @@ macOS 上 `MTKView` 的 `CAMetalLayer.contentsScale` 默认为 1.0，在 Retina 
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
-| Bug 修复 | 11 | 82% | 🔧 |
-| **总计** | **117** | — | 🔧 |
+| Bug 修复 | 11 | 100% | ✅ |
+| **总计** | **117** | — | ✅ |
 
 ---
 
 ## 下一步
 
-1. **T-227 + T-228**: BUG-015 串流画面质量修复
-2. T-115 App Icon 资产准备仍待设计师交付
-3. 真机验证 BUG-011、BUG-012、BUG-013、BUG-014 修复
+1. T-115 App Icon 资产准备仍待设计师交付
+2. 真机验证 BUG-011~BUG-015 修复
 
 ---
 
