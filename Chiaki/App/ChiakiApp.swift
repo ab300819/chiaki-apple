@@ -6,17 +6,43 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 #if os(iOS) || os(macOS)
+
+// MARK: - AppDelegate (iOS only)
+
+#if os(iOS)
+/// Minimal AppDelegate for orientation locking support.
+/// @requirement F-039 - iPhone 串流横屏锁定
+/// @satisfies AC-148 - 进入 StreamingView 时锁定横屏
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        OrientationManager.shared.lockOrientation ?? .allButUpsideDown
+    }
+}
+#endif
+
+// MARK: - App
+
 @main
 struct ChiakiApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
+
     @State private var settingsStore = SettingsStore.shared
     @State private var navigationManager = NavigationManager()
     @State private var hostStore = HostStore.shared
     @State private var controllerManager = ControllerManager.shared
 
     @State private var pendingCrashReport: String?
-    
+
     init() {
         CrashReporter.shared.setup()
     }

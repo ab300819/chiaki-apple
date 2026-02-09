@@ -286,12 +286,20 @@ struct StreamingView: View {
             viewModel.connect(settings: settingsStore.streamSettings, isRemote: settingsStore.useRemoteProfile)
             // Mark streaming active for macOS menu
             navigationManager.isStreaming = true
+            // @satisfies AC-148 - Lock to landscape on iPhone
+            #if os(iOS)
+            OrientationManager.shared.lockOrientation = .landscape
+            #endif
         }
         .onDisappear {
             viewModel.disconnect()
             rendererHolder.cleanup()
             // Mark streaming inactive
             navigationManager.isStreaming = false
+            // @satisfies AC-149 - Restore default orientation on exit
+            #if os(iOS)
+            OrientationManager.shared.lockOrientation = nil
+            #endif
         }
         #if os(macOS)
         // Handle macOS menu commands

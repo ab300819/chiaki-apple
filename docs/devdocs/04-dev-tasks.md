@@ -1,7 +1,7 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
 > **状态更新**: 2026-02-09
-> **当前里程碑**: 全部完成，待下一迭代
+> **当前里程碑**: M16 — iPhone 串流横屏锁定
 > **归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (M11: 35 任务, M12: 24 任务, M13: 23 任务, M14: 4 任务, M15: 18 任务)
 
 ---
@@ -85,6 +85,89 @@
 
 ---
 
+## M16 — iPhone 串流横屏锁定
+
+> **阶段目标**: F-039 iPhone 串流画面锁定横屏方向 | **来源**: INS-077
+> **关联需求**: F-039 (US-039, AC-148~AC-150)
+
+### 依赖关系
+
+```
+T-221 (AppDelegate 方向控制基础设施)
+  └── T-222 (StreamingView 方向锁定集成)
+```
+
+### T-221: 创建 AppDelegate 方向控制基础设施 ✅
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-039, AC-148 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🟢 可选 (UI 基础设施) |
+| **依赖** | 无 |
+
+**描述**：
+
+SwiftUI 无原生方向锁定 API，需通过 `UIApplicationDelegate` 桥接。创建最小化 AppDelegate 提供 `supportedInterfaceOrientationsFor` 回调，由全局状态控制返回值。
+
+**涉及文件**：
+- `Chiaki/App/ChiakiApp.swift` — 添加 `@UIApplicationDelegateAdaptor`
+- `Chiaki/App/OrientationManager.swift` — **新建**，管理方向锁定状态
+
+**实现要点**：
+1. 新建 `OrientationManager` 单例（`@Observable`），持有 `lockOrientation: UIInterfaceOrientationMask?` 属性
+2. 新建 `AppDelegate: NSObject, UIApplicationDelegate`，实现 `application(_:supportedInterfaceOrientationsFor:)` 方法
+3. 当 `lockOrientation` 为 nil 时返回默认值（iPhone: portrait + landscape），非 nil 时返回锁定值
+4. 在 `ChiakiApp` 中添加 `@UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate`
+5. 仅 iOS 平台编译（`#if os(iOS)`），macOS/tvOS 不受影响
+
+**验收标准**：
+- OrientationManager 可设置/清除方向锁定
+- AppDelegate 正确响应方向查询
+- 不影响 macOS/tvOS 编译
+
+**Review 要点**：
+- AppDelegate 保持最小化，仅处理方向
+- OrientationManager 线程安全（MainActor）
+- 平台条件编译正确
+
+---
+
+### T-222: StreamingView 方向锁定集成 ✅
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-039, AC-148, AC-149, AC-150 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🟢 可选 (UI 层) |
+| **依赖** | T-221 |
+
+**描述**：
+
+在 StreamingView 中集成方向锁定：进入时锁定横屏，退出时恢复。
+
+**涉及文件**：
+- `Chiaki/Features/Streaming/StreamingView.swift` — 添加方向锁定逻辑
+
+**实现要点**：
+1. 在 StreamingView 的 `.onAppear` 中调用 `OrientationManager.shared.lockOrientation = .landscape`
+2. 在 `.onDisappear` 中调用 `OrientationManager.shared.lockOrientation = nil`
+3. 锁定后调用 `UIViewController.attemptRotationToDeviceOrientation()` 强制立即旋转
+4. `.landscape` mask 自动支持 Left 和 Right 两个横屏方向
+5. 仅 iPhone 生效（`#if os(iOS)` 内），iPad 保持原有行为（可两个方向）
+
+**验收标准**：
+- AC-148: 进入串流自动切换到横屏，竖屏状态下也会强制旋转
+- AC-149: 退出串流后可自由旋转回竖屏，其他页面不受影响
+- AC-150: iPad 不受影响（不锁定），macOS/tvOS 正常编译运行
+
+**Review 要点**：
+- onDisappear 清理可靠（包括异常退出路径）
+- iPad 行为不受影响
+- 无内存泄漏（避免强引用 OrientationManager）
+
+---
+
 ## 任务汇总
 
 | 里程碑 | 任务数 | 完成率 | 状态 |
@@ -94,15 +177,16 @@
 | M13 HDR落地/MainActor/日志 | 23 | 100% | ✅ 已归档 |
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
+| M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
 | Bug 修复 | 5 | 100% | ✅ |
-| **总计** | **109** | **99%** | T-115 待设计师交付 |
+| **总计** | **111** | — | M16 进行中 |
 
 ---
 
 ## 下一步
 
-1. T-115 App Icon 资产准备仍待设计师交付
-2. 可进入下一个功能迭代或进行集成测试验证
+1. 执行 M16: T-221 → T-222（iPhone 串流横屏锁定）
+2. T-115 App Icon 资产准备仍待设计师交付
 
 ---
 

@@ -67,6 +67,7 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-036** | HostListView UI/UX 优化 | P2 | 触摸目标、加载状态、颜色对比度、无障碍 [质量优化] |
 | **F-037** | AddHostView/ConsolePinView UI/UX 优化 | P2 | 地址验证、Singleton 解耦、错误提示、无障碍、布局修复、本地化 [质量优化] |
 | **F-038** | Swift/C Bridge 安全加固 | P1 | 回调生命周期、内存泄漏、线程边界、指针安全 [安全加固] |
+| **F-039** | iPhone 串流横屏锁定 | P1 | 串流画面锁定横屏方向（左/右均支持），防止意外旋转 [体验优化] |
 
 ---
 
@@ -210,6 +211,16 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | US-012(HDR) ~ US-015(MVVM) | F-024 ~ F-027 | HDR、渲染解耦、MVVM重构 | ✅ 已完成 |
 | US-016(HDR) ~ US-021 | F-028 ~ F-033 | HDR落地、MainActor、日志、主题色、发现、TabView | ✅ 已完成 |
 | US-034 ~ US-038 | F-034 ~ F-038 | 设置侧边栏、Slider、HostList、AddHost、Bridge安全 | ✅ 已完成 |
+
+### US-039: iPhone 串流横屏锁定
+> 关联功能: F-039 | 来源: INS-077
+
+**作为** iPhone 用户，**我想要** 串流画面自动锁定为横屏方向，**以便** 游戏过程中不会因设备旋转导致画面方向切换。
+
+**验收标准**：
+- AC-148: iPhone 进入 StreamingView 时自动锁定为横屏方向（Landscape Left / Landscape Right 均支持）
+- AC-149: 退出串流后恢复系统默认方向行为，不影响其他页面
+- AC-150: iPad/macOS/tvOS 不受影响（iPad 保持原有行为，macOS/tvOS 无方向概念）
 
 ---
 
