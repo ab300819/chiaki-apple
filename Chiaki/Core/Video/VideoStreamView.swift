@@ -32,6 +32,11 @@ final class MTKViewDelegateBridge: NSObject, MTKViewDelegate {
     /// Flag to indicate if a new frame has been submitted and needs rendering
     private var needsRedraw = false
 
+    #if os(macOS)
+    /// Track last applied backing scale to detect changes
+    private var lastAppliedScale: CGFloat = 0
+    #endif
+
     /// Counter for idle frames (no new content)
     private var idleFrameCount: Int = 0
 
@@ -61,11 +66,33 @@ final class MTKViewDelegateBridge: NSObject, MTKViewDelegate {
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        // Ensure contentsScale is correct before accepting the new drawable size
+        #if os(macOS)
+        if let window = view.window, let layer = view.layer {
+            let scale = window.backingScaleFactor
+            if layer.contentsScale != scale {
+                layer.contentsScale = scale
+                lastAppliedScale = scale
+            }
+        }
+        #endif
         renderer?.updateViewSize(size)
     }
 
     func draw(in view: MTKView) {
         guard let renderer = renderer else { return }
+
+        // Ensure Retina scale matches window backing scale (checked every frame)
+        #if os(macOS)
+        if let window = view.window {
+            let scale = window.backingScaleFactor
+            if lastAppliedScale != scale, let layer = view.layer {
+                layer.contentsScale = scale
+                lastAppliedScale = scale
+                logInfo("VideoStreamView: Applied contentsScale \(scale), drawable: \(view.drawableSize)")
+            }
+        }
+        #endif
 
         lock.lock()
         if !needsRedraw {

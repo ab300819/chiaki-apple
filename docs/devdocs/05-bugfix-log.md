@@ -860,3 +860,39 @@ macOS 26 上按下 DualSense 的 PS 键没有任何响应——既不触发系�
 2. 参考同项目的其他平台实现（chiaki-ng FFmpeg decoder）可以快速定位架构差异
 
 ---
+
+## BUG-017: 窗口最大化后画面模糊
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 |
+| **关联功能** | F-001 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-09 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+macOS 上默认窗口大小时画面清晰，但窗口最大化后画面变模糊。
+
+### 根因分析
+
+两个相关问题：
+
+1. **一次性 Retina scale 检查**：`MTKViewDelegateBridge` 中的 `retinaScaleApplied` 标志使 `contentsScale` 只在首帧设置一次。窗口 resize/最大化时如果 scale 变化（如从普通显示器拖到 Retina 显示器），不会重新应用。
+
+2. **`drawableSizeWillChange` 时 contentsScale 不一致**：窗口 resize 时 MTKView 自动调用 `drawableSizeWillChange`，但如果此时 `layer.contentsScale` 与 `window.backingScaleFactor` 不匹配，传入的 `drawableSize` 就是 1x 分辨率而非 2x。
+
+### 解决方案
+
+- 将一次性检查改为每帧检查 (`lastAppliedScale` 对比)，仅在 scale 变化时更新
+- 在 `drawableSizeWillChange` 回调中也验证并修正 `contentsScale`
+- 确保 resize 后 `drawableSize` 反映正确的 Retina 分辨率
+
+### 回归测试
+
+- 视觉验证：默认窗口 → 最大化 → 画面保持清晰
+- 关联 commit：待提交
+
+---
