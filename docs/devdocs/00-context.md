@@ -38,8 +38,9 @@
 | F-036 | HostListView UI/UX 优化 | P2 | ✅ 已完成 |
 | F-037 | AddHostView/ConsolePinView 优化 | P2 | ✅ 已完成 |
 | F-038 | Swift/C Bridge 安全加固 | P1 | ✅ 已完成 |
+| F-039 | iPhone 串流横屏锁定 | P1 | ✅ 已完成 |
 
-**全部 38 个功能点已完成**。未实现功能：F-006 (远程连接)、F-007 (触觉反馈)、F-008 (麦克风)、F-009 (虚拟输入) 为 P2~P3 低优先级，待后续迭代。
+**全部 39 个功能点已完成**。未实现功能：F-006 (远程连接)、F-007 (触觉反馈)、F-008 (麦克风)、F-009 (虚拟输入) 为 P2~P3 低优先级，待后续迭代。
 
 ### 1.3 技术栈
 
@@ -52,6 +53,15 @@
 | 网络通信 | libchiaki (C 核心库 via Bridge) |
 | 本地存储 | UserDefaults + Keychain |
 | 国际化 | String Catalogs (Localizable.xcstrings) |
+
+### 1.4 代码规模
+
+| 指标 | 数值 |
+|------|------|
+| Swift 源文件 | 91 个 |
+| Swift 代码行数 | ~19,400 行 |
+| C Bridge 文件 | 6 个 (1 .h + 5 .swift) |
+| UI 设计文件 | `design.pen` (290KB, 24 screens) |
 
 ---
 
@@ -90,7 +100,7 @@
 
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
-| App | 应用入口、导航管理 | `Chiaki/App/` |
+| App | 应用入口、导航管理、方向控制 | `Chiaki/App/` |
 | Features | 功能页面 (HostList, Streaming, Settings) | `Chiaki/Features/` |
 | Domain | 业务逻辑服务层 | `Chiaki/Domain/` |
 | Core/Bridge | libchiaki C 桥接层 | `Chiaki/Core/Bridge/` |
@@ -99,7 +109,7 @@
 | Core/Controllers | GameController 集成 | `Chiaki/Core/Controllers/` |
 | Shared | 跨功能共享组件 | `Chiaki/Shared/` |
 | Utilities | 通用工具 (Logger, Theme, Haptics) | `Chiaki/Utilities/` |
-| Platforms | 平台特定代码 | `Chiaki/Platforms/` |
+| Platforms | 平台特定代码 (tvOS App) | `Chiaki/Platforms/` |
 
 ---
 
@@ -108,30 +118,32 @@
 ```
 Chiaki/
 ├── App/                    # 应用入口
-│   ├── ChiakiApp.swift     # @main 入口
-│   └── NavigationManager.swift
+│   ├── ChiakiApp.swift     # @main 入口 (iOS/macOS)
+│   ├── ContentView.swift   # 根视图
+│   ├── NavigationManager.swift  # 导航状态
+│   └── OrientationManager.swift # iPhone 方向锁定 (iOS only)
 ├── Core/
-│   ├── Audio/              # 音频播放
-│   ├── Bridge/             # C 桥接 (ChiakiSession, etc.)
-│   ├── Controllers/        # 手柄管理
-│   ├── Network/            # 网络层
-│   ├── Storage/            # 存储层
-│   ├── Streaming/          # 流媒体核心
-│   └── Video/              # Metal 渲染
-├── Domain/                 # 业务逻辑服务层
+│   ├── Audio/              # 音频播放 (AVFoundation + Opus)
+│   ├── Bridge/             # C 桥接 (ChiakiSession, Discovery, Regist, Types)
+│   ├── Controllers/        # 手柄管理 (GCController, DualSense)
+│   ├── Network/            # 网络层 (NWPathMonitor)
+│   ├── Storage/            # 存储层 (HostStore, SettingsStore, Keychain)
+│   ├── Streaming/          # 流媒体核心 (StreamStats)
+│   └── Video/              # Metal 渲染 (HDR/SDR, VideoToolbox)
+├── Domain/                 # 业务逻辑服务层 (HostManager, PSNService)
 ├── Features/
-│   ├── HostList/           # 主机列表页
-│   ├── Settings/           # 设置页
-│   ├── Streaming/          # 串流页
-│   └── Common/             # 共享组件
-├── Shared/                 # 跨功能共享组件
-├── Utilities/              # 工具类
-│   ├── ChiakiTheme.swift   # 主题系统
-│   ├── Logger.swift        # 日志系统
-│   └── HapticFeedback.swift
+│   ├── AutoConnect/        # 自动连接
+│   ├── Common/             # 共享组件 (GamepadNumPad)
+│   ├── HostList/           # 主机列表页 (6 views + 2 viewmodels)
+│   ├── PSNLogin/           # PSN 登录
+│   ├── Settings/           # 设置页 (8 views + 3 viewmodels)
+│   └── Streaming/          # 串流页 (StreamingView, Controls, VirtualController)
+├── Shared/                 # 跨功能共享 (Protocols, Styles)
+├── Utilities/              # 工具类 (Logger, Theme, CrashReporter, Diagnostics)
 ├── Resources/
-│   └── Localizable.xcstrings # 国际化
-└── Platforms/              # 平台特定代码
+│   └── Localizable.xcstrings  # 国际化
+└── Platforms/
+    └── tvOS/App/           # tvOS 独立入口 (ChiakiTVApp.swift)
 ```
 
 ---
@@ -147,8 +159,9 @@ Chiaki/
 | M13 质量优化 | 23 | 23 | 100% |
 | M14 macOS 侧边栏 | 4 | 4 | 100% |
 | M15 UI/UX+Bridge 安全 | 18 | 18 | 100% |
+| M16 iPhone 串流横屏锁定 | 2 | 2 | 100% |
 | Bug 修复 | 5 | 5 | 100% |
-| **总计** | **109** | **109** | **99%** |
+| **总计** | **111** | **111** | **99%** |
 
 > M11 有 1 个遗留任务 T-115 (App Icon 资产) 待设计师交付，不影响功能完整性。
 
@@ -156,14 +169,14 @@ Chiaki/
 
 | 提交 | 任务 | 说明 |
 |------|------|------|
-| 14559c6 | T-219~T-220 | heap-allocate ChiakiLogBridge, SAFETY contracts |
-| 99f5b59 | T-218 | unify updateState() to MainActor |
-| 065cfca | T-217 | fix strdup memory leak in ChiakiRegist |
-| e5f6a15 | T-216 | DiscoveryService deinit lifecycle cleanup |
-| 26779d1 | T-215 | PINDisplay accessibility enhancements |
-| b96cb05 | T-214 | ConsolePinView zh-Hans translations |
-| 6f52cae~1f7cd13 | T-210~T-213 | AddHostView/ConsolePinView macOS form style |
-| f25b371 | T-206~T-209 | HostListView UI/UX accessibility |
+| d42ca3c | T-221~T-222 | iPhone 串流横屏锁定 (OrientationManager + AppDelegate) |
+| b970afe | — | 归档已完成里程碑，精简 DevDocs |
+| ffd8f07 | — | 设计稿：iOS 串流画面转横屏 |
+| 6398667 | — | 设计稿：Apple HIG 合规修复 |
+| 560cbe2 | — | 新增 Pencil UI 设计文件 (24 screens) |
+| 14559c6 | T-219~T-220 | ChiakiLogBridge 安全加固 |
+| 99f5b59 | T-218 | updateState() MainActor 统一 |
+| 065cfca | T-217 | ChiakiRegist 内存泄漏修复 |
 
 ### 4.3 当前状态
 
@@ -175,12 +188,7 @@ Chiaki/
 ### 4.4 未提交变更
 
 ```
-M docs/devdocs/00-context.md          # 本文档更新
-M docs/devdocs/01-requirements.md     # 归档瘦身
-M docs/devdocs/02-system-design.md    # 归档瘦身
-M docs/devdocs/04-dev-tasks.md        # M15 归档
-M docs/devdocs/05-insights.md         # 全量归档
-新增 docs/devdocs/archive/02-system-design-archive.md
+无 — 工作区干净
 ```
 
 ---
@@ -212,6 +220,7 @@ M docs/devdocs/05-insights.md         # 全量归档
 - **@Observable 优先**：使用 Observation 框架替代 Combine
 - **依赖注入**：通过 @Environment 注入，避免 Singleton
 - **MainActor 边界**：所有 Store/ViewModel 标注 @MainActor，C Bridge 回调通过 MainActor.run 回主线程
+- **平台条件编译**：`#if os(iOS)` / `#if os(macOS)` / `#if os(tvOS)` 隔离平台代码
 
 ### 6.2 代码追溯标注
 
@@ -252,7 +261,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 open Chiaki.xcodeproj
 
 # 或使用命令行构建
-xcodebuild -scheme Chiaki -destination 'platform=macOS'
+xcodebuild -scheme Chiaki -destination 'platform=macOS' build
+xcodebuild -scheme Chiaki -destination 'platform=iOS Simulator,name=iPhone 16' build
 ```
 
 ### 7.3 运行测试
@@ -268,19 +278,20 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | 项目上下文 | `docs/devdocs/00-context.md` | 本文档 |
-| 需求文档 | `docs/devdocs/01-requirements.md` | 功能点、用户故事、验收标准 |
-| 系统设计 | `docs/devdocs/02-system-design.md` | 架构、接口、数据模型 |
+| 需求文档 | `docs/devdocs/01-requirements.md` | 39 功能点、用户故事、150 验收标准 |
+| 系统设计 | `docs/devdocs/02-system-design.md` | 架构、接口、数据模型 (增量设计已归档) |
 | 测试用例 | `docs/devdocs/03-test-cases.md` | 测试策略、追溯矩阵 |
-| 开发任务 | `docs/devdocs/04-dev-tasks.md` | 任务列表、依赖关系、进度 |
-| 洞察收集 | `docs/devdocs/05-insights.md` | INS-XXX 改进建议 |
-| 归档 | `docs/devdocs/archive/` | 已完成里程碑归档 |
+| 开发任务 | `docs/devdocs/04-dev-tasks.md` | 111 任务 (M11~M16)、依赖关系、进度 |
+| 洞察收集 | `docs/devdocs/05-insights.md` | 77 条洞察 (74 已转化, 1 暂缓, 2 待定) |
+| 归档 | `docs/devdocs/archive/` | 已完成里程碑、设计、洞察归档 |
+| UI 设计 | `design.pen` | Pencil 设计文件 (10 组件, 24 screens) |
 
 ---
 
 ## 接手建议
 
 1. **先读本文档**了解项目全貌
-2. **查看 04-dev-tasks.md** 确认当前任务状态（目前全部完成）
+2. **查看 04-dev-tasks.md** 确认当前任务状态（M16 已全部完成）
 3. **查看 05-insights.md** 了解待定改进建议 (INS-060, INS-061)
 4. **使用 `/devdocs-feature`** 添加新功能需求
 5. **使用 `/devdocs-dev-workflow T-XXX`** 执行开发任务
