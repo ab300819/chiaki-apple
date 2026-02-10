@@ -1,172 +1,129 @@
-# M12 进度报告
+# 项目进度报告
 
-**生成时间**: 2026-02-04
+**生成时间**: 2026-02-10
 **同步模式**: 完整同步
-**阶段目标**: HDR 渲染优化、渲染模块解耦、UI 层 MVVM 合规重构
-**本次同步**: M12 初始状态
+**活跃里程碑**: M17 — 控制器架构分层重构
+**项目阶段**: F-040 设计完成，待实施
 
 ---
 
-## 📊 总体进度
+## 总体进度
 
 | 指标 | 数值 |
 |------|------|
-| 总任务数 | 24 |
-| 已完成 | 0 |
-| 进行中 | 0 |
-| 待处理 | 24 |
-| **完成率** | **0%** |
-
-### 功能点状态
-
-| 功能 | 任务数 | 已完成 | 状态 |
-|------|--------|--------|------|
-| F-025 HDR 渲染管线优化 | 9 | 0 | 🔜 待开始 |
-| F-026 渲染模块解耦 | 3 | 0 | 🔜 待开始 |
-| F-027 UI 层 MVVM 重构 | 12 | 0 | 🔜 待开始 |
+| 总功能数 | 40 (F-001 ~ F-040) |
+| 已完成功能 | 39 (F-001 ~ F-039) |
+| 进行中功能 | 1 (F-040) |
+| 总任务数 | 124 (T-001 ~ T-235) |
+| 已完成任务 | 117 |
+| 进行中任务 | 0 |
+| 待处理任务 | 7 (M17: T-229 ~ T-235) |
+| 待资产任务 | 1 (T-115 App Icon) |
+| **整体完成率** | **94%** |
 
 ---
 
-## 📦 前置里程碑状态
+## 里程碑状态
 
-### M11 归档摘要
+| 里程碑 | 任务数 | 完成率 | 状态 |
+|--------|--------|--------|------|
+| M11 Beta 1 冲刺 | 35 | 97% | ✅ 已归档 |
+| M12 HDR/渲染/MVVM | 24 | 100% | ✅ 已归档 |
+| M13 HDR落地/MainActor/日志 | 23 | 100% | ✅ 已归档 |
+| M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
+| M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
+| M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
+| **M17 控制器架构分层重构** | **7** | **0%** | ⏳ 待开始 |
+| Bug 修复 | 11 | 100% | ✅ |
 
-> **阶段目标**: Beta 1 发布冲刺 | **完成率**: 97% (35/36)
-> **详情**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md)
+---
+
+## M17 活跃任务
+
+### 依赖关系
+
+```
+T-229 协议定义 (P0, 🔴 TDD)
+  ├── T-230 GameControllerProvider (P0, 🟡)
+  ├── T-231 DualSenseHIDProvider (P0, 🟡)
+  │
+  └── T-232 ControllerOrchestrator (P0, 🔴 TDD)
+        ├── T-233 StreamingVM 集成 (P0, 🟢)
+        ├── T-234 DS4 HID Provider (P2, 🔴 TDD)
+        └── T-235 清理+验证 (P1, 🟢)
+```
+
+### 任务清单
+
+| 编号 | 名称 | 优先级 | TDD | 依赖 | 状态 |
+|------|------|--------|-----|------|------|
+| T-229 | ControllerInputProvider 协议定义 | P0 | 🔴 | - | ⏳ |
+| T-230 | GameControllerProvider 实现 | P0 | 🟡 | T-229 | ⏳ |
+| T-231 | DualSenseHIDProvider 重构 | P0 | 🟡 | T-229 | ⏳ |
+| T-232 | ControllerOrchestrator 实现 | P0 | 🔴 | T-230, T-231 | ⏳ |
+| T-233 | StreamingViewModel 集成 | P0 | 🟢 | T-232 | ⏳ |
+| T-234 | DualShock4HIDProvider (macOS) | P2 | 🔴 | T-232 | ⏳ |
+| T-235 | 清理旧代码 + 全平台验证 | P1 | 🟢 | T-233, T-234 | ⏳ |
+
+---
+
+## Bug 修复记录
+
+| Bug ID | 标题 | 严重程度 | 状态 |
+|--------|------|----------|------|
+| BUG-001 ~ BUG-017 | 各类修复 (HDR/音频/控制器/视频) | P0~P2 | ✅ 已修复 |
+| BUG-018 | macOS DualSense PS Button 无响应 (HID) | P1 | 🔧 待真机验证 |
+| BUG-019 | macOS DualSense Rumble 不工作 (HID) | P1 | 🔧 待真机验证 |
+
+---
+
+## 测试覆盖
+
+| 测试类型 | 总数 | 已实现 | 待实现 |
+|----------|------|--------|--------|
+| 单元测试 (UT) | 54 组 | 20 | 34 |
+| 集成测试 (IT) | 18 组 | 6 | 12 |
+| E2E 测试 | 13 组 | 5 | 8 |
+| 代码审查 (CR) | 4 项 | 4 | 0 |
+
+### 代码标注统计
+
+| 指标 | 数值 |
+|------|------|
+| 总标注数 | 459 处 |
+| 标注文件数 | 106 个 |
+
+---
+
+## 洞察管线
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 已完成 | 35 | T-111~T-146 (除 T-115) |
-| ⏳ 进行中 | 1 | T-115 (待设计师 App Icon 资产) |
+| ✅ 已转化完成 | 75 | INS-001 ~ INS-077 |
+| 🔄 已确认待实现 | 4 | INS-078 ~ INS-081 (→ F-040) |
+| ⏸️ 暂缓 | 1 | INS-047 (解码重排策略) |
+| ⏳ 待定 | 2 | INS-060, INS-061 (空状态动画/批量删除) |
 
 ---
 
-## 🐛 Bug 修复记录
+## 待处理项
 
-| Bug ID | 标题 | 严重程度 | 状态 | 修复日期 |
-|--------|------|----------|------|----------|
-| BUG-001 | HDR 设置失效，视频输出仍为 SDR | P1 | ✅ 已修复 | 2026-02-03 |
-
-**修复提交**:
-- `8a11629` fix(streaming): apply HDR codec setting and configure session for HDR badge
-- `2fe16a3` fix(video): implement proper HDR rendering with PQ EOTF decoding
-- `0ee6542` fix(streaming): pass HDR setting to video view and update stats immediately
+1. **M17 T-229 开始实施** — 定义 ControllerInputProvider 协议
+2. **BUG-018/019 真机验证** — macOS DualSense 蓝牙连接
+3. **T-115 App Icon** — 待设计师资产交付
 
 ---
 
-## 📋 M12 任务概览
+## 本次同步详情
 
-### P0 任务 (必须完成)
-
-| 编号 | 名称 | TDD | 依赖 | 状态 |
-|------|------|-----|------|------|
-| T-147 | HDRConfiguration 统一配置结构 | 🔴 | - | ⏳ |
-| T-148 | HDRMetadataCache 抖动抑制 | 🔴 | T-147 | ⏳ |
-| T-149 | EDRHeadroomMonitor 动态监听 | 🔴 | T-147 | ⏳ |
-| T-150 | Shader 色域映射 (Rec.2020→P3) | 🔴 | T-147 | ⏳ |
-| T-152 | Shader Uniform 扩展 | 🟡 | T-150, T-151 | ⏳ |
-| T-153 | MetalVideoRenderer 集成 | 🟡 | T-148, T-149, T-152 | ⏳ |
-| T-154 | VideoStreamView EDR 集成 | 🟢 | T-149, T-153 | ⏳ |
-| T-156 | VideoRenderer 协议抽象 | 🔴 | T-147 | ⏳ |
-| T-157 | MetalVideoRenderer 协议实现 | 🔴 | T-156, T-153 | ⏳ |
-| T-159 | PinManaging 协议定义 | 🔴 | - | ⏳ |
-| T-160 | PSNServicing 协议定义 | 🔴 | - | ⏳ |
-| T-161 | ConsolePinManager 协议实现 | 🟡 | T-159 | ⏳ |
-| T-162 | PSNService 协议实现 | 🟡 | T-160 | ⏳ |
-| T-163 | AccountSettingsViewModel | 🔴 | T-162 | ⏳ |
-| T-166 | AccountSettingsView 重构 | 🟢 | T-163 | ⏳ |
-| T-169 | HostListView Singleton 解耦 | 🟢 | T-161, T-165 | ⏳ |
-
-### P1 任务
-
-| 编号 | 名称 | TDD | 依赖 | 状态 |
-|------|------|-----|------|------|
-| T-151 | Shader ACES Tone Mapping | 🔴 | T-150 | ⏳ |
-| T-155 | 渲染性能指标扩展 | 🔴 | T-153 | ⏳ |
-| T-158 | VideoStreamView.Coordinator 分离 | 🟡 | T-157 | ⏳ |
-| T-164 | VideoSettingsViewModel | 🔴 | T-147 | ⏳ |
-| T-165 | ConsolesSettingsViewModel | 🔴 | T-159, T-161 | ⏳ |
-| T-167 | VideoSettingsView 重构 | 🟢 | T-164 | ⏳ |
-| T-168 | ConsolesSettingsView 重构 | 🟢 | T-165 | ⏳ |
-| T-170 | StreamingView/ControllerSettingsView 解耦 | 🟢 | T-161 | ⏳ |
+- **同步时间**: 2026-02-10
+- **触发原因**: 定期同步 (M17 设计完成)
+- **偏差修复**:
+  - INS-077 状态更新为 "✅ 已完成"
+  - §10.7 编号重复修正为 §10.8
+  - 进度报告重写为 M17 当前状态
+- **Git 分支**: dev (领先 origin/dev 14 个提交)
 
 ---
 
-## 🎯 推荐执行顺序
-
-根据依赖关系图，建议执行顺序：
-
-```
-阶段 1: 基础定义 (无依赖)
-├── T-147: HDRConfiguration
-├── T-159: PinManaging 协议
-└── T-160: PSNServicing 协议
-
-阶段 2: HDR 组件 + 协议实现
-├── T-148: HDRMetadataCache
-├── T-149: EDRHeadroomMonitor
-├── T-150: Shader 色域映射
-├── T-156: VideoRenderer 协议
-├── T-161: ConsolePinManager 实现
-└── T-162: PSNService 实现
-
-阶段 3: Shader 完善 + ViewModel
-├── T-151: ACES Tone Mapping
-├── T-152: Shader Uniform 扩展
-├── T-163: AccountSettingsViewModel
-├── T-164: VideoSettingsViewModel
-└── T-165: ConsolesSettingsViewModel
-
-阶段 4: 集成任务
-├── T-153: MetalVideoRenderer 集成
-├── T-154: VideoStreamView EDR 集成
-├── T-155: 渲染性能指标
-├── T-157: MetalVideoRenderer 协议实现
-└── T-158: Coordinator 分离
-
-阶段 5: View 重构
-├── T-166: AccountSettingsView
-├── T-167: VideoSettingsView
-├── T-168: ConsolesSettingsView
-├── T-169: HostListView 解耦
-└── T-170: StreamingView 解耦
-```
-
----
-
-## 📈 代码标注统计
-
-> 来源: M11 最终同步 (2026-02-03)
-
-| 指标 | 数值 |
-|------|------|
-| 总标注数 | 262 处 |
-| 标注文件数 | 69 个 |
-| 源文件 | 41 个 |
-| 测试文件 | 28 个 |
-
----
-
-## 📝 本次同步详情
-
-### 同步操作
-
-- **同步时间**: 2026-02-04
-- **同步模式**: 完整同步
-- **触发原因**: M12 里程碑开始
-
-### 文档更新
-
-| 文档 | 更新内容 |
-|------|----------|
-| `00-progress-report.md` | 更新为 M12 初始状态 |
-| `05-bugfix-log.md` | 纳入版本控制 |
-
-### Git 状态
-
-- **当前分支**: dev
-- **最新提交**: `5691852` docs: archive M11 completed content
-
----
-
-*报告由 `/devdocs-sync` 生成 (2026-02-04)*
+*报告由 `/devdocs-sync` 生成 (2026-02-10)*
