@@ -2360,8 +2360,495 @@ enum Logger {
 | v1.7.0 | 2026-02-04 | F-025 HDR 渲染, F-026 渲染解耦, F-027 MVVM |
 | v1.8.0 | 2026-02-04 | F-028 HDR 落地, F-029 MainActor, F-030 日志规范 |
 | v1.9.0 | 2026-02-08 | F-038 Bridge 安全加固 |
+| v2.0.0 | 2026-02-10 | F-040 控制器架构分层重构 |
 
 ---
 
-*文档由 `/devdocs-sync --archive` 更新 (2026-02-09)*
+## §21. 控制器架构分层重构 (F-040)
+
+> **关联需求**: F-040 (AC-151 ~ AC-157)
+> **来源洞察**: INS-078 ~ INS-081
+> **影响模块**: Core/Controllers, Features/Streaming
+
+### 21.1 架构概述
+
+将当前单体 `ControllerManager`（800+ 行）拆分为 Provider 分层架构：
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                    StreamingViewModel                                  │
+│                  (仅依赖 ControllerOrchestrator)                       │
+└────────────────────────┬─────────────────────────────────────────────┘
+                         │ onInputChanged / applyRumble
+                         ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    ControllerOrchestrator                              │
+│  @MainActor @Observable                                               │
+│                                                                       │
+│  职责:                                                                │
+│  - 设备发现 (GCController notifications)                              │
+│  - Provider 选择与生命周期管理                                         │
+│  - 输入合并 (多 Provider → 统一 ChiakiControllerInput)                │
+│  - 反馈路由 (rumble/adaptive triggers → 活跃 Provider)                │
+│  - 连接状态跟踪 (connectedControllers, activeController)              │
+│                                                                       │
+│  属性:                                                                │
+│  - providers: [any ControllerInputProvider]                           │
+│  - activeProvider: (any ControllerInputProvider)?                     │
+│  - fallbackProvider: GameControllerProvider?                          │
+│  - currentInput: ChiakiControllerInput                               │
+│  - onInputChanged: ((ChiakiControllerInput?) -> Void)?               │
+└──────┬──────────────────────┬──────────────────────┬─────────────────┘
+       │                      │                      │
+  ┌────▼──────────┐   ┌──────▼────────────┐  ┌─────▼────────────┐
+  │ DualSense     │   │ GameController    │  │ DualShock4       │
+  │ HIDProvider   │   │ Provider          │  │ HIDProvider      │
+  │ (macOS only)  │   │ (all platforms)   │  │ (macOS only)     │
+  │               │   │                   │  │                  │
+  │ IOKit HID     │   │ GCController      │  │ IOKit HID        │
+  │ PS button ✓   │   │ All buttons       │  │ PS button ✓      │
+  │ Rumble ✓      │   │ Sticks/Triggers   │  │ Rumble ✓         │
+  │ Adaptive ✓    │   │ GCDeviceHaptics   │  │                  │
+  └───────────────┘   └───────────────────┘  └──────────────────┘
+```
+
+### 21.2 核心协议
+
+#### 21.2.1 ControllerInputProvider
+
+```swift
+/// 控制器输入提供者协议
+/// [satisfies] AC-151
+protocol ControllerInputProvider: AnyObject {
+    /// 唯一标识符
+    var providerId: String { get }
+
+    /// Provider 显示名称
+    var displayName: String { get }
+
+    /// 是否已连接设备
+    var isConnected: Bool { get }
+
+    /// 支持的能力集
+    var capabilities: ControllerCapabilities { get }
+
+    /// 当前输入状态（由 Provider 自行维护，Orchestrator 按需读取）
+    var currentInput: ChiakiControllerInput { get }
+
+    /// 输入变化回调（Provider 有新输入时调用）
+    var onInputChanged: ((ChiakiControllerInput) -> Void)? { get set }
+
+    /// 连接状态变化回调
+    var onConnectionChanged: ((Bool) -> Void)? { get set }
+
+    /// 启动 Provider（开始监听设备）
+    func start()
+
+    /// 停止 Provider（释放资源）
+    func stop()
+}
+```
+
+#### 21.2.2 ControllerFeedbackOutput
+
+```swift
+/// 控制器反馈输出协议
+/// [satisfies] AC-154
+protocol ControllerFeedbackOutput: AnyObject {
+    /// 发送 rumble（左右马达独立控制）
+    func sendRumble(left: UInt8, right: UInt8)
+
+    /// 应用自适应扳机效果（DualSense 专属）
+    func applyAdaptiveTrigger(effect: AdaptiveTriggerEffect, side: TriggerSide)
+
+    /// 设置 LED 颜色（如 DualSense 灯条）
+    func setLEDColor(red: UInt8, green: UInt8, blue: UInt8)
+
+    /// 是否支持该反馈类型
+    func supportsFeedback(_ type: FeedbackType) -> Bool
+}
+
+/// 反馈类型枚举
+enum FeedbackType {
+    case rumble
+    case adaptiveTriggers
+    case ledColor
+}
+```
+
+#### 21.2.3 ControllerCapabilities
+
+```swift
+/// Provider 能力集
+/// [satisfies] AC-151
+struct ControllerCapabilities: OptionSet {
+    let rawValue: UInt32
+
+    static let standardButtons  = ControllerCapabilities(rawValue: 1 << 0)
+    static let analogSticks     = ControllerCapabilities(rawValue: 1 << 1)
+    static let analogTriggers   = ControllerCapabilities(rawValue: 1 << 2)
+    static let psButton         = ControllerCapabilities(rawValue: 1 << 3)
+    static let touchpad         = ControllerCapabilities(rawValue: 1 << 4)
+    static let motion           = ControllerCapabilities(rawValue: 1 << 5)
+    static let rumble           = ControllerCapabilities(rawValue: 1 << 6)
+    static let adaptiveTriggers = ControllerCapabilities(rawValue: 1 << 7)
+    static let ledColor         = ControllerCapabilities(rawValue: 1 << 8)
+
+    /// DualSense HID 完整能力集
+    static let dualSenseHID: ControllerCapabilities = [
+        .psButton, .rumble, .adaptiveTriggers, .ledColor
+    ]
+
+    /// GameController 框架标准能力集
+    static let gameController: ControllerCapabilities = [
+        .standardButtons, .analogSticks, .analogTriggers,
+        .touchpad, .motion
+    ]
+}
+```
+
+### 21.3 Provider 实现
+
+#### 21.3.1 DualSenseHIDProvider (macOS only)
+
+基于现有 `DualSenseHIDManager` 重构，同时实现 `ControllerInputProvider` + `ControllerFeedbackOutput`。
+
+```swift
+/// DualSense IOKit HID Provider
+/// [satisfies] AC-152, AC-153
+/// macOS only - 优先于 GameController 处理 PS button 和 rumble
+#if os(macOS)
+final class DualSenseHIDProvider: ControllerInputProvider, ControllerFeedbackOutput {
+    let providerId = "dualsense-hid"
+    let displayName = "DualSense (HID)"
+
+    let capabilities: ControllerCapabilities = .dualSenseHID
+
+    // 支持的设备 VID/PID
+    static let supportedDevices: [(vid: Int, pid: Int, name: String)] = [
+        (0x054C, 0x0CE6, "DualSense"),
+        (0x054C, 0x0DF2, "DualSense Edge"),
+    ]
+
+    // 内部实现复用现有 DualSenseHIDManager 的 IOKit 逻辑
+    // - HID Manager 生命周期
+    // - Enhanced BT mode 激活
+    // - 输入报文解析 (PS button from buttons[2] bit 0)
+    // - 输出报文构造 (rumble, adaptive triggers)
+    // - CRC32 计算 (BT)
+    // - 序列号管理 (BT)
+}
+#endif
+```
+
+**关键设计决策**：
+- HID Provider 仅提供 GameController 不可靠的能力（PS button、rumble、adaptive triggers）
+- 标准按键/摇杆/扳机由 GameControllerProvider 提供，避免重复解析
+- 非排他 HID 打开（`kIOHIDOptionsTypeNone`），与 GameController 安全共存
+
+#### 21.3.2 GameControllerProvider (all platforms)
+
+```swift
+/// GameController 框架 Provider
+/// [satisfies] AC-152, AC-157
+final class GameControllerProvider: ControllerInputProvider, ControllerFeedbackOutput {
+    let providerId = "gamecontroller"
+    let displayName = "GameController Framework"
+
+    let capabilities: ControllerCapabilities = .gameController
+
+    /// 绑定的 GCController 实例
+    private(set) var controller: GCController?
+
+    // 内部实现:
+    // - GCExtendedGamepad.valueChangedHandler
+    // - 触控板解析 (GCDualSenseGamepad/GCDualShockGamepad)
+    // - 运动传感器 (GCMotion)
+    // - GCDeviceHaptics rumble (非 macOS DualSense 场景)
+
+    /// 绑定到特定 GCController
+    func bind(to controller: GCController) { ... }
+
+    /// 解绑
+    func unbind() { ... }
+}
+```
+
+#### 21.3.3 DualShock4HIDProvider (macOS only, P2)
+
+```swift
+/// DualShock 4 IOKit HID Provider
+/// [satisfies] AC-156
+#if os(macOS)
+final class DualShock4HIDProvider: ControllerInputProvider, ControllerFeedbackOutput {
+    let providerId = "dualshock4-hid"
+    let displayName = "DualShock 4 (HID)"
+
+    let capabilities: ControllerCapabilities = [.psButton, .rumble, .ledColor]
+
+    static let supportedDevices: [(vid: Int, pid: Int, name: String)] = [
+        (0x054C, 0x05C4, "DualShock 4 v1"),
+        (0x054C, 0x09CC, "DualShock 4 v2"),
+    ]
+
+    // DS4 HID 报文格式:
+    // - USB: Report ID 0x05, 32 bytes output
+    // - BT: Report ID 0x11, 78 bytes output (CRC32)
+    // - PS button: buttons[2] bit 0
+    // - Rumble: motor_right (byte 4), motor_left (byte 5) in USB report
+}
+#endif
+```
+
+### 21.4 Orchestrator 设计
+
+```swift
+/// 控制器编排器
+/// [satisfies] AC-155
+/// 取代现有 ControllerManager 的核心职责
+@MainActor @Observable
+final class ControllerOrchestrator {
+    // MARK: - 公开状态
+
+    private(set) var connectedControllers: [ControllerInfo] = []
+    private(set) var activeController: ControllerInfo?
+    private(set) var currentInput = ChiakiControllerInput()
+
+    var onInputChanged: ((ChiakiControllerInput?) -> Void)?
+
+    var hapticsEnabled: Bool = true
+    var adaptiveTriggersEnabled: Bool = true
+
+    // MARK: - Provider 管理
+
+    /// 当前活跃的 Provider 列表（可能同时有 HID + GC）
+    private var activeProviders: [any ControllerInputProvider] = []
+
+    /// 反馈输出路由（HID 优先）
+    private var feedbackProvider: (any ControllerFeedbackOutput)?
+
+    /// GameController Provider（始终存在作为 fallback）
+    private var gcProvider: GameControllerProvider?
+
+    #if os(macOS)
+    /// HID Provider 注册表
+    private var hidProviders: [any ControllerInputProvider & ControllerFeedbackOutput] = []
+    #endif
+
+    // MARK: - 设备发现
+
+    /// 处理 GCController 连接
+    private func handleControllerConnected(_ controller: GCController) {
+        // 1. 创建 GameControllerProvider 并绑定
+        let gcProvider = GameControllerProvider()
+        gcProvider.bind(to: controller)
+
+        #if os(macOS)
+        // 2. 检查 VID/PID，尝试匹配 HID Provider
+        if let hidProvider = matchHIDProvider(for: controller) {
+            // HID Provider 作为主要反馈输出
+            hidProvider.start()
+            activeProviders.append(hidProvider)
+            feedbackProvider = hidProvider
+        }
+        #endif
+
+        // 3. GC Provider 始终作为标准输入源
+        gcProvider.start()
+        activeProviders.append(gcProvider)
+
+        // 4. 如果没有 HID feedback，用 GC 作为 fallback
+        if feedbackProvider == nil {
+            feedbackProvider = gcProvider
+        }
+    }
+
+    // MARK: - 输入合并
+
+    /// 合并多个 Provider 的输入
+    /// HID Provider: PS button
+    /// GC Provider: 其他所有按键、摇杆、扳机、触控板、运动
+    private func mergeInput() {
+        var merged = ChiakiControllerInput()
+
+        for provider in activeProviders {
+            let input = provider.currentInput
+            let caps = provider.capabilities
+
+            if caps.contains(.psButton) {
+                // HID Provider 提供 PS button
+                if input.buttons.contains(.ps) {
+                    merged.buttons.insert(.ps)
+                }
+            }
+            if caps.contains(.standardButtons) {
+                // GC Provider 提供标准按键
+                merged.buttons.formUnion(input.buttons.subtracting(.ps))
+            }
+            if caps.contains(.analogSticks) {
+                merged.leftStickX = input.leftStickX
+                merged.leftStickY = input.leftStickY
+                merged.rightStickX = input.rightStickX
+                merged.rightStickY = input.rightStickY
+            }
+            if caps.contains(.analogTriggers) {
+                merged.l2State = input.l2State
+                merged.r2State = input.r2State
+            }
+            if caps.contains(.touchpad) {
+                merged.touchpad0 = input.touchpad0
+                merged.touchpad1 = input.touchpad1
+            }
+            if caps.contains(.motion) {
+                merged.gyroX = input.gyroX
+                merged.gyroY = input.gyroY
+                merged.gyroZ = input.gyroZ
+                merged.accelX = input.accelX
+                merged.accelY = input.accelY
+                merged.accelZ = input.accelZ
+            }
+        }
+
+        currentInput = merged
+        onInputChanged?(merged)
+    }
+
+    // MARK: - 反馈路由
+
+    /// 应用 rumble — 通过活跃的 feedbackProvider 路由
+    /// [satisfies] AC-154
+    func applyRumble(left: UInt8, right: UInt8) {
+        guard hapticsEnabled else { return }
+        guard left > 0 || right > 0 else { return }
+        feedbackProvider?.sendRumble(left: left, right: right)
+    }
+
+    /// 应用自适应扳机
+    func applyAdaptiveTrigger(effect: AdaptiveTriggerEffect, side: TriggerSide) {
+        guard adaptiveTriggersEnabled else { return }
+        feedbackProvider?.applyAdaptiveTrigger(effect: effect, side: side)
+    }
+}
+```
+
+### 21.5 Provider 选择策略
+
+```
+[satisfies] AC-152, AC-153
+
+GCController 连接事件
+        │
+        ▼
+  识别 VID/PID
+        │
+        ├── 匹配 DualSense (0x054C:0x0CE6/0x0DF2) + macOS
+        │   │
+        │   ├── 启动 DualSenseHIDProvider (主: PS button + rumble + adaptive)
+        │   └── 启动 GameControllerProvider (辅: buttons + sticks + triggers + touchpad)
+        │       feedbackProvider = DualSenseHIDProvider
+        │
+        ├── 匹配 DualShock 4 (0x054C:0x05C4/0x09CC) + macOS
+        │   │
+        │   ├── 启动 DualShock4HIDProvider (主: PS button + rumble)
+        │   └── 启动 GameControllerProvider (辅: buttons + sticks + triggers)
+        │       feedbackProvider = DualShock4HIDProvider
+        │
+        └── 其他手柄 / iOS / tvOS
+            │
+            └── 仅启动 GameControllerProvider (全能力)
+                feedbackProvider = GameControllerProvider
+```
+
+### 21.6 VID/PID 匹配机制
+
+```swift
+#if os(macOS)
+/// 从 GCController 提取 VID/PID 并匹配 HID Provider
+private func matchHIDProvider(for controller: GCController) -> (any ControllerInputProvider & ControllerFeedbackOutput)? {
+    // 使用 IOKit HID 注册表查询 VID/PID
+    // GCController 不直接暴露 VID/PID，需要通过 IOServiceMatching 关联
+
+    // DualSense 匹配
+    for device in DualSenseHIDProvider.supportedDevices {
+        if isControllerMatching(controller, vid: device.vid, pid: device.pid) {
+            return DualSenseHIDProvider()
+        }
+    }
+
+    // DualShock 4 匹配
+    for device in DualShock4HIDProvider.supportedDevices {
+        if isControllerMatching(controller, vid: device.vid, pid: device.pid) {
+            return DualShock4HIDProvider()
+        }
+    }
+
+    return nil
+}
+#endif
+```
+
+### 21.7 文件结构变更
+
+```
+Chiaki/Core/Controllers/
+├── ControllerOrchestrator.swift      # 新增: 设备编排器 (原 ControllerManager 核心逻辑)
+├── ControllerInputProvider.swift     # 新增: Provider 协议 + Capabilities + FeedbackOutput
+├── GameControllerProvider.swift      # 新增: GCController 封装 Provider
+├── DualSenseHIDProvider.swift        # 重构: 从 DualSenseHIDManager 重构
+├── DualShock4HIDProvider.swift       # 新增: DS4 HID Provider (P2)
+├── ControllerInputMapper.swift       # 保留: 按键映射（可能移入 GameControllerProvider）
+├── ControllerShortcutDetector.swift  # 保留: 快捷键检测
+├── AdaptiveTriggerEffect.swift       # 保留: 扳机效果定义
+├── HapticsManager.swift              # 保留: 设备振动 fallback（非手柄振动）
+└── ControllerManager.swift           # 删除: 由 ControllerOrchestrator 替代
+```
+
+### 21.8 迁移策略
+
+分步执行，每步可独立编译和验证：
+
+| 步骤 | 内容 | 风险 |
+|------|------|------|
+| 1 | 定义 `ControllerInputProvider` + `ControllerFeedbackOutput` 协议 | 低: 仅新增文件 |
+| 2 | 实现 `GameControllerProvider`，从 ControllerManager 提取 GC 逻辑 | 中: 核心逻辑迁移 |
+| 3 | 重构 `DualSenseHIDManager` → `DualSenseHIDProvider` | 中: 接口适配 |
+| 4 | 实现 `ControllerOrchestrator`，替代 ControllerManager | 高: 替换入口 |
+| 5 | 更新 StreamingViewModel 接入 Orchestrator | 中: 集成点变更 |
+| 6 | 新增 `DualShock4HIDProvider` | 低: 纯新增 |
+| 7 | 删除 ControllerManager.swift，全面切换 | 中: 清理 |
+
+### 21.9 线程安全模型
+
+```
+┌─────────────────────┐
+│  Main Thread         │ ← @MainActor (Orchestrator, Provider 状态)
+│  - UI 更新            │
+│  - 输入合并            │
+│  - Provider 生命周期   │
+└─────────┬───────────┘
+          │ 回调
+┌─────────▼───────────┐
+│  IOKit HID RunLoop   │ ← HID Provider 的输入报文回调
+│  - 原始报文解析       │
+│  - DispatchQueue.main │  → 转发到主线程
+│    .async 投递        │
+└─────────────────────┘
+
+┌─────────────────────┐
+│  GCController        │ ← valueChangedHandler 在主线程调用
+│  RunLoop Thread      │    (Apple 保证)
+└─────────────────────┘
+```
+
+### 21.10 回归保护
+
+- [satisfies] AC-157
+- 所有平台标准输入（摇杆、面按键、扳机）不受 Provider 拆分影响
+- iOS/tvOS 路径无变化（无 HID Provider，仅 GameControllerProvider）
+- macOS DualSense 路径：HID → PS button + rumble，GC → 其他输入（与当前行为一致）
+- 新增 DualShock 4 HID 不影响现有 DualSense 逻辑
+
+---
+
+*§21 新增 (2026-02-10): F-040 控制器架构分层重构*
 

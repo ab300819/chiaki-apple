@@ -1,6 +1,6 @@
 # 洞察收集
 
-> **状态更新**: 2026-02-09
+> **状态更新**: 2026-02-10
 > **已归档洞察**: [archive/05-insights-archive.md](archive/05-insights-archive.md) (INS-001 ~ INS-076, 共 76 条)
 
 ---
@@ -57,6 +57,50 @@
 - **参考**: Steam Link / Moonlight 均为纯横屏；PS Remote Play 支持竖屏但默认横屏
 - **状态**: ✅ 已确认 → F-039 (US-039, AC-148~AC-150)
 
+### INS-078: 控制器输入层分离（Input Provider 协议） ✅ 已确认
+
+- **收集时间**: 2026-02-10
+- **来源**: 💡 内部反馈 (BUG-018/019 修复暴露架构问题)
+- **参考**: chiaki-ng SDL controllermanager.cpp 分层设计
+- **优先级**: P1
+- **现状**: ControllerManager 800+ 行单体类，混合输入读取、设备管理、反馈输出
+- **建议**: 定义 `ControllerInputProvider` 协议，每种输入源独立实现。ControllerManager 降级为设备编排器
+- **影响范围**: ControllerManager、DualSenseHIDManager、VirtualControllerInput、StreamingViewModel
+- **状态**: ✅ 已确认 → F-040
+
+### INS-079: HID 优先、GameController Fallback 策略 ✅ 已确认
+
+- **收集时间**: 2026-02-10
+- **来源**: 💡 BUG-018/019 根因分析 + 🔍 chiaki-ng SDL/HIDAPI 参考
+- **参考**: DualSense HID 协议; chiaki-ng SDL 优先策略
+- **优先级**: P1
+- **现状**: GameController 作为主通道，HID 仅 macOS 补丁。PS button/rumble 在 macOS BT 下 GameController 不工作
+- **建议**: 对已知 VID/PID 手柄优先使用 IOKit HID Provider，GameController 作为通用 fallback，两者非排他共存
+- **影响范围**: ControllerManager、DualSenseHIDManager、设备检测逻辑
+- **状态**: ✅ 已确认 → F-040
+
+### INS-080: Rumble/Feedback 输出统一封装 ✅ 已确认
+
+- **收集时间**: 2026-02-10
+- **来源**: 💡 内部反馈 (rumble 4 层 fallback 散布各处)
+- **参考**: chiaki-ng `SDL_GameControllerRumble()` 统一入口
+- **优先级**: P1
+- **现状**: rumble 路径: macOS HID → GCDeviceHaptics → CoreHaptics → HapticsManager，4 种路径分布在多个文件
+- **建议**: 定义 `ControllerFeedbackOutput` 协议，每个 Provider 实现自己的反馈输出，Orchestrator 路由
+- **影响范围**: ControllerManager.applyRumble()、DualSenseHIDManager、HapticsManager
+- **状态**: ✅ 已确认 → F-040
+
+### INS-081: 扩展 HID 支持到 DualShock 4 ✅ 已确认
+
+- **收集时间**: 2026-02-10
+- **来源**: 🔍 chiaki-ng 支持 DS4 + DualSense HID 模式
+- **参考**: DualShock 4 HID 协议, VID 0x054C / PID 0x05C4 (v1), 0x09CC (v2)
+- **优先级**: P2
+- **现状**: 仅支持 DualSense HID，DualShock 4 在 macOS 同样存在 GameController 限制
+- **建议**: 在 Provider 架构基础上新增 DualShock4HIDProvider，只需实现不同的 HID 报文格式
+- **影响范围**: 新文件 DualShock4HIDManager.swift
+- **状态**: ✅ 已确认 → F-040
+
 ---
 
 ## 待定洞察
@@ -81,11 +125,12 @@
 
 | 指标 | 数量 |
 |------|------|
-| 总洞察 | 77 |
+| 总洞察 | 81 |
 | ✅ 已转化完成 | 74 |
+| 🔄 已确认待实现 | 5 (INS-077~081) |
 | ⏸️ 暂缓 | 1 (INS-047) |
 | ⏳ 待定 | 2 (INS-060, INS-061) |
 
 ---
 
-*文档由 `/devdocs-sync --archive` 更新 (2026-02-09)*
+*文档更新 (2026-02-10): 新增 INS-078~081 控制器架构分层设计洞察*

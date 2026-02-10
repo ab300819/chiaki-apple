@@ -68,6 +68,7 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-037** | AddHostView/ConsolePinView UI/UX 优化 | P2 | 地址验证、Singleton 解耦、错误提示、无障碍、布局修复、本地化 [质量优化] |
 | **F-038** | Swift/C Bridge 安全加固 | P1 | 回调生命周期、内存泄漏、线程边界、指针安全 [安全加固] |
 | **F-039** | iPhone 串流横屏锁定 | P1 | 串流画面锁定横屏方向（左/右均支持），防止意外旋转 [体验优化] |
+| **F-040** | 控制器架构分层重构 | P1 | Provider 协议分离、HID 优先策略、反馈输出统一、DS4 HID 扩展 [架构重构] |
 
 ---
 
@@ -221,6 +222,20 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - AC-148: iPhone 进入 StreamingView 时自动锁定为横屏方向（Landscape Left / Landscape Right 均支持）
 - AC-149: 退出串流后恢复系统默认方向行为，不影响其他页面
 - AC-150: iPad/macOS/tvOS 不受影响（iPad 保持原有行为，macOS/tvOS 无方向概念）
+
+### US-040: 控制器架构分层重构
+> 关联功能: F-040 | 来源: INS-078~INS-081
+
+**作为** 开发者，**我想要** 控制器输入/输出通过分层 Provider 架构管理，**以便** 特殊手柄（DualSense/DualShock 4）的 HID 功能可靠工作，通用手柄通过 GameController 框架兜底，新手柄类型可低成本接入。
+
+**验收标准**：
+- AC-151: 定义 `ControllerInputProvider` 协议，抽象输入读取和反馈输出能力
+- AC-152: 对已知 VID/PID 手柄（DualSense 0x054C:0x0CE6/0x0DF2）优先启动 HID Provider，GameController 作为通用 fallback
+- AC-153: HID Provider 和 GameController Provider 通过非排他模式安全共存
+- AC-154: Rumble/Adaptive Trigger/LED 反馈通过统一的 `ControllerFeedbackOutput` 协议路由，消除平台判断散布
+- AC-155: ControllerManager 拆分为编排器（<300 行）+ 独立 Provider 模块
+- AC-156: 新增 DualShock 4 HID Provider（VID 0x054C / PID 0x05C4, 0x09CC），PS button 和 rumble 在 macOS 上工作
+- AC-157: 现有 GameController 标准输入（摇杆、面按键、扳机）不受影响，所有平台通过回归测试
 
 ---
 

@@ -5194,3 +5194,150 @@ echo "=== Check Complete ==="
 | AC-104 | Logger 统一 | UT-047.1~2 | - | - | CR-002 |
 | AC-105 | DEBUG 保护 | UT-047.3~4 | - | - | CR-003 |
 | AC-106 | Bridge 层审查 | - | - | - | CR-004 |
+
+---
+
+## 27. F-040 控制器架构分层重构测试 (2026-02-10)
+
+> **关联需求**: F-040 (AC-151 ~ AC-157)
+> **新增测试**: UT-049 ~ UT-053, IT-017 ~ IT-018, E2E-013
+
+### 27.1 测试策略
+
+| 层级 | 测试重点 | 数量 |
+|------|----------|------|
+| 单元测试 | 协议实现、能力集、输入合并、反馈路由 | 5 组 |
+| 集成测试 | Provider 共存、Orchestrator 端到端 | 2 组 |
+| E2E 测试 | 手柄连接场景验证 | 1 组 |
+
+### 27.2 单元测试
+
+#### UT-049: ControllerInputProvider 协议合规测试
+
+> [验证] AC-151
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-049.1 | testGameControllerProviderConformsToProtocol | GC Provider 实现协议 | 编译通过，所有属性/方法可访问 | P0 |
+| UT-049.2 | testDualSenseHIDProviderConformsToProtocol | DualSense HID Provider 实现协议 | 编译通过，能力集含 psButton + rumble | P0 |
+| UT-049.3 | testProviderCapabilitiesCorrect | 各 Provider 能力集正确 | GC 含 standardButtons/sticks/triggers, HID 含 psButton/rumble/adaptiveTriggers | P0 |
+| UT-049.4 | testProviderIdUnique | Provider ID 唯一 | 不同 Provider 返回不同 providerId | P1 |
+
+#### UT-050: ControllerCapabilities 测试
+
+> [验证] AC-151
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-050.1 | testDualSenseHIDCapabilities | DualSense HID 能力集 | 含 psButton, rumble, adaptiveTriggers, ledColor | P0 |
+| UT-050.2 | testGameControllerCapabilities | GC 标准能力集 | 含 standardButtons, analogSticks, analogTriggers, touchpad, motion | P0 |
+| UT-050.3 | testCapabilitiesNoOverlap | HID 和 GC 能力不冲突 | dualSenseHID.intersection(gameController) 为空 | P1 |
+| UT-050.4 | testCapabilitiesUnionCoversAll | 合并覆盖全部能力 | dualSenseHID.union(gameController) 含所有定义的能力 | P1 |
+
+#### UT-051: 输入合并逻辑测试
+
+> [验证] AC-152, AC-153
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-051.1 | testMergeHIDAndGCInput | HID 提供 PS button + GC 提供 cross | 合并后 buttons 含 ps 和 cross | P0 |
+| UT-051.2 | testMergeSticksFromGCOnly | 摇杆仅来自 GC Provider | 合并后摇杆值与 GC 输入一致 | P0 |
+| UT-051.3 | testMergeTriggersFromGCOnly | 扳机仅来自 GC Provider | 合并后 l2/r2 值与 GC 输入一致 | P0 |
+| UT-051.4 | testMergeSingleProviderPassthrough | 只有 GC Provider 时透传 | 所有输入直接透传，无丢失 | P0 |
+| UT-051.5 | testMergeTouchpadFromGC | 触控板来自 GC Provider | 合并后触控板数据正确 | P1 |
+| UT-051.6 | testMergeMotionFromGC | 运动数据来自 GC Provider | 合并后 gyro/accel 数据正确 | P1 |
+
+#### UT-052: ControllerFeedbackOutput 路由测试
+
+> [验证] AC-154
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-052.1 | testRumbleRoutedToHIDProvider | DualSense 已连接 macOS | rumble 通过 HID Provider 发送 | P0 |
+| UT-052.2 | testRumbleFallbackToGCProvider | 通用手柄（无 HID） | rumble 通过 GC Provider 发送 | P0 |
+| UT-052.3 | testAdaptiveTriggerRoutedToHID | DualSense 自适应扳机 | 效果通过 HID Provider 应用 | P1 |
+| UT-052.4 | testRumbleDisabledWhenHapticsOff | hapticsEnabled = false | rumble 不发送到任何 Provider | P0 |
+| UT-052.5 | testFeedbackSupportsCheck | Provider 查询反馈能力 | HID Provider 支持 rumble/adaptive，GC 不支持 adaptive | P1 |
+
+#### UT-053: Orchestrator 生命周期测试
+
+> [验证] AC-155
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-053.1 | testOrchestratorLineCount | Orchestrator 代码行数 | < 300 行（不含空行和注释） | P1 |
+| UT-053.2 | testProviderStartOnConnect | 手柄连接时 Provider 启动 | start() 被调用 | P0 |
+| UT-053.3 | testProviderStopOnDisconnect | 手柄断开时 Provider 停止 | stop() 被调用，资源释放 | P0 |
+| UT-053.4 | testActiveControllerUpdate | 手柄连接更新活跃状态 | connectedControllers 和 activeController 正确更新 | P0 |
+| UT-053.5 | testMultipleProviderCoexistence | HID + GC 同时活跃 | 两个 Provider 同时运行，输入正确合并 | P0 |
+
+### 27.3 集成测试
+
+#### IT-017: Provider 共存集成测试 (macOS)
+
+> [验证] AC-152, AC-153
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-017.1 | testDualSenseHIDAndGCCoexist | DualSense BT + macOS | HID Provider 处理 PS button/rumble，GC Provider 处理其他按键 | P0 |
+| IT-017.2 | testHIDProviderFallsBackOnDisconnect | HID 设备断开 | 自动降级到纯 GC Provider，rumble 走 GCDeviceHaptics | P0 |
+| IT-017.3 | testNonExclusiveHIDOpen | HID 非排他打开 | GCController 正常接收标准输入 | P0 |
+
+#### IT-018: Orchestrator 端到端集成测试
+
+> [验证] AC-155, AC-157
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-018.1 | testInputFlowToStreamingVM | 物理手柄输入到达 StreamingViewModel | onInputChanged 回调触发，input 数据正确 | P0 |
+| IT-018.2 | testRumbleFlowFromSession | Session rumble 事件到达手柄 | Orchestrator.applyRumble 调用 feedbackProvider | P0 |
+| IT-018.3 | testIOSTVOSNoHIDProvider | iOS/tvOS 平台 | 仅 GameControllerProvider 活跃，无 HID Provider | P0 |
+| IT-018.4 | testGenericControllerNoHIDProvider | Xbox 手柄 macOS | 仅 GameControllerProvider，VID/PID 不匹配 | P1 |
+
+### 27.4 E2E 测试
+
+#### E2E-013: 控制器架构端到端验证
+
+| 编号 | 测试步骤 | 预期结果 | 优先级 |
+|------|----------|----------|--------|
+| E2E-013.1 | 1. 蓝牙连接 DualSense<br>2. 进入串流<br>3. 按 PS button<br>4. 按其他按键<br>5. 验证所有输入 | PS button 由 HID 响应，其他按键正常 (macOS) | P0 |
+| E2E-013.2 | 1. 蓝牙连接 DualSense<br>2. 进入串流<br>3. 触发游戏内 rumble<br>4. 验证手柄振动 | 手柄物理振动可感知 (macOS) | P0 |
+| E2E-013.3 | 1. 蓝牙连接通用 MFi 手柄<br>2. 进入串流<br>3. 验证所有按键 | 所有输入正常，无 HID Provider 干扰 | P1 |
+| E2E-013.4 | 1. DualSense 串流中断开 BT<br>2. 重新连接<br>3. 验证恢复 | Provider 自动重建，输入/rumble 恢复 | P1 |
+
+### 27.5 DualShock 4 HID 测试 (P2)
+
+#### UT-054: DualShock4HIDProvider 测试
+
+> [验证] AC-156
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-054.1 | testDS4VIDPIDMatch | DS4 v1/v2 VID/PID | 正确匹配 0x054C:0x05C4 和 0x054C:0x09CC | P1 |
+| UT-054.2 | testDS4PSButtonParsing | DS4 输入报文解析 | PS button 从 buttons[2] bit 0 正确提取 | P1 |
+| UT-054.3 | testDS4RumbleOutputFormat | DS4 rumble 报文格式 | USB: Report 0x05，BT: Report 0x11，CRC32 正确 | P1 |
+| UT-054.4 | testDS4ProviderCapabilities | DS4 能力集 | 含 psButton, rumble, ledColor，不含 adaptiveTriggers | P1 |
+
+### 27.6 需求追溯矩阵
+
+| AC 编号 | 描述 | 单元测试 | 集成测试 | E2E 测试 |
+|---------|------|----------|----------|----------|
+| AC-151 | ControllerInputProvider 协议 | UT-049.1~4, UT-050.1~4 | - | - |
+| AC-152 | HID 优先 GC fallback | UT-051.1~6 | IT-017.1~3 | E2E-013.1 |
+| AC-153 | 非排他共存 | UT-051.1~6 | IT-017.3 | E2E-013.1 |
+| AC-154 | FeedbackOutput 统一路由 | UT-052.1~5 | IT-018.2 | E2E-013.2 |
+| AC-155 | Orchestrator <300 行 | UT-053.1~5 | IT-018.1~4 | - |
+| AC-156 | DualShock 4 HID | UT-054.1~4 | - | - |
+| AC-157 | 回归测试通过 | - | IT-018.3~4 | E2E-013.3~4 |
+
+### 27.7 测试编号范围
+
+| 类型 | 编号范围 | 数量 |
+|------|----------|------|
+| 单元测试 | UT-049 ~ UT-054 | 6 组 (24 个用例) |
+| 集成测试 | IT-017 ~ IT-018 | 2 组 (7 个用例) |
+| E2E 测试 | E2E-013 | 1 组 (4 个用例) |
+
+---
+
+*§27 新增 (2026-02-10): F-040 控制器架构分层重构测试*

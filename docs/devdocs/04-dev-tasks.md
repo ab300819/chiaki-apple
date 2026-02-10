@@ -1,7 +1,7 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
-> **状态更新**: 2026-02-09
-> **当前里程碑**: M16 — iPhone 串流横屏锁定
+> **状态更新**: 2026-02-10
+> **当前里程碑**: M17 — 控制器架构分层重构
 > **归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (M11: 35 任务, M12: 24 任务, M13: 23 任务, M14: 4 任务, M15: 18 任务)
 
 ---
@@ -395,6 +395,255 @@ macOS 上 `MTKView` 的 `CAMetalLayer.contentsScale` 默认为 1.0，在 Retina 
 
 ---
 
+## M17 — 控制器架构分层重构
+
+> **阶段目标**: F-040 Controller Provider 分层架构 | **来源**: INS-078~081
+> **关联需求**: F-040 (US-040, AC-151~AC-157)
+> **关联测试**: UT-049~054, IT-017~018, E2E-013
+
+### 依赖关系
+
+```
+T-229 (协议定义)
+  ├── T-230 (GameController Provider) ← 依赖协议
+  ├── T-231 (DualSense HID Provider) ← 依赖协议
+  │
+  └── T-232 (Orchestrator) ← 依赖 T-230 + T-231
+        │
+        └── T-233 (StreamingVM 集成) ← 依赖 T-232
+              │
+              └── T-234 (DualShock 4 HID Provider, P2) ← 依赖 T-232
+                    │
+                    └── T-235 (清理 + 验证) ← 依赖 T-233 + T-234
+```
+
+### T-229: 定义 ControllerInputProvider + ControllerFeedbackOutput 协议 ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-151 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🔴 先测试 (UT-049, UT-050) |
+| **依赖** | 无 |
+
+**描述**：
+
+定义控制器层核心协议和能力集类型。纯类型定义，不改动现有代码。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/ControllerInputProvider.swift` — **新建**
+
+**实现要点**：
+1. 定义 `ControllerInputProvider` 协议：providerId, displayName, isConnected, capabilities, currentInput, onInputChanged, onConnectionChanged, start(), stop()
+2. 定义 `ControllerFeedbackOutput` 协议：sendRumble(left:right:), applyAdaptiveTrigger(effect:side:), setLEDColor(red:green:blue:), supportsFeedback(_:)
+3. 定义 `ControllerCapabilities: OptionSet`：standardButtons, analogSticks, analogTriggers, psButton, touchpad, motion, rumble, adaptiveTriggers, ledColor
+4. 定义便捷静态属性：`.dualSenseHID`, `.gameController`
+5. 定义 `FeedbackType` 枚举
+
+**验收标准**：
+- 协议定义完整，可用于后续 Provider 实现
+- 能力集正确区分 HID 和 GC 各自的职责
+- 所有平台编译通过
+
+---
+
+### T-230: 实现 GameControllerProvider ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-151, AC-157 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🟡 先骨架后测试 (UT-049.1) |
+| **依赖** | T-229 |
+
+**描述**：
+
+从 ControllerManager 提取 GCController 相关逻辑，封装为 `GameControllerProvider`。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/GameControllerProvider.swift` — **新建**
+- `Chiaki/Core/Controllers/ControllerManager.swift` — 提取逻辑（暂不删除）
+
+**实现要点**：
+1. 实现 `ControllerInputProvider` + `ControllerFeedbackOutput`
+2. 从 ControllerManager 迁移：`setupExtendedGamepadHandlers()`, `handleExtendedGamepadInput()`, `applyRumble()` (GCDeviceHaptics 路径)
+3. 添加 `bind(to: GCController)` / `unbind()` 方法
+4. 触控板、运动传感器逻辑一并迁移
+5. Y 轴取反逻辑保留在此 Provider 内
+6. GCDeviceHaptics rumble 作为该 Provider 的 `sendRumble()` 实现
+
+**验收标准**：
+- GameControllerProvider 可独立编译
+- bind/unbind 生命周期正确
+- 所有 GCController 输入正确映射到 ChiakiControllerInput
+
+---
+
+### T-231: 重构 DualSenseHIDManager → DualSenseHIDProvider ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-152, AC-153 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🟡 先骨架后测试 (UT-049.2) |
+| **依赖** | T-229 |
+
+**描述**：
+
+将现有 `DualSenseHIDManager`（468 行）重构为实现 Provider 协议的 `DualSenseHIDProvider`。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/DualSenseHIDProvider.swift` — **新建** (重命名 + 接口适配)
+- `Chiaki/Core/Controllers/DualSenseHIDManager.swift` — **删除** (迁移完成后)
+
+**实现要点**：
+1. 保留所有 IOKit HID 逻辑（设备发现、增强 BT 模式、报文解析、CRC32）
+2. 实现 `ControllerInputProvider`：onInputChanged 回调替代 `onPSButtonChanged`
+3. 实现 `ControllerFeedbackOutput`：`sendRumble()` 复用现有 `sendUSBRumble()`/`sendBTRumble()`
+4. 添加 `applyAdaptiveTrigger()` 实现（DualSense 输出报文 byte 11-22）
+5. 添加 `setLEDColor()` 实现（DualSense 输出报文 byte 44-46）
+6. `supportedDevices` 静态属性声明 VID/PID
+7. macOS only (`#if os(macOS)`)
+
+**验收标准**：
+- PS button 输入通过 Provider 协议回调
+- rumble 通过 Provider 协议发送
+- 与 GameControllerProvider 非排他共存
+- BT 和 USB 路径均正常
+
+---
+
+### T-232: 实现 ControllerOrchestrator ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-152, AC-154, AC-155 |
+| **优先级** | P0 (阻塞) |
+| **TDD** | 🔴 先测试 (UT-051, UT-052, UT-053) |
+| **依赖** | T-230, T-231 |
+
+**描述**：
+
+实现核心编排器，取代 ControllerManager 的设备管理和输入分发职责。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/ControllerOrchestrator.swift` — **新建**
+
+**实现要点**：
+1. `@MainActor @Observable` 标注
+2. GCController connect/disconnect 通知处理
+3. VID/PID 匹配逻辑：检测 DualSense → 创建 HID + GC 双 Provider
+4. 输入合并：HID → PS button，GC → 其他所有，按 capabilities 分配
+5. 反馈路由：`feedbackProvider` 优先 HID，fallback GC
+6. `applyRumble(left:right:)` 和 `applyAdaptiveTrigger(effect:side:)` 代理方法
+7. 目标：< 300 行（不含空行和注释）
+
+**验收标准**：
+- AC-155: 代码行数 < 300 行
+- 设备连接/断开正确管理 Provider 生命周期
+- 输入合并结果与当前行为一致
+- HID 优先反馈路由正确
+
+---
+
+### T-233: StreamingViewModel 集成 Orchestrator ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-155, AC-157 |
+| **优先级** | P0 |
+| **TDD** | 🟢 可选 (集成验证) |
+| **依赖** | T-232 |
+
+**描述**：
+
+将 StreamingViewModel 从 `ControllerManager.shared` 切换到 `ControllerOrchestrator`。
+
+**涉及文件**：
+- `Chiaki/Features/Streaming/StreamingViewModel.swift` — 替换引用
+
+**实现要点**：
+1. 将 `ControllerManager.shared.onInputChanged` 替换为 `ControllerOrchestrator.shared.onInputChanged`
+2. 将 `ControllerManager.shared.applyRumble()` 替换为 `ControllerOrchestrator.shared.applyRumble()`
+3. 将 `ControllerManager.shared.applyAdaptiveTrigger()` 替换为 Orchestrator 方法
+4. 更新 `ControllerSettingsView` 中的手柄列表引用
+5. 确保 ControllerShortcutDetector 正常工作
+
+**验收标准**：
+- AC-157: 所有平台标准输入回归测试通过
+- rumble 在 macOS DualSense 上通过 HID 发送
+- rumble 在 iOS/tvOS 通过 GC 发送
+- 虚拟手柄输入不受影响
+
+---
+
+### T-234: 新增 DualShock4HIDProvider ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-156 |
+| **优先级** | P2 |
+| **TDD** | 🔴 先测试 (UT-054) |
+| **依赖** | T-232 |
+
+**描述**：
+
+新增 DualShock 4 的 IOKit HID Provider，解决 macOS 上 DS4 的 PS button 和 rumble 问题。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/DualShock4HIDProvider.swift` — **新建**
+
+**实现要点**：
+1. 实现 `ControllerInputProvider` + `ControllerFeedbackOutput`
+2. VID/PID：0x054C:0x05C4 (v1), 0x054C:0x09CC (v2)
+3. DS4 输入报文解析：PS button from buttons[2] bit 0
+4. DS4 输出报文构造：
+   - USB: Report ID 0x05, 32 bytes, motor_right (byte 4), motor_left (byte 5)
+   - BT: Report ID 0x11, 78 bytes, motor_right (byte 6), motor_left (byte 7), CRC32
+5. LED 颜色设置（byte 6/7/8 in USB, byte 8/9/10 in BT）
+6. 能力集：psButton + rumble + ledColor（不含 adaptiveTriggers）
+7. macOS only (`#if os(macOS)`)
+
+**验收标准**：
+- DS4 PS button 在 macOS BT 上可被读取
+- DS4 rumble 在 macOS 上手柄物理振动
+- DS4 LED 颜色可设置
+- 不影响 DualSense 和通用手柄
+
+---
+
+### T-235: 清理旧代码 + 全平台验证 ⏳
+
+| 属性 | 内容 |
+|------|------|
+| **关联** | F-040, AC-157 |
+| **优先级** | P1 |
+| **TDD** | 🟢 可选 (回归验证) |
+| **依赖** | T-233, T-234 |
+
+**描述**：
+
+删除旧 ControllerManager.swift 和 DualSenseHIDManager.swift，全平台编译验证。
+
+**涉及文件**：
+- `Chiaki/Core/Controllers/ControllerManager.swift` — **删除**
+- `Chiaki/Core/Controllers/DualSenseHIDManager.swift` — **删除** (如 T-231 未删)
+- 全项目搜索替换 `ControllerManager` → `ControllerOrchestrator` 残留引用
+
+**实现要点**：
+1. 删除 ControllerManager.swift
+2. 全局搜索 `ControllerManager` 引用，替换为 `ControllerOrchestrator`
+3. macOS / iOS / tvOS 三平台 `xcodebuild` 编译验证
+4. 运行 IT-017, IT-018 集成测试
+5. 更新 `02-system-design.md` §2.6 控制器模块描述（标注已被 §21 替代）
+
+**验收标准**：
+- 全平台编译通过
+- 无 `ControllerManager` 残留引用
+- 所有测试通过
+
+---
+
 ## 任务汇总
 
 | 里程碑 | 任务数 | 完成率 | 状态 |
@@ -405,16 +654,18 @@ macOS 上 `MTKView` 的 `CAMetalLayer.contentsScale` 默认为 1.0，在 Retina 
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX优化/Bridge安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
+| **M17 控制器架构分层重构** | **7** | **0%** | ⏳ 进行中 |
 | Bug 修复 | 11 | 100% | ✅ |
-| **总计** | **117** | — | ✅ |
+| **总计** | **124** | — | — |
 
 ---
 
 ## 下一步
 
 1. T-115 App Icon 资产准备仍待设计师交付
-2. 真机验证 BUG-011~BUG-015 修复
+2. 真机验证 BUG-011~BUG-019 修复
+3. **M17 T-229 开始实施**：定义 Provider 协议
 
 ---
 
-*文档由 `/devdocs-bugfix` 更新 (2026-02-09)*
+*文档由 `/devdocs-feature` 更新 (2026-02-10)*
