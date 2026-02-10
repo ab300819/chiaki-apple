@@ -1124,6 +1124,39 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         return max(center + center * sharpFactor, 0.0);
     }
 
+    // Debanding + Bayer dithering (F-041, AC-162, AC-163)
+    constant float bayer4x4[16] = {
+         0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+        12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
+         3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+        15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
+    };
+    float hashPixel(float2 p) {
+        return fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+    }
+    float3 deband(float3 color, float2 screenPos, float2 texSize, float threshold, float grain,
+                  texture2d<float> tex, sampler s, float2 uv, bool isHDR, float edrHeadroom) {
+        float adjThreshold = isHDR ? threshold * edrHeadroom : threshold;
+        float adjGrain = isHDR ? grain * edrHeadroom : grain;
+        float2 rcpSize = 1.0 / texSize;
+        float radius = 16.0;
+        float angle = hashPixel(screenPos) * 6.283185;
+        float2 dir = float2(cos(angle), sin(angle));
+        float3 s1 = tex.sample(s, uv + dir * radius * 0.25 * rcpSize).rgb;
+        float3 s2 = tex.sample(s, uv - dir * radius * 0.25 * rcpSize).rgb;
+        float3 s3 = tex.sample(s, uv + dir * radius * rcpSize).rgb;
+        float3 s4 = tex.sample(s, uv - dir * radius * rcpSize).rgb;
+        float3 avg = (s1 + s2 + s3 + s4) * 0.25;
+        float3 diff = abs(color - avg);
+        float maxDiff = max(max(diff.r, diff.g), diff.b);
+        float3 result = (maxDiff < adjThreshold) ? mix(color, avg, 0.5) : color;
+        int bx = int(screenPos.x) & 3;
+        int by = int(screenPos.y) & 3;
+        float ditherValue = bayer4x4[by * 4 + bx] - 0.5;
+        result += ditherValue * adjGrain;
+        return result;
+    }
+
     vertex VertexOut videoVertexShader(
         VertexIn in [[stage_in]],
         constant VideoUniforms &uniforms [[buffer(1)]]
@@ -1199,6 +1232,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
                 rgb = mix(float3(gray), rgb, uniforms.saturation);
                 rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
                     in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+                if (uniforms.debandEnabled == 1u) {
+                    rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                        uniforms.debandThreshold, uniforms.debandGrain,
+                        textureY, textureSampler, in.texCoord, true, uniforms.edrHeadroom);
+                }
                 rgb = max(rgb, 0.0);
             } else {
             // SDR: apply adjustments in gamma space
@@ -1208,6 +1246,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = mix(float3(gray), rgb, uniforms.saturation);
             rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
                 in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+            if (uniforms.debandEnabled == 1u) {
+                rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                    uniforms.debandThreshold, uniforms.debandGrain,
+                    textureY, textureSampler, in.texCoord, false, 1.0);
+            }
             rgb = clamp(rgb, 0.0, 1.0);
         }
 
@@ -1253,6 +1296,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = mix(float3(gray), rgb, uniforms.saturation);
             rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
                 in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+            if (uniforms.debandEnabled == 1u) {
+                rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                    uniforms.debandThreshold, uniforms.debandGrain,
+                    texture, textureSampler, in.texCoord, true, uniforms.edrHeadroom);
+            }
             rgb = max(rgb, 0.0);
         } else {
             rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
@@ -1261,6 +1309,11 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = mix(float3(gray), rgb, uniforms.saturation);
             rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
                 in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+            if (uniforms.debandEnabled == 1u) {
+                rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                    uniforms.debandThreshold, uniforms.debandGrain,
+                    texture, textureSampler, in.texCoord, false, 1.0);
+            }
             rgb = clamp(rgb, 0.0, 1.0);
         }
 

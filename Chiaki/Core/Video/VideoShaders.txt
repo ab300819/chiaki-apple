@@ -295,6 +295,57 @@ float3 contrastAdaptiveSharpeningBiplanar(float3 center, texture2d<float> texY, 
     return max(center + center * sharpFactor, 0.0);
 }
 
+// MARK: - Debanding + Ordered Dithering (F-041, AC-162, AC-163)
+
+// Bayer 4x4 ordered dither matrix (values normalized to [0, 15/16])
+constant float bayer4x4[16] = {
+     0.0 / 16.0,  8.0 / 16.0,  2.0 / 16.0, 10.0 / 16.0,
+    12.0 / 16.0,  4.0 / 16.0, 14.0 / 16.0,  6.0 / 16.0,
+     3.0 / 16.0, 11.0 / 16.0,  1.0 / 16.0,  9.0 / 16.0,
+    15.0 / 16.0,  7.0 / 16.0, 13.0 / 16.0,  5.0 / 16.0
+};
+
+// Simple hash for pseudo-random direction per pixel
+float hashPixel(float2 p) {
+    return fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Deband: average 4 neighbors at random directions within radius, smooth if diff < threshold
+// Then apply Bayer dither to break remaining banding
+float3 deband(float3 color, float2 screenPos, float2 texSize, float threshold, float grain,
+              texture2d<float> tex, sampler s, float2 uv, bool isHDR, float edrHeadroom) {
+    // Scale threshold and grain for HDR (EDR values can be > 1.0)
+    float adjThreshold = isHDR ? threshold * edrHeadroom : threshold;
+    float adjGrain = isHDR ? grain * edrHeadroom : grain;
+
+    float2 rcpSize = 1.0 / texSize;
+    float radius = 16.0; // pixel search radius
+
+    // Generate pseudo-random angle from screen position
+    float angle = hashPixel(screenPos) * 6.283185;
+    float2 dir = float2(cos(angle), sin(angle));
+
+    // Sample 4 neighbors along random direction
+    float3 s1 = tex.sample(s, uv + dir * radius * 0.25 * rcpSize).rgb;
+    float3 s2 = tex.sample(s, uv - dir * radius * 0.25 * rcpSize).rgb;
+    float3 s3 = tex.sample(s, uv + dir * radius * rcpSize).rgb;
+    float3 s4 = tex.sample(s, uv - dir * radius * rcpSize).rgb;
+    float3 avg = (s1 + s2 + s3 + s4) * 0.25;
+
+    // Blend toward average if difference is below threshold (banding area)
+    float3 diff = abs(color - avg);
+    float maxDiff = max(max(diff.r, diff.g), diff.b);
+    float3 result = (maxDiff < adjThreshold) ? mix(color, avg, 0.5) : color;
+
+    // Apply Bayer ordered dither
+    int bx = int(screenPos.x) & 3;
+    int by = int(screenPos.y) & 3;
+    float ditherValue = bayer4x4[by * 4 + bx] - 0.5; // center around 0
+    result += ditherValue * adjGrain;
+
+    return result;
+}
+
 // MARK: - Vertex Shader
 
 vertex VertexOut videoVertexShader(
@@ -377,6 +428,12 @@ fragment float4 videoBiplanarFragmentShader(
         // CAS: HDR path — use max(0) to preserve EDR values
         rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
             in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+        // Deband: HDR path
+        if (uniforms.debandEnabled == 1u) {
+            rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                uniforms.debandThreshold, uniforms.debandGrain,
+                textureY, textureSampler, in.texCoord, true, uniforms.edrHeadroom);
+        }
         rgb = max(rgb, 0.0);
     } else {
         // SDR: apply adjustments in gamma space
@@ -387,6 +444,12 @@ fragment float4 videoBiplanarFragmentShader(
         // CAS: SDR path
         rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
             in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+        // Deband: SDR path
+        if (uniforms.debandEnabled == 1u) {
+            rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                uniforms.debandThreshold, uniforms.debandGrain,
+                textureY, textureSampler, in.texCoord, false, 1.0);
+        }
         rgb = clamp(rgb, 0.0, 1.0);
     }
 
@@ -434,6 +497,12 @@ fragment float4 videoBGRAFragmentShader(
         // CAS: HDR path
         rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
             in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+        // Deband: HDR path
+        if (uniforms.debandEnabled == 1u) {
+            rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                uniforms.debandThreshold, uniforms.debandGrain,
+                texture, textureSampler, in.texCoord, true, uniforms.edrHeadroom);
+        }
         rgb = max(rgb, 0.0);
     } else {
         rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
@@ -443,6 +512,12 @@ fragment float4 videoBGRAFragmentShader(
         // CAS: SDR path
         rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
             in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
+        // Deband: SDR path
+        if (uniforms.debandEnabled == 1u) {
+            rgb = deband(rgb, in.position.xy, uniforms.textureSizeY,
+                uniforms.debandThreshold, uniforms.debandGrain,
+                texture, textureSampler, in.texCoord, false, 1.0);
+        }
         rgb = clamp(rgb, 0.0, 1.0);
     }
 
