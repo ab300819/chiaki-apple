@@ -7,6 +7,7 @@
 // Defines the abstraction layer between input sources and the orchestrator.
 
 import Foundation
+import GameController
 
 // MARK: - Controller Capabilities
 
@@ -134,4 +135,39 @@ protocol ControllerFeedbackOutput: AnyObject {
     /// - Parameter type: The feedback type to check
     /// - Returns: true if the feedback type is supported
     func supportsFeedback(_ type: FeedbackType) -> Bool
+}
+
+// MARK: - Controller Info
+
+/// Information about a connected controller
+struct ControllerInfo: Identifiable {
+    let id: UUID
+    let controller: GCController
+    var isActive: Bool
+
+    var name: String {
+        controller.vendorName ?? "Unknown Controller"
+    }
+
+    var productCategory: String {
+        controller.productCategory
+    }
+
+    var isDualSense: Bool {
+        controller.productCategory == GCProductCategoryDualSense
+    }
+
+    var isDualShock: Bool {
+        controller.productCategory == GCProductCategoryDualShock4
+    }
+
+    var isPlayStationController: Bool {
+        isDualSense || isDualShock
+    }
+
+    init(controller: GCController, isActive: Bool = false) {
+        self.id = UUID()
+        self.controller = controller
+        self.isActive = isActive
+    }
 }
