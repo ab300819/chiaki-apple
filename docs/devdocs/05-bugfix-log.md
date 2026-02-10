@@ -995,3 +995,62 @@ chiaki-ng 通过 SDL 直接发送 DualSense 特定的输出报告（`DS5EffectsS
 4. **非独占打开允许共存**：IOKit HID 非独占模式（`kIOHIDOptionsTypeNone`）允许与 GameController 框架并存，HID 只负责 PS 按键和震动，其余输入（摇杆、面板按钮等）仍由 GameController 框架处理。
 
 ---
+
+## BUG-020: Metal shader 编译失败导致串流黑屏
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 手动测试 (macOS 串流) |
+| **关联功能** | F-041 (Metal 原生高质量视频滤波管线) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-10 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+在 T-238 (CAS 自适应锐化) 实现后，macOS 上连接 PlayStation 串流后一直黑屏，从未显示过视频画面。之前版本串流正常。
+
+### 复现步骤
+
+1. 在 macOS 上启动 Chiaki
+2. 连接 PlayStation 主机
+3. 进入串流画面
+4. 观察到黑屏，无任何视频输出
+
+### 根因分析
+
+`contrastAdaptiveSharpening()` 函数（BGRA CAS，MetalVideoRenderer.swift 运行时 shader 字符串第 174 行）中使用了 `constant float3 lumaW` 声明局部变量：
+
+```metal
+constant float3 lumaW = float3(0.2126, 0.7152, 0.0722);
+```
+
+在 Metal Shading Language 中，`constant` 是**地址空间限定符**（address space qualifier），仅用于函数参数和全局变量，不能用于局部变量。局部常量应使用 C++ 风格的 `const`。
+
+此语法错误导致 `device.makeLibrary(source:)` 运行时编译失败。由于项目中没有 `.metal` 文件（VideoShaders.txt 未加入 Xcode 项目），`makeDefaultLibrary()` 返回 nil，运行时编译是唯一路径。编译失败使 `setupPipelines()` 返回 false → `MetalVideoRenderer.init()` 返回 nil → 无渲染器 → 黑屏。
+
+### 解决方案
+
+将两处（VideoShaders.txt + MetalVideoRenderer.swift 运行时 shader 字符串）`constant float3 lumaW` 改为 `const float3 lumaW`：
+
+```diff
+-        constant float3 lumaW = float3(0.2126, 0.7152, 0.0722);
++        const float3 lumaW = float3(0.2126, 0.7152, 0.0722);
+```
+
+修复后通过 `device.makeLibrary(source:)` 手动验证编译成功，3 个 shader 函数均正常加载。
+
+### 回归测试
+
+- 新增测试：`ShaderCompilationTests.testShaderSourceCompilesSuccessfully()` — 验证 MetalVideoRenderer 能成功初始化（隐含 shader 编译成功）
+- 新增测试：`ShaderCompilationTests.testFilterConfigDefaultAfterInit()` — 验证 filter config 默认值正确
+- 关联文件：`ChiakiTests/VideoRendererTests.swift`
+
+### 经验教训
+
+1. **Metal `constant` vs `const`**：Metal 中 `constant` 是地址空间限定符（类似 `device`、`thread`），函数内局部变量应使用 `const`（C++ 语义）。全局 `constant float` 是合法的（分配在 constant 地址空间），但函数内部的 `constant float3` 是非法的。
+2. **运行时 shader 编译缺乏预检**：项目依赖运行时 `makeLibrary(source:)` 编译 shader，无法在构建阶段捕获语法错误。应考虑添加编译期 shader 验证（将 .txt 改为 .metal 加入 Xcode 项目）。
+3. **双份 shader 代码维护风险**：VideoShaders.txt 和运行时 shader 字符串必须同步维护，任何不一致都可能导致难以追踪的 Bug。
+
+---

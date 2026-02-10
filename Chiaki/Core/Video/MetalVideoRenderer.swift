@@ -1116,7 +1116,7 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         float3 nw = tex.sample(s, uv + float2(-1.0, -1.0) * rcpSize).rgb;
         float3 se = tex.sample(s, uv + float2( 1.0,  1.0) * rcpSize).rgb;
         float3 sw = tex.sample(s, uv + float2(-1.0,  1.0) * rcpSize).rgb;
-        constant float3 lumaW = float3(0.2126, 0.7152, 0.0722);
+        const float3 lumaW = float3(0.2126, 0.7152, 0.0722);
         float lC  = dot(center, lumaW);
         float lN  = dot(n, lumaW); float lS  = dot(so, lumaW);
         float lE  = dot(e, lumaW); float lW  = dot(w, lumaW);

@@ -209,6 +209,42 @@ struct VideoRendererProtocolTests {
     }
 }
 
+// MARK: - BUG-020: Shader Compilation Regression Test
+
+@MainActor
+struct ShaderCompilationTests {
+
+    /**
+     * @verifies BUG-020 - Metal shader 'constant' keyword misuse causes compilation failure
+     *
+     * Regression test: MetalVideoRenderer uses runtime shader compilation via
+     * device.makeLibrary(source:). If the shader source contains Metal language errors
+     * (e.g., using 'constant' as a local variable qualifier instead of 'const'),
+     * compilation fails silently and the renderer returns nil, causing a black screen.
+     */
+    @Test func testShaderSourceCompilesSuccessfully() throws {
+        guard let renderer = MetalVideoRenderer() else {
+            throw TestError("MetalVideoRenderer init returned nil — shader compilation likely failed")
+        }
+
+        // If we get here, the shader compiled and all pipeline states were created
+        #expect(renderer.frameCount == 0)
+        #expect(renderer.droppedFrameCount == 0)
+    }
+
+    /**
+     * @verifies BUG-020 - Filter config is accessible after successful compilation
+     */
+    @Test func testFilterConfigDefaultAfterInit() throws {
+        guard let renderer = MetalVideoRenderer() else {
+            throw TestError("MetalVideoRenderer init returned nil")
+        }
+
+        #expect(renderer.filterConfig == .default)
+        #expect(renderer.filterName == "Bicubic")
+    }
+}
+
 // MARK: - Test Error Helper
 
 private struct TestError: Error, CustomStringConvertible {
