@@ -896,3 +896,102 @@ macOS 上默认窗口大小时画面清晰，但窗口最大化后画面变模�
 - 关联 commit：待提交
 
 ---
+
+## BUG-018: macOS 上 DualSense PS 按键无响应（GameController 框架限制）
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 (macOS, DualSense 蓝牙) |
+| **关联功能** | F-004, BUG-014 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-10 |
+| **状态** | 🔧 待验证 |
+
+### 问题描述
+
+macOS 上通过蓝牙连接 DualSense 控制器时，按 PS 键完全没有反应——macOS 系统不响应（不打开 Launchpad），chiaki 应用也不接收事件。BUG-014 已添加 `pressedChangedHandler`，但在 macOS 蓝牙 DualSense 上该 handler 不被触发。
+
+chiaki-ng 使用 SDL → HIDAPI → IOKit HID 直接读取原始 HID 报告，PS 按键正常工作。
+
+### 根因分析
+
+Apple GameController 框架的 `GCExtendedGamepad.buttonHome` 在 macOS 蓝牙连接 DualSense 时不可靠地传递 PS 按键事件。DualSense 蓝牙默认以 10 字节基础模式运行（不包含 PS 按键数据）；需要读取特征报告激活增强模式才能获取 PS 按键位。GameController 框架可能未正确处理此增强模式切换。
+
+### 解决方案
+
+新增 `DualSenseHIDManager.swift`，通过 IOKit HID 直接与 DualSense 通信：
+
+1. 使用 `IOHIDManager` 按 VID=0x054C/PID=0x0CE6(0x0DF2) 匹配 DualSense
+2. 蓝牙连接时读取特征报告 0x09/0x20 激活增强模式
+3. 注册 `IOHIDDeviceRegisterInputReportCallback` 回调读取原始输入报告
+4. 解析 `buttons[2]` bit 0 获取 PS 按键状态
+5. 通过 `onPSButtonChanged` 回调更新 ControllerManager 的输入状态
+
+仅限 `#if os(macOS)`，iOS/tvOS 仍使用 GameController 框架。
+
+### 修改文件清单
+
+1. `Chiaki/Core/Controllers/DualSenseHIDManager.swift`（新增）— IOKit HID 直连管理器
+2. `Chiaki/Core/Controllers/ControllerManager.swift` — 集成 HID PS 按键回调
+
+### 回归测试
+
+- 编译验证：macOS `BUILD SUCCEEDED`
+- 手动验证：需真机测试（DualSense 蓝牙连接 macOS）
+
+---
+
+## BUG-019: macOS 上 DualSense 手柄震动不工作
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 真机测试 (macOS, DualSense 蓝牙) |
+| **关联功能** | F-004, F-021 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-10 |
+| **状态** | 🔧 待验证 |
+
+### 问题描述
+
+macOS 上通过蓝牙连接 DualSense 控制器时，串流中 PS5 发送的震动指令没有效果，控制器不震动。chiaki-ng 使用 SDL 的 `SDL_GameControllerRumble()` / `SDL_GameControllerSendEffect()` 通过 HIDAPI 直接发送 HID 输出报告，震动正常。
+
+### 根因分析
+
+`ControllerManager.applyRumble()` 使用 `GCController.haptics` → `GCDeviceHaptics.createEngine(withLocality: .handles)` 创建 `CHHapticEngine`，但在 macOS 上 `GCController.haptics` 返回 nil 或 `createEngine` 失败。原因：
+
+1. macOS 的 GCDeviceHaptics 对蓝牙 DualSense 支持不完整
+2. 回退到 `HapticsManager.shared.applyRumble()` 使用设备 CoreHaptics（驱动 MacBook 触控板震动），而非控制器电机
+
+chiaki-ng 通过 SDL 直接发送 DualSense 特定的输出报告（`DS5EffectsState_t`），设置 `motor_left`/`motor_right` 强度字节，绕过 GameController 框架。
+
+### 解决方案
+
+在 `DualSenseHIDManager` 中实现直接 HID 输出报告发送：
+
+1. USB 模式：构建 63 字节输出报告（Report ID 0x02），设置 valid_flag0 + motor 强度
+2. 蓝牙模式：构建 78 字节输出报告（Report ID 0x31），含序列号、tag 0x10、payload、CRC32
+3. CRC32 使用 seed 0xA2，覆盖全部报告字节（除最后 4 字节）
+4. `ControllerManager.applyRumble()` 在 macOS 上优先通过 HID 发送震动
+
+参考：chiaki-ng `controllermanager.cpp` 的 `SetDualSenseRumble()`、Linux kernel `hid-playstation.c`
+
+### 修改文件清单
+
+1. `Chiaki/Core/Controllers/DualSenseHIDManager.swift`（新增）— 震动输出报告构建与发送
+2. `Chiaki/Core/Controllers/ControllerManager.swift` — macOS 震动路径优先使用 HID
+
+### 回归测试
+
+- 编译验证：macOS `BUILD SUCCEEDED`
+- 手动验证：需真机测试（DualSense 蓝牙连接 macOS 串流 PS5）
+
+### 经验教训
+
+1. **GameController 框架在 macOS 上的限制**：`buttonHome` 和 `GCDeviceHaptics` 在 macOS 蓝牙 DualSense 上不可靠，必须用 IOKit HID 直连绕过。
+2. **DualSense 蓝牙增强模式**：默认基础模式只有 10 字节报告，缺少按键和传感器数据。必须读取特征报告 0x09/0x20 才能激活增强模式。
+3. **蓝牙输出报告需要 CRC32**：与 USB 不同，蓝牙输出报告需要正确的序列号和 CRC32 校验，否则控制器忽略指令。
+4. **非独占打开允许共存**：IOKit HID 非独占模式（`kIOHIDOptionsTypeNone`）允许与 GameController 框架并存，HID 只负责 PS 按键和震动，其余输入（摇杆、面板按钮等）仍由 GameController 框架处理。
+
+---

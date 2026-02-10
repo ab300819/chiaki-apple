@@ -87,6 +87,12 @@ final class ControllerManager {
     /// Cached haptic engine for controller rumble (reused across calls)
     private var rumbleEngine: CHHapticEngine?
 
+    #if os(macOS)
+    /// Direct IOKit HID manager for DualSense-specific features on macOS
+    /// Bypasses GameController framework limitations for PS button and rumble
+    private var dualSenseHID: DualSenseHIDManager?
+    #endif
+
     // MARK: - Singleton
 
     static let shared = ControllerManager()
@@ -107,11 +113,39 @@ final class ControllerManager {
         }
         setupNotifications()
         scanConnectedControllers()
+        #if os(macOS)
+        setupDualSenseHID()
+        #endif
         Logger.controller.info("ControllerManager initialized")
     }
 
     // Note: As a singleton, deinit is not expected to be called
     // Notification observers are retained for app lifetime
+
+    // MARK: - DualSense HID (macOS)
+
+    #if os(macOS)
+    /// Setup direct IOKit HID communication with DualSense controllers.
+    /// This provides PS button input and rumble output that the GameController
+    /// framework does not reliably deliver on macOS.
+    private func setupDualSenseHID() {
+        let hid = DualSenseHIDManager.shared
+        dualSenseHID = hid
+
+        // PS button: update controller state from HID raw input
+        hid.onPSButtonChanged = { [weak self] pressed in
+            guard let self else { return }
+            if pressed {
+                self.currentInput.buttons.insert(.ps)
+            } else {
+                self.currentInput.buttons.remove(.ps)
+            }
+            self.onInputChanged?(self.currentInput)
+        }
+
+        Logger.controller.info("DualSense HID manager configured for PS button and rumble")
+    }
+    #endif
 
     // MARK: - Setup
 
@@ -506,11 +540,20 @@ final class ControllerManager {
     }
 
     /// Apply rumble feedback to the active physical controller
-    /// Uses GCController haptics for real controller motors, falls back to CoreHaptics for device vibration
+    /// On macOS, uses direct IOKit HID for DualSense (bypasses unreliable GCDeviceHaptics).
+    /// On iOS/tvOS, uses GCController haptics or falls back to CoreHaptics device vibration.
     /// @satisfies AC-063 - Haptics 引擎统一
     func applyRumble(left: UInt8, right: UInt8) {
         guard hapticsEnabled else { return }
         guard left > 0 || right > 0 else { return }
+
+        #if os(macOS)
+        // On macOS, prefer direct HID rumble (GCDeviceHaptics is unreliable)
+        if let hid = dualSenseHID, hid.hasConnectedDevice {
+            hid.sendRumble(left: left, right: right)
+            return
+        }
+        #endif
 
         // Try native controller rumble first (DualSense/DualShock 4)
         if let controller = activeController?.controller,
