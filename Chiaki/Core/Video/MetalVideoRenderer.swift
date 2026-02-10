@@ -1065,6 +1065,65 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         return s00 + s10 + s01 + s11;
     }
 
+    // CAS for BGRA (full RGB neighbor sampling)
+    float3 contrastAdaptiveSharpening(float3 center, texture2d<float> tex, sampler s,
+                                       float2 uv, float2 texSize, float strength) {
+        if (strength <= 0.0) return center;
+        float2 rcpSize = 1.0 / texSize;
+        float3 n  = tex.sample(s, uv + float2( 0.0, -1.0) * rcpSize).rgb;
+        float3 so = tex.sample(s, uv + float2( 0.0,  1.0) * rcpSize).rgb;
+        float3 e  = tex.sample(s, uv + float2( 1.0,  0.0) * rcpSize).rgb;
+        float3 w  = tex.sample(s, uv + float2(-1.0,  0.0) * rcpSize).rgb;
+        float3 ne = tex.sample(s, uv + float2( 1.0, -1.0) * rcpSize).rgb;
+        float3 nw = tex.sample(s, uv + float2(-1.0, -1.0) * rcpSize).rgb;
+        float3 se = tex.sample(s, uv + float2( 1.0,  1.0) * rcpSize).rgb;
+        float3 sw = tex.sample(s, uv + float2(-1.0,  1.0) * rcpSize).rgb;
+        constant float3 lumaW = float3(0.2126, 0.7152, 0.0722);
+        float lC  = dot(center, lumaW);
+        float lN  = dot(n, lumaW); float lS  = dot(so, lumaW);
+        float lE  = dot(e, lumaW); float lW  = dot(w, lumaW);
+        float lNE = dot(ne, lumaW); float lNW = dot(nw, lumaW);
+        float lSE = dot(se, lumaW); float lSW = dot(sw, lumaW);
+        float crossMin = min(lC, min(min(lN, lS), min(lE, lW)));
+        float crossMax = max(lC, max(max(lN, lS), max(lE, lW)));
+        float diagMin  = min(min(lNE, lNW), min(lSE, lSW));
+        float diagMax  = max(max(lNE, lNW), max(lSE, lSW));
+        float mnV = min(crossMin, diagMin);
+        float mxV = max(crossMax, diagMax);
+        float amp = saturate(min(mnV, 1.0 - mxV) / max(mxV - mnV, 1e-5));
+        amp = sqrt(amp) * strength;
+        float3 total = (n + so + e + w) + 0.5 * (ne + nw + se + sw);
+        float3 avg = total / 6.0;
+        return max(center + (center - avg) * amp, 0.0);
+    }
+
+    // CAS for biplanar (Y-texture luma-based)
+    float3 contrastAdaptiveSharpeningBiplanar(float3 center, texture2d<float> texY, sampler s,
+                                               float2 uv, float2 texSize, float strength) {
+        if (strength <= 0.0) return center;
+        float2 rcpSize = 1.0 / texSize;
+        float lC  = texY.sample(s, uv).r;
+        float lN  = texY.sample(s, uv + float2( 0.0, -1.0) * rcpSize).r;
+        float lS  = texY.sample(s, uv + float2( 0.0,  1.0) * rcpSize).r;
+        float lE  = texY.sample(s, uv + float2( 1.0,  0.0) * rcpSize).r;
+        float lW  = texY.sample(s, uv + float2(-1.0,  0.0) * rcpSize).r;
+        float lNE = texY.sample(s, uv + float2( 1.0, -1.0) * rcpSize).r;
+        float lNW = texY.sample(s, uv + float2(-1.0, -1.0) * rcpSize).r;
+        float lSE = texY.sample(s, uv + float2( 1.0,  1.0) * rcpSize).r;
+        float lSW = texY.sample(s, uv + float2(-1.0,  1.0) * rcpSize).r;
+        float crossMin = min(lC, min(min(lN, lS), min(lE, lW)));
+        float crossMax = max(lC, max(max(lN, lS), max(lE, lW)));
+        float diagMin  = min(min(lNE, lNW), min(lSE, lSW));
+        float diagMax  = max(max(lNE, lNW), max(lSE, lSW));
+        float mnV = min(crossMin, diagMin);
+        float mxV = max(crossMax, diagMax);
+        float amp = saturate(min(mnV, 1.0 - mxV) / max(mxV - mnV, 1e-5));
+        amp = sqrt(amp) * strength;
+        float avgL = (lN + lS + lE + lW) * 0.25;
+        float sharpFactor = (lC - avgL) * amp;
+        return max(center + center * sharpFactor, 0.0);
+    }
+
     vertex VertexOut videoVertexShader(
         VertexIn in [[stage_in]],
         constant VideoUniforms &uniforms [[buffer(1)]]
@@ -1138,7 +1197,8 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
                 rgb = rgb * uniforms.brightness;
                 float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
                 rgb = mix(float3(gray), rgb, uniforms.saturation);
-                // Clamp lower bound only (allow EDR values > 1.0)
+                rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
+                    in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
                 rgb = max(rgb, 0.0);
             } else {
             // SDR: apply adjustments in gamma space
@@ -1146,6 +1206,8 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
             rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
+                in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
             rgb = clamp(rgb, 0.0, 1.0);
         }
 
@@ -1189,12 +1251,16 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
             rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
+                in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
             rgb = max(rgb, 0.0);
         } else {
             rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
             rgb = rgb * uniforms.brightness;
             float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
             rgb = mix(float3(gray), rgb, uniforms.saturation);
+            rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
+                in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
             rgb = clamp(rgb, 0.0, 1.0);
         }
 

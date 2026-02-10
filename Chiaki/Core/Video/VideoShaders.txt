@@ -200,6 +200,101 @@ float4 sampleBicubicCatmullRom(texture2d<float> tex, sampler s, float2 uv, float
     return s00 + s10 + s01 + s11;
 }
 
+// MARK: - CAS (Contrast Adaptive Sharpening) (F-041, AC-160, AC-161)
+
+// AMD FidelityFX CAS-inspired adaptive sharpening.
+// Uses 3x3 neighborhood for contrast detection with BT.709 luma.
+// strength=0 bypasses entirely.
+float3 contrastAdaptiveSharpening(float3 center, texture2d<float> tex, sampler s,
+                                   float2 uv, float2 texSize, float strength) {
+    if (strength <= 0.0) return center;
+
+    float2 rcpSize = 1.0 / texSize;
+
+    // Sample 4 cardinal + 4 diagonal neighbors (9-tap total)
+    float3 n  = tex.sample(s, uv + float2( 0.0, -1.0) * rcpSize).rgb;
+    float3 so = tex.sample(s, uv + float2( 0.0,  1.0) * rcpSize).rgb;
+    float3 e  = tex.sample(s, uv + float2( 1.0,  0.0) * rcpSize).rgb;
+    float3 w  = tex.sample(s, uv + float2(-1.0,  0.0) * rcpSize).rgb;
+    float3 ne = tex.sample(s, uv + float2( 1.0, -1.0) * rcpSize).rgb;
+    float3 nw = tex.sample(s, uv + float2(-1.0, -1.0) * rcpSize).rgb;
+    float3 se = tex.sample(s, uv + float2( 1.0,  1.0) * rcpSize).rgb;
+    float3 sw = tex.sample(s, uv + float2(-1.0,  1.0) * rcpSize).rgb;
+
+    // BT.709 luma for contrast detection
+    constant float3 lumaW = float3(0.2126, 0.7152, 0.0722);
+    float lC  = dot(center, lumaW);
+    float lN  = dot(n, lumaW);
+    float lS  = dot(so, lumaW);
+    float lE  = dot(e, lumaW);
+    float lW  = dot(w, lumaW);
+    float lNE = dot(ne, lumaW);
+    float lNW = dot(nw, lumaW);
+    float lSE = dot(se, lumaW);
+    float lSW = dot(sw, lumaW);
+
+    // Soft min/max from cross (+) and X patterns
+    float crossMin = min(lC, min(min(lN, lS), min(lE, lW)));
+    float crossMax = max(lC, max(max(lN, lS), max(lE, lW)));
+    float diagMin  = min(min(lNE, lNW), min(lSE, lSW));
+    float diagMax  = max(max(lNE, lNW), max(lSE, lSW));
+
+    float mnV = min(crossMin, diagMin);
+    float mxV = max(crossMax, diagMax);
+
+    // Adaptive sharpening amplitude
+    float amp = saturate(min(mnV, 1.0 - mxV) / max(mxV - mnV, 1e-5));
+    amp = sqrt(amp) * strength;
+
+    // Weighted sum: center enhanced, neighbors dampened
+    // Cardinal weight = 1.0, Diagonal weight = 0.5 (approximate)
+    float3 total = (n + so + e + w) + 0.5 * (ne + nw + se + sw);
+    float totalWeight = 4.0 + 4.0 * 0.5; // 6.0
+    float3 avg = total / totalWeight;
+
+    // Sharpen: push center away from local average
+    float3 result = mix(center, center + (center - avg) * amp, 1.0);
+    return max(result, 0.0);
+}
+
+// CAS variant for biplanar: uses Y texture for luma-based neighbor contrast
+// but applies sharpening to the computed RGB result
+float3 contrastAdaptiveSharpeningBiplanar(float3 center, texture2d<float> texY, sampler s,
+                                           float2 uv, float2 texSize, float strength) {
+    if (strength <= 0.0) return center;
+
+    float2 rcpSize = 1.0 / texSize;
+
+    // Sample Y channel at 8 neighbors for luma contrast
+    float lC  = texY.sample(s, uv).r;
+    float lN  = texY.sample(s, uv + float2( 0.0, -1.0) * rcpSize).r;
+    float lS  = texY.sample(s, uv + float2( 0.0,  1.0) * rcpSize).r;
+    float lE  = texY.sample(s, uv + float2( 1.0,  0.0) * rcpSize).r;
+    float lW  = texY.sample(s, uv + float2(-1.0,  0.0) * rcpSize).r;
+    float lNE = texY.sample(s, uv + float2( 1.0, -1.0) * rcpSize).r;
+    float lNW = texY.sample(s, uv + float2(-1.0, -1.0) * rcpSize).r;
+    float lSE = texY.sample(s, uv + float2( 1.0,  1.0) * rcpSize).r;
+    float lSW = texY.sample(s, uv + float2(-1.0,  1.0) * rcpSize).r;
+
+    float crossMin = min(lC, min(min(lN, lS), min(lE, lW)));
+    float crossMax = max(lC, max(max(lN, lS), max(lE, lW)));
+    float diagMin  = min(min(lNE, lNW), min(lSE, lSW));
+    float diagMax  = max(max(lNE, lNW), max(lSE, lSW));
+
+    float mnV = min(crossMin, diagMin);
+    float mxV = max(crossMax, diagMax);
+
+    float amp = saturate(min(mnV, 1.0 - mxV) / max(mxV - mnV, 1e-5));
+    amp = sqrt(amp) * strength;
+
+    // Average of cardinal Y neighbors
+    float avgL = (lN + lS + lE + lW) * 0.25;
+    float sharpFactor = (lC - avgL) * amp;
+
+    // Apply sharpening to RGB proportionally
+    return max(center + center * sharpFactor, 0.0);
+}
+
 // MARK: - Vertex Shader
 
 vertex VertexOut videoVertexShader(
@@ -279,6 +374,9 @@ fragment float4 videoBiplanarFragmentShader(
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
+        // CAS: HDR path — use max(0) to preserve EDR values
+        rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
+            in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
         rgb = max(rgb, 0.0);
     } else {
         // SDR: apply adjustments in gamma space
@@ -286,6 +384,9 @@ fragment float4 videoBiplanarFragmentShader(
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
+        // CAS: SDR path
+        rgb = contrastAdaptiveSharpeningBiplanar(rgb, textureY, textureSampler,
+            in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
         rgb = clamp(rgb, 0.0, 1.0);
     }
 
@@ -330,12 +431,18 @@ fragment float4 videoBGRAFragmentShader(
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
+        // CAS: HDR path
+        rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
+            in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
         rgb = max(rgb, 0.0);
     } else {
         rgb = (rgb - 0.5) * uniforms.contrast + 0.5;
         rgb = rgb * uniforms.brightness;
         float gray = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = mix(float3(gray), rgb, uniforms.saturation);
+        // CAS: SDR path
+        rgb = contrastAdaptiveSharpening(rgb, texture, textureSampler,
+            in.texCoord, uniforms.textureSizeY, uniforms.casStrength);
         rgb = clamp(rgb, 0.0, 1.0);
     }
 
