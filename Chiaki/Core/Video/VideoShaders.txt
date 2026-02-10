@@ -150,6 +150,56 @@ float3 linearToEDR(float3 linear) {
     return linear * (10000.0 / 203.0);
 }
 
+// MARK: - Bicubic Catmull-Rom Upsampling (F-041, AC-158, AC-159)
+
+// Catmull-Rom weight calculation using Horner form
+// Returns 4 weights for positions {-1, 0, 1, 2} around center
+float4 catmullRomWeights(float t) {
+    // Catmull-Rom: a = -0.5
+    // w0 = a*t^3 - 2a*t^2 + a*t
+    // w1 = (2-a)*t^3 - (3-a)*t^2 + 1
+    // w2 = (a-2)*t^3 + (3-2a)*t^2 - a*t
+    // w3 = -a*t^3 + a*t^2
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float4 w;
+    w.x = -0.5 * t3 + t2 - 0.5 * t;
+    w.y = 1.5 * t3 - 2.5 * t2 + 1.0;
+    w.z = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    w.w = 0.5 * t3 - 0.5 * t2;
+    return w;
+}
+
+// Bicubic Catmull-Rom sampling using 4 bilinear taps (optimized from 16 point taps)
+// Only applied to Y channel in biplanar mode; BGRA applies to full RGB
+float4 sampleBicubicCatmullRom(texture2d<float> tex, sampler s, float2 uv, float2 texSize) {
+    float2 texel = uv * texSize - 0.5;
+    float2 f = fract(texel);
+    float2 pos = floor(texel) + 0.5;
+
+    float4 wx = catmullRomWeights(f.x);
+    float4 wy = catmullRomWeights(f.y);
+
+    // Combine pairs for bilinear tap optimization
+    float2 w01x = float2(wx.x + wx.y, wx.z + wx.w);
+    float2 w01y = float2(wy.x + wy.y, wy.z + wy.w);
+
+    // Offset within each bilinear tap pair
+    float2 ox = float2(wx.y / w01x.x, wx.w / w01x.y);
+    float2 oy = float2(wy.y / w01y.x, wy.w / w01y.y);
+
+    float2 tc0 = (pos - 1.0 + float2(ox.x, oy.x)) / texSize;
+    float2 tc1 = (pos + 1.0 + float2(ox.y, oy.y)) / texSize;
+
+    // 4 bilinear taps (equivalent to 4x4 point samples)
+    float4 s00 = tex.sample(s, float2(tc0.x, tc0.y)) * w01x.x * w01y.x;
+    float4 s10 = tex.sample(s, float2(tc1.x, tc0.y)) * w01x.y * w01y.x;
+    float4 s01 = tex.sample(s, float2(tc0.x, tc1.y)) * w01x.x * w01y.y;
+    float4 s11 = tex.sample(s, float2(tc1.x, tc1.y)) * w01x.y * w01y.y;
+
+    return s00 + s10 + s01 + s11;
+}
+
 // MARK: - Vertex Shader
 
 vertex VertexOut videoVertexShader(
@@ -173,8 +223,14 @@ fragment float4 videoBiplanarFragmentShader(
 ) {
     constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
-    // Sample Y and UV planes
-    float y = textureY.sample(textureSampler, in.texCoord).r;
+    // Sample Y plane (bicubic for sharper luma when upscaleFilter==1, AC-158)
+    float y;
+    if (uniforms.upscaleFilter == 1u) {
+        y = sampleBicubicCatmullRom(textureY, textureSampler, in.texCoord, uniforms.textureSizeY).r;
+    } else {
+        y = textureY.sample(textureSampler, in.texCoord).r;
+    }
+    // UV always bilinear (chroma is half-res, bilinear sufficient per AC-158)
     float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
 
     // Range handling
@@ -246,7 +302,13 @@ fragment float4 videoBGRAFragmentShader(
 ) {
     constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
-    float4 color = texture.sample(textureSampler, in.texCoord);
+    // Bicubic upsampling for BGRA when upscaleFilter==1 (AC-159)
+    float4 color;
+    if (uniforms.upscaleFilter == 1u) {
+        color = sampleBicubicCatmullRom(texture, textureSampler, in.texCoord, uniforms.textureSizeY);
+    } else {
+        color = texture.sample(textureSampler, in.texCoord);
+    }
     float3 rgb = color.rgb;
 
     // For HDR (BT.2020), apply PQ EOTF to convert to linear light

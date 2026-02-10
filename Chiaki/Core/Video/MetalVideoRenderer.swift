@@ -1034,6 +1034,37 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         return linear * (10000.0 / 203.0);
     }
 
+    // Bicubic Catmull-Rom upsampling (F-041, AC-158, AC-159)
+    float4 catmullRomWeights(float t) {
+        float t2 = t * t;
+        float t3 = t2 * t;
+        float4 w;
+        w.x = -0.5 * t3 + t2 - 0.5 * t;
+        w.y = 1.5 * t3 - 2.5 * t2 + 1.0;
+        w.z = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+        w.w = 0.5 * t3 - 0.5 * t2;
+        return w;
+    }
+
+    float4 sampleBicubicCatmullRom(texture2d<float> tex, sampler s, float2 uv, float2 texSize) {
+        float2 texel = uv * texSize - 0.5;
+        float2 f = fract(texel);
+        float2 pos = floor(texel) + 0.5;
+        float4 wx = catmullRomWeights(f.x);
+        float4 wy = catmullRomWeights(f.y);
+        float2 w01x = float2(wx.x + wx.y, wx.z + wx.w);
+        float2 w01y = float2(wy.x + wy.y, wy.z + wy.w);
+        float2 ox = float2(wx.y / w01x.x, wx.w / w01x.y);
+        float2 oy = float2(wy.y / w01y.x, wy.w / w01y.y);
+        float2 tc0 = (pos - 1.0 + float2(ox.x, oy.x)) / texSize;
+        float2 tc1 = (pos + 1.0 + float2(ox.y, oy.y)) / texSize;
+        float4 s00 = tex.sample(s, float2(tc0.x, tc0.y)) * w01x.x * w01y.x;
+        float4 s10 = tex.sample(s, float2(tc1.x, tc0.y)) * w01x.y * w01y.x;
+        float4 s01 = tex.sample(s, float2(tc0.x, tc1.y)) * w01x.x * w01y.y;
+        float4 s11 = tex.sample(s, float2(tc1.x, tc1.y)) * w01x.y * w01y.y;
+        return s00 + s10 + s01 + s11;
+    }
+
     vertex VertexOut videoVertexShader(
         VertexIn in [[stage_in]],
         constant VideoUniforms &uniforms [[buffer(1)]]
@@ -1052,7 +1083,12 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     ) {
         constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
-        float y = textureY.sample(textureSampler, in.texCoord).r;
+        float y;
+        if (uniforms.upscaleFilter == 1u) {
+            y = sampleBicubicCatmullRom(textureY, textureSampler, in.texCoord, uniforms.textureSizeY).r;
+        } else {
+            y = textureY.sample(textureSampler, in.texCoord).r;
+        }
         float2 uv = textureUV.sample(textureSampler, in.texCoord).rg;
 
         if (uniforms.colorRange == 0u) {
@@ -1123,7 +1159,12 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     ) {
         constexpr sampler textureSampler(mag_filter::linear, min_filter::linear, address::clamp_to_edge);
 
-        float4 color = texture.sample(textureSampler, in.texCoord);
+        float4 color;
+        if (uniforms.upscaleFilter == 1u) {
+            color = sampleBicubicCatmullRom(texture, textureSampler, in.texCoord, uniforms.textureSizeY);
+        } else {
+            color = texture.sample(textureSampler, in.texCoord);
+        }
         float3 rgb = color.rgb;
 
         // For HDR (BT.2020), apply PQ EOTF to convert to linear light
