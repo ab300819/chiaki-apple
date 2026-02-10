@@ -49,6 +49,12 @@ struct StreamingOverlay: View {
                     PerformanceStatsItem(stats: stats)
                 }
 
+                // Render pipeline diagnostics
+                // [satisfies] AC-166
+                if stats.renderTimeMs > 0 {
+                    RenderDiagnosticsItem(stats: stats)
+                }
+
                 #if os(iOS)
                 if pipManager.isPiPSupported {
                     Button(action: {
@@ -261,6 +267,53 @@ private struct PerformanceStatsItem: View {
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(.primary)
                 Text(String(format: "P95:%.0fms P99:%.0fms", stats.p95LatencyMs, stats.p99LatencyMs))
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            #endif
+        }
+        .padding(.leading, 8)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.white.opacity(0.1))
+                .frame(width: 1)
+                .padding(.vertical, 4)
+        }
+    }
+}
+
+// MARK: - Render Diagnostics Item
+
+/// Displays Metal filter pipeline diagnostics
+/// @satisfies AC-166
+private struct RenderDiagnosticsItem: View {
+    let stats: StreamStatsManager
+
+    var body: some View {
+        HStack(spacing: 8) {
+            #if os(tvOS)
+            Image(systemName: "paintbrush")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(stats.currentFilter) | R:\(String(format: "%.1f", stats.renderTimeMs))ms")
+                    .font(.system(size: 16, design: .monospaced))
+                    .foregroundStyle(.primary)
+                Text("Drop:\(stats.rendererDropCount) Rep:\(stats.frameRepeatCount) PΔ:\(String(format: "%.1f", stats.presentInterval))ms")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            #else
+            Image(systemName: "paintbrush")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(stats.currentFilter) | R:\(String(format: "%.1f", stats.renderTimeMs))ms")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.primary)
+                Text("Drop:\(stats.rendererDropCount) Rep:\(stats.frameRepeatCount) PΔ:\(String(format: "%.1f", stats.presentInterval))ms")
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(.secondary)
             }

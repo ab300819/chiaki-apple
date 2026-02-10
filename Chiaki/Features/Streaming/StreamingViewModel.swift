@@ -282,13 +282,16 @@ final class StreamingViewModel {
         renderer.onFrameSubmitted = { [weak self] pixelBuffer in
             self?.pipManager.enqueue(pixelBuffer)
         }
-        
+
         // [satisfies] AC-085
         renderer.onRenderTimeRecorded = { [weak self] durationMs in
             Task { @MainActor [weak self] in
                 self?.statsManager.recordRenderTime(durationMs)
             }
         }
+
+        // [satisfies] AC-166 — wire renderer for diagnostics pull
+        statsManager.videoRenderer = renderer
     }
 
     // MARK: - Connection

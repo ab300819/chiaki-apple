@@ -229,6 +229,20 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     /// Dropped frame counter
     private(set) var droppedFrameCount: UInt64 = 0
 
+    /// Repeated frame counter (render called with same frame as previous)
+    /// @satisfies AC-166
+    private(set) var frameRepeatCount: UInt64 = 0
+
+    /// Present interval (ms) — time between consecutive render completions
+    /// @satisfies AC-166
+    private(set) var presentInterval: Double = 0
+
+    /// Timestamp of last render completion for present interval calculation
+    private var lastRenderTimestamp: Double = 0
+
+    /// Frame count at last render — used to detect repeats
+    private var lastRenderedFrameCount: UInt64 = 0
+
     /// Whether a frame has been submitted and is ready for rendering
     /// [satisfies] AC-086
     var hasFrame: Bool {
@@ -698,6 +712,7 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         let textureY = currentTextureY
         let textureUV = currentTextureUV
         let textureBGRA = currentTextureBGRA
+        let currentFrame = frameCount
         frameLock.unlock()
 
         guard hasFrame else {
@@ -706,14 +721,27 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             return
         }
 
+        // Track frame repeats (render called with same frame as previous)
+        // @satisfies AC-166
+        if currentFrame == lastRenderedFrameCount && currentFrame > 0 {
+            frameRepeatCount += 1
+        }
+        lastRenderedFrameCount = currentFrame
+
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
         commandBuffer.label = "Video Render Command Buffer"
 
-        // [satisfies] AC-085
+        // [satisfies] AC-085, AC-166
         let renderStartTime = CACurrentMediaTime()
         commandBuffer.addCompletedHandler { [weak self] _ in
             let durationMs = (CACurrentMediaTime() - renderStartTime) * 1000.0
             self?.onRenderTimeRecorded?(durationMs)
+
+            // Present interval tracking
+            if let self, self.lastRenderTimestamp > 0 {
+                self.presentInterval = (CACurrentMediaTime() - self.lastRenderTimestamp) * 1000.0
+            }
+            self?.lastRenderTimestamp = CACurrentMediaTime()
         }
 
         // Update uniforms
@@ -871,6 +899,12 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     /// Current filter configuration
     private(set) var filterConfig: VideoFilterConfig = .default
 
+    /// Human-readable filter name for diagnostics
+    /// @satisfies AC-166
+    var filterName: String {
+        filterConfig.upscaleFilter == 1 ? "Bicubic" : "Bilinear"
+    }
+
     /// Apply a video filter configuration (bicubic, CAS, deband parameters)
     /// @requirement F-041 - Metal 原生高质量视频滤波管线
     func setFilterConfig(_ config: VideoFilterConfig) {
@@ -892,6 +926,10 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         frameLock.lock()
         frameCount = 0
         droppedFrameCount = 0
+        frameRepeatCount = 0
+        presentInterval = 0
+        lastRenderTimestamp = 0
+        lastRenderedFrameCount = 0
         frameLock.unlock()
     }
 

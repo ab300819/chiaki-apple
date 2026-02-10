@@ -38,18 +38,28 @@ final class StreamStatsManager {
     var p95LatencyMs: Double = 0
     var p99LatencyMs: Double = 0
     
+    // MARK: - Render Pipeline Diagnostics
+    // @requirement F-041
+    // @satisfies AC-166
+    var rendererDropCount: UInt64 = 0
+    var frameRepeatCount: UInt64 = 0
+    var presentInterval: Double = 0
+    var currentFilter: String = "Bicubic"
+
     // MARK: - Private Storage
-    
+
     private var latencySamples: [Double] = []
     private let maxSampleSize = 100
     
     // MARK: - Dependencies
-    
+
     private let statistics: StreamStatistics
     private let session: ChiakiSessionWrapper?
-    
+    /// Weak reference to the video renderer for pulling diagnostics
+    weak var videoRenderer: (any VideoRenderer)?
+
     // MARK: - Initialization
-    
+
     init(statistics: StreamStatistics, session: ChiakiSessionWrapper? = nil) {
         self.statistics = statistics
         self.session = session
@@ -90,6 +100,14 @@ final class StreamStatsManager {
             logInfo("StreamStatsManager: isHDR changed from \(isHDR) to \(newIsHDR)")
         }
         isHDR = newIsHDR
+
+        // Render pipeline diagnostics [satisfies] AC-166
+        if let renderer = videoRenderer as? MetalVideoRenderer {
+            rendererDropCount = renderer.droppedFrameCount
+            frameRepeatCount = renderer.frameRepeatCount
+            presentInterval = renderer.presentInterval
+            currentFilter = renderer.filterName
+        }
     }
     
     // MARK: - Performance Recording
