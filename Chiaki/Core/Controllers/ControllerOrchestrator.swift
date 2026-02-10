@@ -57,12 +57,15 @@ final class ControllerOrchestrator {
     #if os(macOS)
     /// Direct HID provider for DualSense PS button + rumble (macOS only)
     private let hidProvider = DualSenseHIDProvider.shared
+    /// Direct HID provider for DualShock 4 PS button + rumble (macOS only)
+    private let ds4HIDProvider = DualShock4HIDProvider.shared
     #endif
 
     /// The preferred feedback output (HID > GC)
     private var feedbackProvider: ControllerFeedbackOutput? {
         #if os(macOS)
         if hidProvider.isConnected { return hidProvider }
+        if ds4HIDProvider.isConnected { return ds4HIDProvider }
         #endif
         if gcProvider.isConnected { return gcProvider }
         return nil
@@ -96,6 +99,7 @@ final class ControllerOrchestrator {
         scanConnectedControllers()
         #if os(macOS)
         setupHIDProvider()
+        setupDS4HIDProvider()
         #endif
         Logger.controller.info("ControllerOrchestrator initialized")
     }
@@ -119,6 +123,14 @@ final class ControllerOrchestrator {
             self?.handleHIDInput(hidInput)
         }
         Logger.controller.info("DualSense HID provider configured")
+    }
+
+    private func setupDS4HIDProvider() {
+        ds4HIDProvider.start()
+        ds4HIDProvider.onInputChanged = { [weak self] hidInput in
+            self?.handleHIDInput(hidInput)
+        }
+        Logger.controller.info("DualShock 4 HID provider configured")
     }
     #endif
 
