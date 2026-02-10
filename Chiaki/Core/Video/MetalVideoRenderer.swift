@@ -30,12 +30,18 @@ struct VideoUniforms {
     var tonemapMode: UInt32  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
     var edrIntensity: Float        // AC-098: EDR Output intensity multiplier (default 1.0)
     var gamutMappingEnabled: UInt32 // AC-099: 0 = Disabled, 1 = Enabled (default)
-    var _padding1: Float = 0.0      // Ensure 16-byte alignment (Total: 128 bytes)
+    // F-041: Video filter pipeline parameters
+    var upscaleFilter: UInt32      // AC-159: 0 = bilinear, 1 = bicubic Catmull-Rom
+    var casStrength: Float         // AC-161: CAS sharpening strength (0.0 - 1.0)
+    var debandEnabled: UInt32      // AC-163: 0 = off, 1 = on
+    var debandThreshold: Float     // AC-163: deband threshold
+    var debandGrain: Float         // AC-163: dither grain intensity
+    var _padding1: Float = 0.0     // Ensure 16-byte alignment (Total: 144 bytes)
     var _padding2: Float = 0.0
-    var _padding3: Float = 0.0
 
     static var `default`: VideoUniforms {
-        VideoUniforms(
+        let filterDefaults = VideoFilterConfig.default
+        return VideoUniforms(
             transform: matrix_identity_float4x4,
             textureSizeY: simd_float2(1920, 1080),
             textureSizeUV: simd_float2(960, 540),
@@ -48,9 +54,13 @@ struct VideoUniforms {
             tonemapMode: 0,
             edrIntensity: 1.0,
             gamutMappingEnabled: 1,
+            upscaleFilter: filterDefaults.upscaleFilter,
+            casStrength: filterDefaults.casStrength,
+            debandEnabled: filterDefaults.debandEnabled,
+            debandThreshold: filterDefaults.debandThreshold,
+            debandGrain: filterDefaults.debandGrain,
             _padding1: 0.0,
-            _padding2: 0.0,
-            _padding3: 0.0
+            _padding2: 0.0
         )
     }
 }
@@ -856,6 +866,25 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         uniforms.colorSpace = min(value, 2)
     }
 
+    // MARK: - Filter Configuration
+
+    /// Current filter configuration
+    private(set) var filterConfig: VideoFilterConfig = .default
+
+    /// Apply a video filter configuration (bicubic, CAS, deband parameters)
+    /// @requirement F-041 - Metal 原生高质量视频滤波管线
+    func setFilterConfig(_ config: VideoFilterConfig) {
+        frameLock.lock()
+        filterConfig = config
+        uniforms.upscaleFilter = config.upscaleFilter
+        uniforms.casStrength = config.casStrength
+        uniforms.debandEnabled = config.debandEnabled
+        uniforms.debandThreshold = config.debandThreshold
+        uniforms.debandGrain = config.debandGrain
+        frameLock.unlock()
+        triggerRedraw()
+    }
+
     // MARK: - Statistics
 
     /// Reset frame statistics
@@ -903,9 +932,14 @@ final class MetalVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         uint tonemapMode;  // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
         float edrIntensity;        // AC-098: EDR Output intensity multiplier
         uint gamutMappingEnabled;  // AC-099: 0 = Disabled, 1 = Enabled
-        float _padding1;           // Align struct size to 16 bytes
+        // F-041: Video filter pipeline parameters
+        uint upscaleFilter;        // AC-159: 0 = bilinear, 1 = bicubic
+        float casStrength;         // AC-161: CAS strength (0.0 - 1.0)
+        uint debandEnabled;        // AC-163: 0 = off, 1 = on
+        float debandThreshold;     // AC-163: deband threshold
+        float debandGrain;         // AC-163: dither grain intensity
+        float _padding1;           // Align struct size to 16 bytes (144 bytes)
         float _padding2;
-        float _padding3;
     };
 
     // Color conversion matrices (column-major)

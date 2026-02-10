@@ -35,9 +35,14 @@ struct VideoUniforms {
     uint tonemapMode;        // AC-084: 0 = None (EDR), 1 = ACES Filmic (SDR)
     float edrIntensity;      // AC-098: EDR Output intensity multiplier
     uint gamutMappingEnabled; // AC-099: 0 = Disabled, 1 = Enabled
-    float _padding1;         // Align struct size to 16 bytes (Total: 128 bytes)
+    // F-041: Video filter pipeline parameters
+    uint upscaleFilter;      // AC-159: 0 = bilinear, 1 = bicubic Catmull-Rom
+    float casStrength;       // AC-161: CAS sharpening strength (0.0 - 1.0)
+    uint debandEnabled;      // AC-163: 0 = off, 1 = on
+    float debandThreshold;   // AC-163: deband threshold
+    float debandGrain;       // AC-163: dither grain intensity
+    float _padding1;         // Align struct size to 16 bytes (Total: 144 bytes)
     float _padding2;
-    float _padding3;
 };
 
 // MARK: - Color Space Conversion Constants
