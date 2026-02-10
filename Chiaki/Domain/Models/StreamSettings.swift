@@ -31,6 +31,7 @@ struct StreamSettings: Codable, Equatable {
 
     var displayMode: DisplayMode = .normal
     var zoomFactor: Double = 1.0
+    var videoPreset: VideoPreset = .default
 
     // Controller settings
     var stickDeadzone: Double = 0.1 // 0.0 - 0.3
@@ -46,6 +47,7 @@ struct StreamSettings: Codable, Equatable {
         case volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
         case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled, showControllerHints, vrrEnabled
+        case videoPreset
     }
 
     /// Video display mode for streaming
@@ -94,6 +96,16 @@ struct StreamSettings: Codable, Equatable {
             case .default: return "sparkles"
             case .highQuality: return "star.fill"
             case .performance: return "hare.fill"
+            }
+        }
+
+        /// Maps this preset to the corresponding Metal filter configuration.
+        /// @satisfies AC-159, AC-161, AC-163
+        var filterConfig: VideoFilterConfig {
+            switch self {
+            case .default: return .default
+            case .highQuality: return .highQuality
+            case .performance: return .performance
             }
         }
     }

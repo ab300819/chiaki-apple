@@ -68,8 +68,17 @@ protocol VideoRenderer: AnyObject, Sendable {
     /// Current display EDR headroom (1.0+)
     var edrHeadroom: Float { get set }
     
+    // MARK: - Video Filter Pipeline
+
+    /// Current filter configuration
+    var filterConfig: VideoFilterConfig { get }
+
+    /// Apply a video filter configuration (upscale, CAS, deband)
+    /// @satisfies AC-159, AC-161, AC-163
+    func setFilterConfig(_ config: VideoFilterConfig)
+
     // MARK: - Color Adjustments
-    
+
     /// Set brightness (0.0 - 2.0, default 1.0)
     func setBrightness(_ value: Float)
     

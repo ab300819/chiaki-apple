@@ -570,9 +570,10 @@ final class StreamingViewModel {
     }
 
     /// Set video rendering preset
+    /// @satisfies AC-159, AC-161, AC-163
     func setVideoPreset(_ preset: StreamSettings.VideoPreset) {
         videoPreset = preset
-        // TODO: Apply preset to video renderer when libplacebo integration is added
+        videoRenderer?.setFilterConfig(preset.filterConfig)
         Logger.session.info("Video preset changed to: \(preset.rawValue)")
     }
 
@@ -595,7 +596,8 @@ final class StreamingViewModel {
         videoRenderer?.zoomFactor = Float(zoomFactor)
         videoRenderer?.setColorSpace(settings.colorSpace.rawValue)
         videoRenderer?.vrrEnabled = settings.vrrEnabled
-        
+        videoRenderer?.setFilterConfig(settings.videoPreset.filterConfig)
+
         let profile = lastIsRemote ? settings.remoteProfile : settings.localProfile
         videoRenderer?.updateRenderingPolicy(fps: profile.frameRate.rawValue)
     }
