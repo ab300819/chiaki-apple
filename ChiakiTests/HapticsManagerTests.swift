@@ -121,7 +121,7 @@ struct HapticsManagerTests {
 // MARK: - Integration Tests
 
 /**
- * HapticsManager Integration Tests with ControllerManager
+ * HapticsManager Integration Tests with ControllerOrchestrator
  * @verifies AC-063 - Haptics 引擎统一
  */
 @Suite("Haptics Integration Tests")
@@ -134,11 +134,11 @@ struct HapticsIntegrationTests {
      * @verifies AC-063 - Haptics 引擎统一
      * @testcase IT-008.1
      */
-    @Test("Verify ControllerManager delegates haptics to HapticsManager")
-    func testControllerManagerDelegatesHaptics() {
-        let controllerManager = ControllerManager.shared
+    @Test("Verify ControllerOrchestrator delegates haptics to HapticsManager")
+    func testControllerOrchestratorDelegatesHaptics() {
+        let controllerManager = ControllerOrchestrator.shared
 
-        // Verify ControllerManager uses HapticsManager.shared
+        // Verify ControllerOrchestrator uses HapticsManager.shared
         // Calling these methods should not crash and should delegate properly
         controllerManager.startHaptics()
         controllerManager.stopHaptics()
@@ -155,7 +155,7 @@ struct HapticsIntegrationTests {
      */
     @Test("Verify startHaptics method exists and works")
     func testStartHapticsOnControllerConnect() {
-        let controllerManager = ControllerManager.shared
+        let controllerManager = ControllerOrchestrator.shared
 
         // Start haptics should work without crash
         controllerManager.startHaptics()
@@ -171,7 +171,7 @@ struct HapticsIntegrationTests {
      */
     @Test("Verify stopHaptics method exists and works")
     func testStopHapticsOnDisconnect() {
-        let controllerManager = ControllerManager.shared
+        let controllerManager = ControllerOrchestrator.shared
 
         // Stop haptics should work without crash
         controllerManager.stopHaptics()
@@ -186,7 +186,7 @@ struct HapticsIntegrationTests {
      */
     @Test("Verify applyRumble delegates to HapticsManager")
     func testApplyRumbleDelegation() {
-        let controllerManager = ControllerManager.shared
+        let controllerManager = ControllerOrchestrator.shared
 
         // Apply rumble with various values should not crash
         controllerManager.applyRumble(left: 0, right: 0)

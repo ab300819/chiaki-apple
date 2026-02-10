@@ -14,7 +14,7 @@ import SwiftUI
 /// @requirement F-027 - UI 层 MVVM 合规重构
 struct ControllerSettingsView: View {
     @Environment(SettingsStore.self) var store
-    @Environment(ControllerManager.self) var controllerManager
+    @Environment(ControllerOrchestrator.self) var controllerManager
 
     var body: some View {
         @Bindable var store = store
@@ -160,6 +160,6 @@ struct ControllerSettingsView: View {
     NavigationStack {
         ControllerSettingsView()
             .environment(SettingsStore())
-            .environment(ControllerManager.preview)
+            .environment(ControllerOrchestrator.preview)
     }
 }

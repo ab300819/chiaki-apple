@@ -225,7 +225,7 @@ final class StreamingViewModel {
     /// @requirement F-004 - 控制器支持
     /// @satisfies BUG-012 - 物理手柄输入未接入串流管线
     private func setupControllerInput() {
-        ControllerManager.shared.onInputChanged = { [weak self] input in
+        ControllerOrchestrator.shared.onInputChanged = { [weak self] input in
             self?.sendControllerInput(input)
         }
         Logger.controller.info("Physical controller input connected to streaming session")
@@ -233,7 +233,7 @@ final class StreamingViewModel {
 
     /// Disconnect physical controller input from streaming session
     private func teardownControllerInput() {
-        ControllerManager.shared.onInputChanged = nil
+        ControllerOrchestrator.shared.onInputChanged = nil
         Logger.controller.info("Physical controller input disconnected from streaming session")
     }
 
@@ -654,7 +654,7 @@ final class StreamingViewModel {
     /// Forward rumble feedback to physical controller
     /// @satisfies BUG-012 - 物理手柄输入未接入串流管线
     private func handleRumble(left: UInt8, right: UInt8) {
-        ControllerManager.shared.applyRumble(left: left, right: right)
+        ControllerOrchestrator.shared.applyRumble(left: left, right: right)
     }
 
     // MARK: - Statistics Update

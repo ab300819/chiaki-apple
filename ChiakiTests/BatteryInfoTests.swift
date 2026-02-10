@@ -21,16 +21,16 @@ struct BatteryInfoTests {
      */
     @Test("BatteryState enum contains all required cases")
     func testBatteryStateEnumCases() {
-        let states: [ControllerManager.BatteryInfo.BatteryState] = [
+        let states: [ControllerOrchestrator.BatteryInfo.BatteryState] = [
             .unknown, .discharging, .charging, .full
         ]
         #expect(states.count == 4)
 
         // Verify raw values match GCDeviceBattery.State
-        #expect(ControllerManager.BatteryInfo.BatteryState.unknown.rawValue == -1)
-        #expect(ControllerManager.BatteryInfo.BatteryState.discharging.rawValue == 0)
-        #expect(ControllerManager.BatteryInfo.BatteryState.charging.rawValue == 1)
-        #expect(ControllerManager.BatteryInfo.BatteryState.full.rawValue == 2)
+        #expect(ControllerOrchestrator.BatteryInfo.BatteryState.unknown.rawValue == -1)
+        #expect(ControllerOrchestrator.BatteryInfo.BatteryState.discharging.rawValue == 0)
+        #expect(ControllerOrchestrator.BatteryInfo.BatteryState.charging.rawValue == 1)
+        #expect(ControllerOrchestrator.BatteryInfo.BatteryState.full.rawValue == 2)
     }
 
     // MARK: - UT-016.2: isLow Threshold
@@ -41,9 +41,9 @@ struct BatteryInfoTests {
      */
     @Test("isLow threshold is 20%")
     func testIsLowThreshold() {
-        let lowBattery = ControllerManager.BatteryInfo(level: 0.15, state: .discharging)
-        let normalBattery = ControllerManager.BatteryInfo(level: 0.25, state: .discharging)
-        let exactThreshold = ControllerManager.BatteryInfo(level: 0.2, state: .discharging)
+        let lowBattery = ControllerOrchestrator.BatteryInfo(level: 0.15, state: .discharging)
+        let normalBattery = ControllerOrchestrator.BatteryInfo(level: 0.25, state: .discharging)
+        let exactThreshold = ControllerOrchestrator.BatteryInfo(level: 0.2, state: .discharging)
 
         #expect(lowBattery.isLow == true)
         #expect(normalBattery.isLow == false)
@@ -52,9 +52,9 @@ struct BatteryInfoTests {
 
     @Test("isLow at boundary values")
     func testIsLowBoundaryValues() {
-        let justBelow = ControllerManager.BatteryInfo(level: 0.199, state: .discharging)
-        let justAbove = ControllerManager.BatteryInfo(level: 0.201, state: .discharging)
-        let zero = ControllerManager.BatteryInfo(level: 0.0, state: .discharging)
+        let justBelow = ControllerOrchestrator.BatteryInfo(level: 0.199, state: .discharging)
+        let justAbove = ControllerOrchestrator.BatteryInfo(level: 0.201, state: .discharging)
+        let zero = ControllerOrchestrator.BatteryInfo(level: 0.0, state: .discharging)
 
         #expect(justBelow.isLow == true)
         #expect(justAbove.isLow == false)
@@ -69,10 +69,10 @@ struct BatteryInfoTests {
      */
     @Test("Icon names for different battery levels")
     func testIconNameForLevels() {
-        let full = ControllerManager.BatteryInfo(level: 0.9, state: .discharging)
-        let high = ControllerManager.BatteryInfo(level: 0.6, state: .discharging)
-        let medium = ControllerManager.BatteryInfo(level: 0.4, state: .discharging)
-        let low = ControllerManager.BatteryInfo(level: 0.1, state: .discharging)
+        let full = ControllerOrchestrator.BatteryInfo(level: 0.9, state: .discharging)
+        let high = ControllerOrchestrator.BatteryInfo(level: 0.6, state: .discharging)
+        let medium = ControllerOrchestrator.BatteryInfo(level: 0.4, state: .discharging)
+        let low = ControllerOrchestrator.BatteryInfo(level: 0.1, state: .discharging)
 
         #expect(full.iconName == "battery.100")
         #expect(high.iconName == "battery.75")
@@ -82,9 +82,9 @@ struct BatteryInfoTests {
 
     @Test("Icon names at boundary levels")
     func testIconNameAtBoundaries() {
-        let at75 = ControllerManager.BatteryInfo(level: 0.75, state: .discharging)
-        let at50 = ControllerManager.BatteryInfo(level: 0.50, state: .discharging)
-        let at25 = ControllerManager.BatteryInfo(level: 0.25, state: .discharging)
+        let at75 = ControllerOrchestrator.BatteryInfo(level: 0.75, state: .discharging)
+        let at50 = ControllerOrchestrator.BatteryInfo(level: 0.50, state: .discharging)
+        let at25 = ControllerOrchestrator.BatteryInfo(level: 0.25, state: .discharging)
 
         #expect(at75.iconName == "battery.100")
         #expect(at50.iconName == "battery.75")
@@ -99,14 +99,14 @@ struct BatteryInfoTests {
      */
     @Test("Charging state shows bolt icon")
     func testIconNameForCharging() {
-        let charging = ControllerManager.BatteryInfo(level: 0.5, state: .charging)
+        let charging = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .charging)
         #expect(charging.iconName == "battery.100.bolt")
     }
 
     @Test("Charging icon regardless of level")
     func testChargingIconAtDifferentLevels() {
-        let chargingLow = ControllerManager.BatteryInfo(level: 0.1, state: .charging)
-        let chargingHigh = ControllerManager.BatteryInfo(level: 0.9, state: .charging)
+        let chargingLow = ControllerOrchestrator.BatteryInfo(level: 0.1, state: .charging)
+        let chargingHigh = ControllerOrchestrator.BatteryInfo(level: 0.9, state: .charging)
 
         #expect(chargingLow.iconName == "battery.100.bolt")
         #expect(chargingHigh.iconName == "battery.100.bolt")
@@ -114,7 +114,7 @@ struct BatteryInfoTests {
 
     @Test("Full state shows 100% icon")
     func testFullStateIcon() {
-        let full = ControllerManager.BatteryInfo(level: 1.0, state: .full)
+        let full = ControllerOrchestrator.BatteryInfo(level: 1.0, state: .full)
         #expect(full.iconName == "battery.100")
     }
 
@@ -126,10 +126,10 @@ struct BatteryInfoTests {
      */
     @Test("Colors for different battery states")
     func testColorForStates() {
-        let charging = ControllerManager.BatteryInfo(level: 0.5, state: .charging)
-        let full = ControllerManager.BatteryInfo(level: 1.0, state: .full)
-        let low = ControllerManager.BatteryInfo(level: 0.1, state: .discharging)
-        let normal = ControllerManager.BatteryInfo(level: 0.5, state: .discharging)
+        let charging = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .charging)
+        let full = ControllerOrchestrator.BatteryInfo(level: 1.0, state: .full)
+        let low = ControllerOrchestrator.BatteryInfo(level: 0.1, state: .discharging)
+        let normal = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .discharging)
 
         #expect(charging.color == .green)
         #expect(full.color == .green)
@@ -139,7 +139,7 @@ struct BatteryInfoTests {
 
     @Test("Low battery color takes precedence over discharging")
     func testLowBatteryColorPrecedence() {
-        let lowDischarging = ControllerManager.BatteryInfo(level: 0.15, state: .discharging)
+        let lowDischarging = ControllerOrchestrator.BatteryInfo(level: 0.15, state: .discharging)
         #expect(lowDischarging.color == .red)
         #expect(lowDischarging.isLow == true)
     }
@@ -152,10 +152,10 @@ struct BatteryInfoTests {
      */
     @Test("BatteryInfo Equatable conformance")
     func testBatteryInfoEquatable() {
-        let info1 = ControllerManager.BatteryInfo(level: 0.5, state: .charging)
-        let info2 = ControllerManager.BatteryInfo(level: 0.5, state: .charging)
-        let info3 = ControllerManager.BatteryInfo(level: 0.6, state: .charging)
-        let info4 = ControllerManager.BatteryInfo(level: 0.5, state: .discharging)
+        let info1 = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .charging)
+        let info2 = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .charging)
+        let info3 = ControllerOrchestrator.BatteryInfo(level: 0.6, state: .charging)
+        let info4 = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .discharging)
 
         #expect(info1 == info2)
         #expect(info1 != info3)
@@ -166,9 +166,9 @@ struct BatteryInfoTests {
 
     @Test("Percentage string format")
     func testPercentageString() {
-        let battery75 = ControllerManager.BatteryInfo(level: 0.75, state: .discharging)
-        let battery100 = ControllerManager.BatteryInfo(level: 1.0, state: .full)
-        let battery0 = ControllerManager.BatteryInfo(level: 0.0, state: .discharging)
+        let battery75 = ControllerOrchestrator.BatteryInfo(level: 0.75, state: .discharging)
+        let battery100 = ControllerOrchestrator.BatteryInfo(level: 1.0, state: .full)
+        let battery0 = ControllerOrchestrator.BatteryInfo(level: 0.0, state: .discharging)
 
         #expect(battery75.percentageString == "75%")
         #expect(battery100.percentageString == "100%")
@@ -177,7 +177,7 @@ struct BatteryInfoTests {
 
     @Test("Unknown state handling")
     func testUnknownState() {
-        let unknown = ControllerManager.BatteryInfo(level: 0.5, state: .unknown)
+        let unknown = ControllerOrchestrator.BatteryInfo(level: 0.5, state: .unknown)
 
         // Unknown state should use level-based icon
         #expect(unknown.iconName == "battery.75")

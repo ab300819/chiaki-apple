@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ControllerHintView: View {
-    let controllerType: ControllerManager.ControllerHintType
+    let controllerType: ControllerOrchestrator.ControllerHintType
 
     private var backButton: String {
         switch controllerType {
@@ -75,4 +75,4 @@ private struct HintItem: View {
     }
 }
 
-// Note: Uses ControllerManager.ControllerHintType from Core/Controllers/ControllerManager.swift
+// Note: Uses ControllerOrchestrator.ControllerHintType from Core/Controllers/ControllerOrchestrator.swift

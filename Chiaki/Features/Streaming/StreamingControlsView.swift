@@ -49,7 +49,7 @@ struct StreamingControlsView: View {
                 // Controller battery indicator
                 // @satisfies AC-064 - 控制器电池电量显示
                 ControllerBatteryIndicator(
-                    batteryInfo: ControllerManager.shared.batteryInfo,
+                    batteryInfo: ControllerOrchestrator.shared.batteryInfo,
                     compact: true
                 )
 

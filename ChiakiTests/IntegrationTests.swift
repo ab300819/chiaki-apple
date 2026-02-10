@@ -201,9 +201,9 @@ struct AudioPlayerBridgeTests {
 
 struct ControllerInfoTests {
 
-    @Test func testControllerManagerInitialization() {
-        // ControllerManager is a singleton
-        let manager = ControllerManager.shared
+    @Test func testControllerOrchestratorInitialization() {
+        // ControllerOrchestrator is a singleton
+        let manager = ControllerOrchestrator.shared
         #expect(manager != nil)
     }
 

@@ -12,7 +12,7 @@ import SwiftUI
 /// Battery indicator view for connected game controllers
 struct ControllerBatteryIndicator: View {
     /// Battery information to display
-    let batteryInfo: ControllerManager.BatteryInfo?
+    let batteryInfo: ControllerOrchestrator.BatteryInfo?
 
     /// Whether to show the percentage text
     var showPercentage: Bool = true
@@ -40,7 +40,7 @@ struct ControllerBatteryIndicator: View {
     }
 
     /// Generate accessibility label for the battery info
-    private func accessibilityLabel(for battery: ControllerManager.BatteryInfo) -> String {
+    private func accessibilityLabel(for battery: ControllerOrchestrator.BatteryInfo) -> String {
         let percentage = Int(battery.level * 100)
         let stateDescription: String
 
