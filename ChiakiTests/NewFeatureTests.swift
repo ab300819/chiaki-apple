@@ -278,7 +278,7 @@ struct NavigationManagerTests {
     @Test func testInitialState() {
         let manager = NavigationManager()
 
-        #expect(manager.sidebarSelection == .hosts)
+        #expect(manager.selectedTab == .hosts)
         #expect(manager.showAddHostSheet == false)
         #expect(manager.isStreaming == false)
         #expect(manager.isAutoConnecting == false)
@@ -290,32 +290,32 @@ struct NavigationManagerTests {
     // UT-009.2: Test openAddHost
     @Test func testOpenAddHost() {
         let manager = NavigationManager()
-        manager.sidebarSelection = .settings  // Start on settings
+        manager.selectedTab = .settings  // Start on settings
 
         manager.openAddHost()
 
-        #expect(manager.sidebarSelection == .hosts, "Should navigate to hosts")
+        #expect(manager.selectedTab == .hosts, "Should navigate to hosts")
         #expect(manager.showAddHostSheet == true, "Should show add host sheet")
     }
 
     // UT-009.3: Test navigateToSettings
     @Test func testNavigateToSettings() {
         let manager = NavigationManager()
-        #expect(manager.sidebarSelection == .hosts)
+        #expect(manager.selectedTab == .hosts)
 
         manager.navigateToSettings()
 
-        #expect(manager.sidebarSelection == .settings)
+        #expect(manager.selectedTab == .settings)
     }
 
     // UT-009.4: Test refreshDiscovery
     @Test func testRefreshDiscovery() {
         let manager = NavigationManager()
-        manager.sidebarSelection = .settings
+        manager.selectedTab = .settings
 
         manager.refreshDiscovery()
 
-        #expect(manager.sidebarSelection == .hosts, "Should navigate to hosts")
+        #expect(manager.selectedTab == .hosts, "Should navigate to hosts")
         #expect(manager.refreshDiscoveryTrigger == true)
     }
 
