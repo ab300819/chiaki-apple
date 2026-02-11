@@ -35,9 +35,9 @@
 #include <chiaki/remote/holepunch.h>
 #include <chiaki/remote/rudp.h>
 
-// F-042/T-243: libplacebo is optional until dynamic frameworks are wired.
-#if __has_include(<libplacebo/log.h>)
-#include <libplacebo/log.h>
+// F-042/T-244: libplacebo C/Swift bridge entry.
+#if __has_include("../Video/Placebo/PlaceboBridge.h")
+#include "../Video/Placebo/PlaceboBridge.h"
 #endif
 
 #endif /* ChiakiBridge_h */
