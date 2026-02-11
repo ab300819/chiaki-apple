@@ -14,12 +14,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+#include <libplacebo/vulkan.h>
+#include <libplacebo/renderer.h>
+#include <libplacebo/swapchain.h>
+#include <libplacebo/utils/libav.h>
+#endif
+
 struct ChiakiPlaceboContext {
     void *libplaceboHandle;
     void *moltenVKHandle;
-    void *logHandle;
-    void *vulkanHandle;
-    void *rendererHandle;
+    
+    // Real libplacebo objects (as pointers to avoid header dependency if missing)
+    void *log;      // pl_log
+    void *vulkan;   // pl_vulkan
+    void *renderer; // pl_renderer
+    void *swapchain;// pl_swapchain
 };
 
 static void *chiakiOpenLibrary(const char *path) {
@@ -88,7 +98,7 @@ static void chiakiDestroyTokenHandle(void **handle) {
     *handle = NULL;
 }
 
-ChiakiPlaceboContext *ChiakiPlaceboContextCreate(void) {
+ChiakiPlaceboContextRef ChiakiPlaceboContextCreate(void) {
     struct ChiakiPlaceboContext *context = calloc(1, sizeof(struct ChiakiPlaceboContext));
     if (context == NULL) {
         return NULL;
@@ -97,7 +107,7 @@ ChiakiPlaceboContext *ChiakiPlaceboContextCreate(void) {
     return context;
 }
 
-void ChiakiPlaceboContextDestroy(ChiakiPlaceboContext *context) {
+void ChiakiPlaceboContextDestroy(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return;
     }
@@ -119,7 +129,7 @@ void ChiakiPlaceboContextDestroy(ChiakiPlaceboContext *context) {
     free(context);
 }
 
-bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContext *context) {
+bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return false;
     }
@@ -127,7 +137,7 @@ bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContext *context) {
     return chiakiHasSymbol(context, "pl_log_create") && chiakiHasSymbol(context, "pl_renderer_create");
 }
 
-bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContext *context) {
+bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContextRef context) {
 #if CHIAKI_HAS_VULKAN_HEADERS
     if (context == NULL || !chiakiHasSymbol(context, "vkEnumerateInstanceExtensionProperties")) {
         return false;
@@ -174,90 +184,197 @@ bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContext *context)
 #endif
 }
 
-void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContext *context) {
-    if (context == NULL || !chiakiHasSymbol(context, "pl_log_create")) {
+void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
+    if (context == NULL) {
         return NULL;
     }
 
-    if (context->logHandle == NULL) {
-        context->logHandle = chiakiCreateTokenHandle();
+    if (context->log == NULL) {
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+        typedef struct pl_log *(*pl_log_create_fn)(int api_ver, const struct pl_log_params *params);
+        pl_log_create_fn createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create");
+        if (createFn) {
+            context->log = createFn(PL_API_VER, NULL);
+        } else {
+            context->log = chiakiCreateTokenHandle();
+        }
+#else
+        context->log = chiakiCreateTokenHandle();
+#endif
     }
 
-    return context->logHandle;
+    return context->log;
 }
 
-void ChiakiPlaceboContextDestroyLog(ChiakiPlaceboContext *context) {
-    if (context == NULL) {
+void ChiakiPlaceboContextDestroyLog(ChiakiPlaceboContextRef context) {
+    if (context == NULL || context->log == NULL) {
         return;
     }
 
-    chiakiDestroyTokenHandle(&context->logHandle);
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    typedef void (*pl_log_destroy_fn)(struct pl_log **);
+    pl_log_destroy_fn destroyFn = (pl_log_destroy_fn)dlsym(context->libplaceboHandle, "pl_log_destroy");
+    if (destroyFn) {
+        struct pl_log *plLog = (struct pl_log *)context->log;
+        destroyFn(&plLog);
+        context->log = NULL;
+    } else {
+        chiakiDestroyTokenHandle(&context->log);
+    }
+#else
+    chiakiDestroyTokenHandle(&context->log);
+#endif
 }
 
-void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContext *context) {
+void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return NULL;
     }
 
-    if (context->logHandle == NULL) {
+    if (context->log == NULL) {
         (void)ChiakiPlaceboContextCreateLog(context);
     }
 
-    if (context->logHandle == NULL || !chiakiHasSymbol(context, "vkCreateInstance")) {
-        return NULL;
+    if (context->vulkan == NULL) {
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+        typedef struct pl_vulkan *(*pl_vulkan_create_fn)(struct pl_log *, const struct pl_vulkan_params *);
+        pl_vulkan_create_fn createFn = (pl_vulkan_create_fn)dlsym(context->libplaceboHandle, "pl_vulkan_create");
+        if (createFn) {
+            struct pl_vulkan_params params = pl_vulkan_default_params;
+            params.instance_extensions = (const char *[]) { "VK_KHR_surface", "VK_EXT_metal_surface", "VK_EXT_metal_objects" };
+            params.num_instance_extensions = 3;
+            context->vulkan = createFn((struct pl_log *)context->log, &params);
+        } else {
+            context->vulkan = chiakiCreateTokenHandle();
+        }
+#else
+        context->vulkan = chiakiCreateTokenHandle();
+#endif
     }
 
-    if (context->vulkanHandle == NULL) {
-        context->vulkanHandle = chiakiCreateTokenHandle();
-    }
-
-    return context->vulkanHandle;
+    return context->vulkan;
 }
 
-void ChiakiPlaceboContextDestroyVulkanDevice(ChiakiPlaceboContext *context) {
-    if (context == NULL) {
+void ChiakiPlaceboContextDestroyVulkanDevice(ChiakiPlaceboContextRef context) {
+    if (context == NULL || context->vulkan == NULL) {
         return;
     }
 
-    chiakiDestroyTokenHandle(&context->vulkanHandle);
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    typedef void (*pl_vulkan_destroy_fn)(struct pl_vulkan **);
+    pl_vulkan_destroy_fn destroyFn = (pl_vulkan_destroy_fn)dlsym(context->libplaceboHandle, "pl_vulkan_destroy");
+    if (destroyFn) {
+        struct pl_vulkan *plVk = (struct pl_vulkan *)context->vulkan;
+        destroyFn(&plVk);
+        context->vulkan = NULL;
+    } else {
+        chiakiDestroyTokenHandle(&context->vulkan);
+    }
+#else
+    chiakiDestroyTokenHandle(&context->vulkan);
+#endif
 }
 
-void *ChiakiPlaceboContextCreateRenderer(ChiakiPlaceboContext *context) {
+void *ChiakiPlaceboContextCreateRenderer(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return NULL;
     }
 
-    if (context->vulkanHandle == NULL) {
+    if (context->vulkan == NULL) {
         (void)ChiakiPlaceboContextCreateVulkanDevice(context);
     }
 
-    if (context->vulkanHandle == NULL || !chiakiHasSymbol(context, "pl_renderer_create")) {
-        return NULL;
+    if (context->renderer == NULL) {
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+        typedef struct pl_renderer *(*pl_renderer_create_fn)(struct pl_log *, struct pl_gpu *);
+        pl_renderer_create_fn createFn = (pl_renderer_create_fn)dlsym(context->libplaceboHandle, "pl_renderer_create");
+        if (createFn && context->vulkan) {
+            struct pl_vulkan *vk = (struct pl_vulkan *)context->vulkan;
+            context->renderer = createFn((struct pl_log *)context->log, vk->gpu);
+        } else {
+            context->renderer = chiakiCreateTokenHandle();
+        }
+#else
+        context->renderer = chiakiCreateTokenHandle();
+#endif
     }
 
-    if (context->rendererHandle == NULL) {
-        context->rendererHandle = chiakiCreateTokenHandle();
-    }
-
-    return context->rendererHandle;
+    return context->renderer;
 }
 
-void ChiakiPlaceboContextDestroyRenderer(ChiakiPlaceboContext *context) {
-    if (context == NULL) {
+void ChiakiPlaceboContextDestroyRenderer(ChiakiPlaceboContextRef context) {
+    if (context == NULL || context->renderer == NULL) {
         return;
     }
 
-    chiakiDestroyTokenHandle(&context->rendererHandle);
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    typedef void (*pl_renderer_destroy_fn)(struct pl_renderer **);
+    pl_renderer_destroy_fn destroyFn = (pl_renderer_destroy_fn)dlsym(context->libplaceboHandle, "pl_renderer_destroy");
+    if (destroyFn) {
+        struct pl_renderer *plRenderer = (struct pl_renderer *)context->renderer;
+        destroyFn(&plRenderer);
+        context->renderer = NULL;
+    } else {
+        chiakiDestroyTokenHandle(&context->renderer);
+    }
+#else
+    chiakiDestroyTokenHandle(&context->renderer);
+#endif
 }
 
-void *ChiakiPlaceboContextGetLog(ChiakiPlaceboContext *context) {
-    return context != NULL ? context->logHandle : NULL;
+void *ChiakiPlaceboContextGetLog(ChiakiPlaceboContextRef context) {
+    return context != NULL ? context->log : NULL;
 }
 
-void *ChiakiPlaceboContextGetVulkanDevice(ChiakiPlaceboContext *context) {
-    return context != NULL ? context->vulkanHandle : NULL;
+void *ChiakiPlaceboContextGetVulkanDevice(ChiakiPlaceboContextRef context) {
+    return context != NULL ? context->vulkan : NULL;
 }
 
-void *ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContext *context) {
-    return context != NULL ? context->rendererHandle : NULL;
+void *ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContextRef context) {
+    return context != NULL ? context->renderer : NULL;
+}
+
+void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *ioSurface, int plane) {
+    if (context == NULL || ioSurface == NULL) {
+        return NULL;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    // TODO(T-247): Real implementation of VkImportMetalIOSurfaceInfoEXT
+    return chiakiCreateTokenHandle();
+#else
+    return chiakiCreateTokenHandle();
+#endif
+}
+
+void ChiakiPlaceboContextDestroyTexture(ChiakiPlaceboContextRef context, void *tex) {
+    if (tex == NULL) {
+        return;
+    }
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    // TODO(T-247): pl_tex_destroy when using real pl_tex objects
+    free(tex);
+#else
+    free(tex);
+#endif
+}
+
+bool ChiakiPlaceboContextRenderFrame(
+    ChiakiPlaceboContextRef context,
+    void *targetSurface,
+    void *srcTexY,
+    void *srcTexUV,
+    int width, int height,
+    bool isHDR
+) {
+    if (context == NULL || targetSurface == NULL || srcTexY == NULL) {
+        return false;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    // TODO(T-247): Real pl_render_image call
+    return true;
+#else
+    return true;
+#endif
 }

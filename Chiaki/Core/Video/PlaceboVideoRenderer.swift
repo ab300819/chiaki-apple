@@ -32,6 +32,13 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     private var renderer: OpaquePointer?
     private var swapchain: OpaquePointer?
 
+    /// Current frame textures (pl_tex)
+    private var currentTexY: OpaquePointer?
+    private var currentTexUV: OpaquePointer?
+
+    /// Keep CVPixelBuffer alive during rendering to ensure IOSurface validity
+    private var currentPixelBuffer: CVPixelBuffer?
+
     // MARK: - VideoRenderer Protocol Compliance
 
     weak var mtkView: MTKView? {
@@ -93,6 +100,8 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     }
 
     deinit {
+        if let tex = currentTexY { context.destroyTexture(tex) }
+        if let tex = currentTexUV { context.destroyTexture(tex) }
         // PlaceboContext.deinit → ChiakiPlaceboContextDestroy cascades
         // renderer → vulkan → log teardown in correct order.
         logInfo("[placebo] core deinitialized")
@@ -109,7 +118,25 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         frameSize = CGSize(width: width, height: height)
         hasFrame = true
         
-        // TODO(T-246): Implementation of IOSurface -> VkImage import
+        guard let surface = CVPixelBufferGetIOSurface(pixelBuffer)?.takeUnretainedValue() else {
+            return
+        }
+        
+        let surfacePtr = Unmanaged.passUnretained(surface).toOpaque()
+        
+        // Release previous textures before wrapping new ones
+        if let oldTex = currentTexY { context.destroyTexture(oldTex) }
+        if let oldTex = currentTexUV { context.destroyTexture(oldTex) }
+
+        currentTexY = context.wrapIOSurface(surfacePtr, plane: 0)
+
+        if CVPixelBufferGetPlaneCount(pixelBuffer) > 1 {
+            currentTexUV = context.wrapIOSurface(surfacePtr, plane: 1)
+        } else {
+            currentTexUV = nil
+        }
+        
+        currentPixelBuffer = pixelBuffer
         
         onFrameSubmitted?(pixelBuffer)
         triggerRedraw()
@@ -156,7 +183,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     }
 
     func flushTextureCache() {
-        // TODO(T-246): pl_gpu_flush()
+        // TODO(T-247): pl_gpu_flush()
     }
 
     func resetStatistics() {
@@ -169,17 +196,37 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     // MARK: - Rendering
 
     func render(to view: MTKView, descriptor: MTLRenderPassDescriptor?) {
-        guard hasFrame else { return }
+        guard hasFrame, let texY = currentTexY else { return }
         
-        // TODO(T-245/T-246): Implementation of pl_render_image
-        // 1. pl_swapchain_start_frame
-        // 2. build pl_frame from submitted IOSurface/VkImage
-        // 3. pl_render_image
-        // 4. pl_swapchain_swap_buffers
+        let width = Int(frameSize.width)
+        let height = Int(frameSize.height)
+        let isHDR = hdrConfiguration.isHDR
+        
+        #if os(macOS)
+        guard let viewLayer = view.layer else { return }
+        let layerPtr = Unmanaged.passUnretained(viewLayer).toOpaque()
+        #else
+        let layerPtr = Unmanaged.passUnretained(view.layer).toOpaque()
+        #endif
 
-        lock.lock()
-        frameCount += 1
-        lock.unlock()
+        let success = context.renderFrame(
+            targetSurface: layerPtr,
+            srcTexY: texY,
+            srcTexUV: currentTexUV,
+            width: width,
+            height: height,
+            isHDR: isHDR
+        )
+
+        if success {
+            lock.lock()
+            frameCount += 1
+            lock.unlock()
+        } else {
+            lock.lock()
+            droppedFrameCount += 1
+            lock.unlock()
+        }
     }
 
     // MARK: - Private Helpers

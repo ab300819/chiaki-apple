@@ -5546,12 +5546,12 @@ echo "=== Check Complete ==="
 #### UT-062: 零拷贝纹理导入
 > [验证] AC-174
 
-| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
-|------|--------|------|----------|--------|
-| UT-062.1 | testSubmitFrameNV12 | 提交 NV12 CVPixelBuffer | submitFrame 成功，hasFrame=true，无 CPU 像素拷贝 | P0 |
-| UT-062.2 | testSubmitFrameP010 | 提交 P010 CVPixelBuffer | submitFrame 成功，HDR 10-bit 纹理正确导入 | P0 |
-| UT-062.3 | testIOSurfaceRetained | IOSurface 生命周期 | pl_tex 持有期间 IOSurface 引用计数 > 0，不被提前释放 | P1 |
-| UT-062.4 | testFrameSizeAfterSubmit | 帧尺寸查询 | 提交 1920x1080 帧后 frameSize == CGSize(1920, 1080) | P0 |
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 | 状态 |
+|------|--------|------|----------|--------|------|
+| UT-062.1 | testSubmitFrameNV12 | 提交 NV12 CVPixelBuffer | submitFrame 成功，hasFrame=true，无 CPU 像素拷贝 | P0 | ✅ |
+| UT-062.2 | testSubmitFrameP010 | 提交 P010 CVPixelBuffer | submitFrame 成功，HDR 10-bit 纹理正确导入 | P0 | ✅ |
+| UT-062.3 | testIOSurfaceRetained | IOSurface 生命周期 | pl_tex 持有期间 IOSurface 引用计数 > 0，不被提前释放 | P1 | 🟡 |
+| UT-062.4 | testFrameSizeAfterSubmit | 帧尺寸查询 | 提交 1920x1080 帧后 frameSize == CGSize(1920, 1080) | P0 | ✅ |
 
 #### UT-063: libplacebo 渲染预设映射
 > [验证] AC-181, AC-182, AC-183
@@ -5655,10 +5655,10 @@ echo "=== Check Complete ==="
 | AC-171 | 预编译 xcframework 集成 | UT-060.4 | - | - | `Scripts/build-libplacebo.sh` | `ChiakiTests/LibplaceboBuildIntegrationTests.swift` |
 | AC-172 | 动态 framework 链接 (LGPL) | UT-060.3 | - | - | `Scripts/build-libplacebo.sh` | `ChiakiTests/LibplaceboBuildIntegrationTests.swift` |
 | AC-173 | PlaceboVideoRenderer 协议实现 | UT-061.1~4 | - | - | `PlaceboVideoRenderer.swift` | `ChiakiTests/PlaceboVideoRendererTests.swift` |
-| AC-174 | 零拷贝纹理导入 | UT-062.1~4 | IT-020.5 | - | - | - |
-| AC-175 | pl_render_image 渲染管线 | - | IT-020.1~3 | E2E-015.1~2 | - | - |
+| AC-174 | 零拷贝纹理导入 | UT-062.1~4 | IT-020.5 | - | `PlaceboVideoRenderer.swift`, `PlaceboContext.m` | `ChiakiTests/PlaceboTextureImportTests.swift` |
+| AC-175 | pl_render_image 渲染管线 | - | IT-020.1~3 | E2E-015.1~2 | `PlaceboVideoRenderer.swift` | - |
 | AC-176 | pl_swapchain 输出 | - | IT-020.1 | E2E-015.1 | `PlaceboVideoRenderer.swift` | - |
-| AC-177 | SDR + HDR 色彩空间 | - | IT-022.1~4 | E2E-015.4 | - | - |
+| AC-177 | SDR + HDR 色彩空间 | - | IT-022.1~4 | E2E-015.4 | `PlaceboVideoRenderer.swift` | - |
 | AC-178 | renderBackend 设置属性 | UT-064.1~3 | IT-021.3 | E2E-016.3 | - | - |
 | AC-179 | 设置页后端选择器 | - | - | E2E-016.1~2 | - | - |
 | AC-180 | StreamingViewModel 后端初始化 | UT-064.4~5 | IT-021.1~2 | E2E-016.1~2 | - | - |

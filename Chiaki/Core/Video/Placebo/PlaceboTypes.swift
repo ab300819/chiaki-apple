@@ -82,7 +82,7 @@ struct PlaceboVulkanConfig: Equatable, Sendable {
 /// @satisfies AC-173
 final class PlaceboContext {
 
-    private var rawContext: UnsafeMutablePointer<ChiakiPlaceboContext>?
+    private var rawContext: OpaquePointer?
     
     private func wrap(_ pointer: UnsafeMutableRawPointer?) -> OpaquePointer? {
         guard let pointer else { return nil }
@@ -109,47 +109,65 @@ final class PlaceboContext {
     }
 
     func createLog() -> OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextCreateLog(context))
+        return wrap(ChiakiPlaceboContextCreateLog(rawContext))
     }
 
     func createVulkanDevice() -> OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextCreateVulkanDevice(context))
+        return wrap(ChiakiPlaceboContextCreateVulkanDevice(rawContext))
     }
 
     func createRenderer() -> OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextCreateRenderer(context))
+        return wrap(ChiakiPlaceboContextCreateRenderer(rawContext))
     }
 
     func destroyRenderer() {
-        guard let context = rawContext else { return }
-        ChiakiPlaceboContextDestroyRenderer(context)
+        ChiakiPlaceboContextDestroyRenderer(rawContext)
     }
 
     func destroyVulkanDevice() {
-        guard let context = rawContext else { return }
-        ChiakiPlaceboContextDestroyVulkanDevice(context)
+        ChiakiPlaceboContextDestroyVulkanDevice(rawContext)
     }
 
     func destroyLog() {
-        guard let context = rawContext else { return }
-        ChiakiPlaceboContextDestroyLog(context)
+        ChiakiPlaceboContextDestroyLog(rawContext)
     }
 
     var logHandle: OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextGetLog(context))
+        return wrap(ChiakiPlaceboContextGetLog(rawContext))
     }
 
     var vulkanHandle: OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextGetVulkanDevice(context))
+        return wrap(ChiakiPlaceboContextGetVulkanDevice(rawContext))
     }
 
     var rendererHandle: OpaquePointer? {
-        guard let context = rawContext else { return nil }
-        return wrap(ChiakiPlaceboContextGetRenderer(context))
+        return wrap(ChiakiPlaceboContextGetRenderer(rawContext))
+    }
+
+    func destroyTexture(_ tex: OpaquePointer) {
+        ChiakiPlaceboContextDestroyTexture(rawContext, UnsafeMutableRawPointer(tex))
+    }
+
+    func wrapIOSurface(_ ioSurface: UnsafeMutableRawPointer, plane: Int) -> OpaquePointer? {
+        return wrap(ChiakiPlaceboContextWrapIOSurface(rawContext, ioSurface, Int32(plane)))
+    }
+
+    func renderFrame(
+        targetSurface: UnsafeMutableRawPointer,
+        srcTexY: OpaquePointer,
+        srcTexUV: OpaquePointer?,
+        width: Int,
+        height: Int,
+        isHDR: Bool
+    ) -> Bool {
+        return ChiakiPlaceboContextRenderFrame(
+            rawContext,
+            targetSurface,
+            UnsafeMutableRawPointer(srcTexY),
+            srcTexUV != nil ? UnsafeMutableRawPointer(srcTexUV!) : nil,
+            Int32(width),
+            Int32(height),
+            isHDR
+        )
     }
 }

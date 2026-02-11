@@ -7,11 +7,11 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 log() {
-    echo -e "${GREEN}[INFO] $1${NC}"
+    echo -e "${GREEN}[INFO] $1${NC}" >&2
 }
 
 error() {
-    echo -e "${RED}[ERROR] $1${NC}"
+    echo -e "${RED}[ERROR] $1${NC}" >&2
     exit 1
 }
 

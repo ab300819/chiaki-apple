@@ -36,8 +36,6 @@
 #include <chiaki/remote/rudp.h>
 
 // F-042/T-244: libplacebo C/Swift bridge entry.
-#if __has_include("../Video/Placebo/PlaceboBridge.h")
 #include "../Video/Placebo/PlaceboBridge.h"
-#endif
 
 #endif /* ChiakiBridge_h */

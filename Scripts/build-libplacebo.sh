@@ -10,7 +10,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$SCRIPT_DIR/build_utils.sh"
 
 LIBPLACEBO_VERSION="7.349.0"
-MOLTENVK_VERSION="1.3.280"
+MOLTENVK_VERSION="1.4.1"
 
 LIBPLACEBO_URL="https://code.videolan.org/videolan/libplacebo/-/archive/v${LIBPLACEBO_VERSION}/libplacebo-v${LIBPLACEBO_VERSION}.tar.gz"
 MOLTENVK_URL="https://github.com/KhronosGroup/MoltenVK/releases/download/v${MOLTENVK_VERSION}/MoltenVK-all.tar"
@@ -163,13 +163,19 @@ build_libplacebo_slice() {
 
     rm -rf "$build_dir" "$install_dir"
 
+    local registry="/opt/homebrew/share/vulkan/registry/vk.xml"
+    if [[ ! -f "$registry" ]]; then
+        registry=$(find /opt/homebrew -name vk.xml | head -n 1)
+    fi
+
     log "Configuring libplacebo for $platform/$arch"
     meson setup "$build_dir" "$LIBPLACEBO_SRC_DIR" \
         --buildtype release \
         --default-library shared \
         --cross-file "$cross_file" \
         -Dvulkan=enabled \
-        -Dmetal=disabled \
+        -Dvulkan-registry="$registry" \
+        -Dopengl=disabled \
         -Dglslang=disabled \
         -Ddemos=false \
         -Dtests=false \
