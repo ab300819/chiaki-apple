@@ -10,7 +10,7 @@
 #   make clean-build  - Remove build cache only (keep xcframeworks)
 #   make help         - Show this help
 
-.PHONY: all frameworks mbedtls opus libchiaki clean clean-build setup check-patches help
+.PHONY: all frameworks mbedtls opus libchiaki libplacebo clean clean-build setup check-patches help
 
 # Directories
 BUILD_DIR := .build
@@ -22,6 +22,8 @@ MBEDTLS_XCF := $(FRAMEWORKS_DIR)/mbedtls.xcframework
 MBEDX509_XCF := $(FRAMEWORKS_DIR)/mbedx509.xcframework
 OPUS_XCF := $(FRAMEWORKS_DIR)/opus.xcframework
 LIBCHIAKI_XCF := $(FRAMEWORKS_DIR)/libchiaki.xcframework
+LIBPLACEBO_XCF := $(FRAMEWORKS_DIR)/libplacebo.xcframework
+MOLTENVK_XCF := $(FRAMEWORKS_DIR)/MoltenVK.xcframework
 
 # Default target
 all: frameworks
@@ -54,6 +56,13 @@ libchiaki: $(LIBCHIAKI_XCF)
 $(LIBCHIAKI_XCF): | $(MBEDCRYPTO_XCF) $(OPUS_XCF)
 	@echo "🔨 Building libchiaki..."
 	@./Scripts/build_libchiaki.sh
+
+# libplacebo + MoltenVK (T-243, built independently from libchiaki stack)
+libplacebo: $(LIBPLACEBO_XCF) $(MOLTENVK_XCF)
+
+$(LIBPLACEBO_XCF) $(MOLTENVK_XCF):
+	@echo "🔨 Building libplacebo + MoltenVK..."
+	@./Scripts/build-libplacebo.sh
 
 # Clean everything
 clean:
@@ -99,6 +108,7 @@ help:
 	@echo "  make mbedtls      - Build mbedtls xcframeworks only"
 	@echo "  make opus         - Build opus xcframework only"
 	@echo "  make libchiaki    - Build libchiaki xcframework only"
+	@echo "  make libplacebo   - Build libplacebo + MoltenVK xcframeworks"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make setup        - Initialize git submodules"

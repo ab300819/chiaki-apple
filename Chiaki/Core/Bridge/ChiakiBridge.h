@@ -35,4 +35,9 @@
 #include <chiaki/remote/holepunch.h>
 #include <chiaki/remote/rudp.h>
 
+// F-042/T-243: libplacebo is optional until dynamic frameworks are wired.
+#if __has_include(<libplacebo/log.h>)
+#include <libplacebo/log.h>
+#endif
+
 #endif /* ChiakiBridge_h */

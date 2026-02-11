@@ -12,7 +12,26 @@
 		C1A698052F1680010099098E /* mbedtls.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1A698042F1680010099098E /* mbedtls.xcframework */; };
 		C1A698072F1680010099098E /* mbedx509.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1A698062F1680010099098E /* mbedx509.xcframework */; };
 		C1A698092F1680010099098E /* opus.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1A698082F1680010099098E /* opus.xcframework */; };
+		F04200112F1700010099098E /* libplacebo.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = F04200312F1700010099098E /* libplacebo.xcframework */; };
+		F04200122F1700010099098E /* MoltenVK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = F04200322F1700010099098E /* MoltenVK.xcframework */; };
+		F04200132F1700010099098E /* libplacebo.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F04200312F1700010099098E /* libplacebo.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F04200142F1700010099098E /* MoltenVK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F04200322F1700010099098E /* MoltenVK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F04200212F1700010099098E /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				F04200132F1700010099098E /* libplacebo.xcframework in Embed Frameworks */,
+				F04200142F1700010099098E /* MoltenVK.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
 		93B698552F1667E90099098E /* PBXContainerItemProxy */ = {
@@ -40,6 +59,8 @@
 		C1A698042F1680010099098E /* mbedtls.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mbedtls.xcframework; sourceTree = "<group>"; };
 		C1A698062F1680010099098E /* mbedx509.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mbedx509.xcframework; sourceTree = "<group>"; };
 		C1A698082F1680010099098E /* opus.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = opus.xcframework; sourceTree = "<group>"; };
+		F04200312F1700010099098E /* libplacebo.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = libplacebo.xcframework; sourceTree = "<group>"; };
+		F04200322F1700010099098E /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = MoltenVK.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -83,6 +104,8 @@
 				C1A698052F1680010099098E /* mbedtls.xcframework in Frameworks */,
 				C1A698072F1680010099098E /* mbedx509.xcframework in Frameworks */,
 				C1A698092F1680010099098E /* opus.xcframework in Frameworks */,
+				F04200112F1700010099098E /* libplacebo.xcframework in Frameworks */,
+				F04200122F1700010099098E /* MoltenVK.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,6 +151,8 @@
 			isa = PBXGroup;
 			children = (
 				C1A698002F1680010099098E /* libchiaki.xcframework */,
+				F04200312F1700010099098E /* libplacebo.xcframework */,
+				F04200322F1700010099098E /* MoltenVK.xcframework */,
 				C1A698022F1680010099098E /* mbedcrypto.xcframework */,
 				C1A698042F1680010099098E /* mbedtls.xcframework */,
 				C1A698062F1680010099098E /* mbedx509.xcframework */,
@@ -145,6 +170,7 @@
 			buildPhases = (
 				93B6983F2F1667E80099098E /* Sources */,
 				93B698402F1667E80099098E /* Frameworks */,
+				F04200212F1700010099098E /* Embed Frameworks */,
 				93B698412F1667E80099098E /* Resources */,
 			);
 			buildRules = (
