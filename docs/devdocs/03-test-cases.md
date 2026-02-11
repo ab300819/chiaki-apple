@@ -5536,12 +5536,12 @@ echo "=== Check Complete ==="
 #### UT-061: PlaceboVideoRenderer 协议合规
 > [验证] AC-173
 
-| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
-|------|--------|------|----------|--------|
-| UT-061.1 | testConformsToVideoRenderer | 协议一致性 | `PlaceboVideoRenderer` 符合 `VideoRenderer` 协议，所有属性和方法可访问 | P0 |
-| UT-061.2 | testInitReturnsNonNil | 正常初始化 | `PlaceboVideoRenderer()` 返回非 nil（libplacebo + Vulkan 上下文创建成功） | P0 |
-| UT-061.3 | testInitialPropertyDefaults | 默认属性值 | displayMode=.normal, zoomFactor=1.0, vrrEnabled=false, hasFrame=false | P0 |
-| UT-061.4 | testDisplayModeSetGet | 显示模式设置 | 设置 .stretch/.zoom/.normal 后 getter 返回一致值 | P1 |
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 | 状态 |
+|------|--------|------|----------|--------|------|
+| UT-061.1 | testConformsToVideoRenderer | 协议一致性 | `PlaceboVideoRenderer` 符合 `VideoRenderer` 协议，所有属性和方法可访问 | P0 | ✅ |
+| UT-061.2 | testInitReturnsNonNil | 正常初始化 | `PlaceboVideoRenderer()` 返回非 nil（libplacebo + Vulkan 上下文创建成功） | P0 | ✅ |
+| UT-061.3 | testInitialPropertyDefaults | 默认属性值 | displayMode=.normal, zoomFactor=1.0, vrrEnabled=false, hasFrame=false | P0 | ✅ |
+| UT-061.4 | testDisplayModeSetGet | 显示模式设置 | 设置 .stretch/.zoom/.normal 后 getter 返回一致值 | P1 | ✅ |
 
 #### UT-062: 零拷贝纹理导入
 > [验证] AC-174
@@ -5649,30 +5649,30 @@ echo "=== Check Complete ==="
 
 ### 29.5 需求追溯矩阵
 
-| AC 编号 | 描述 | 单元测试 | 集成测试 | E2E 测试 |
-|---------|------|----------|----------|----------|
-| AC-170 | libplacebo MoltenVK 平台编译 | UT-060.1~2, UT-060.4 | - | - |
-| AC-171 | 预编译 xcframework 集成 | UT-060.4 | - | - |
-| AC-172 | 动态 framework 链接 (LGPL) | UT-060.3 | - | - |
-| AC-173 | PlaceboVideoRenderer 协议实现 | UT-061.1~4 | - | - |
-| AC-174 | 零拷贝纹理导入 | UT-062.1~4 | IT-020.5 | - |
-| AC-175 | pl_render_image 渲染管线 | - | IT-020.1~3 | E2E-015.1~2 |
-| AC-176 | pl_swapchain 输出 | - | IT-020.1 | E2E-015.1 |
-| AC-177 | SDR + HDR 色彩空间 | - | IT-022.1~4 | E2E-015.4 |
-| AC-178 | renderBackend 设置属性 | UT-064.1~3 | IT-021.3 | E2E-016.3 |
-| AC-179 | 设置页后端选择器 | - | - | E2E-016.1~2 |
-| AC-180 | StreamingViewModel 后端初始化 | UT-064.4~5 | IT-021.1~2 | E2E-016.1~2 |
-| AC-181 | 三级预设→libplacebo 参数映射 | UT-063.1~3 | IT-020.4 | - |
-| AC-182 | 去色带配置接入 | UT-063.2~3 | IT-020.1~2 | - |
-| AC-183 | 上采样算法配置 (ewa_lanczossharp) | UT-063.3 | IT-020.2 | E2E-015.2 |
-| AC-184 | MetalVideoRenderer 兼容模式保留 | UT-064.6 | IT-021.1~2 | E2E-016.1 |
-| AC-185 | Graceful fallback | UT-064.6 | IT-021.1 | E2E-016.4 |
-| AC-186 | 诊断接口 (frameCount 等) | UT-065.1~4 | - | - |
-| AC-187 | Overlay 显示后端名称 | UT-065.3 | - | E2E-016.1~2 |
-| AC-188 | Metal 后端迁移透明 | - | - | - |
-| AC-189 | Metal 后端消除 MoltenVK | - | - | - |
-| AC-190 | 帧延迟 ≤ 3ms | - | IT-020.1 | E2E-015.3 |
-| AC-191 | 画质 ≥ chiaki-ng 默认 | - | - | E2E-015.1~2 |
+| AC 编号 | 描述 | 单元测试 | 集成测试 | E2E 测试 | 满足文件 (@satisfies) | 验证文件 (@verifies) |
+|---------|------|----------|----------|----------|----------------------|---------------------|
+| AC-170 | libplacebo MoltenVK 平台编译 | UT-060.1~2, UT-060.4 | - | - | `Scripts/build-libplacebo.sh` | `ChiakiTests/LibplaceboBuildIntegrationTests.swift` |
+| AC-171 | 预编译 xcframework 集成 | UT-060.4 | - | - | `Scripts/build-libplacebo.sh` | `ChiakiTests/LibplaceboBuildIntegrationTests.swift` |
+| AC-172 | 动态 framework 链接 (LGPL) | UT-060.3 | - | - | `Scripts/build-libplacebo.sh` | `ChiakiTests/LibplaceboBuildIntegrationTests.swift` |
+| AC-173 | PlaceboVideoRenderer 协议实现 | UT-061.1~4 | - | - | `PlaceboVideoRenderer.swift` | `ChiakiTests/PlaceboVideoRendererTests.swift` |
+| AC-174 | 零拷贝纹理导入 | UT-062.1~4 | IT-020.5 | - | - | - |
+| AC-175 | pl_render_image 渲染管线 | - | IT-020.1~3 | E2E-015.1~2 | - | - |
+| AC-176 | pl_swapchain 输出 | - | IT-020.1 | E2E-015.1 | `PlaceboVideoRenderer.swift` | - |
+| AC-177 | SDR + HDR 色彩空间 | - | IT-022.1~4 | E2E-015.4 | - | - |
+| AC-178 | renderBackend 设置属性 | UT-064.1~3 | IT-021.3 | E2E-016.3 | - | - |
+| AC-179 | 设置页后端选择器 | - | - | E2E-016.1~2 | - | - |
+| AC-180 | StreamingViewModel 后端初始化 | UT-064.4~5 | IT-021.1~2 | E2E-016.1~2 | - | - |
+| AC-181 | 三级预设→libplacebo 参数映射 | UT-063.1~3 | IT-020.4 | - | - | - |
+| AC-182 | 去色带配置接入 | UT-063.2~3 | IT-020.1~2 | - | - | - |
+| AC-183 | 上采样算法配置 (ewa_lanczossharp) | UT-063.3 | IT-020.2 | E2E-015.2 | - | - |
+| AC-184 | MetalVideoRenderer 兼容模式保留 | UT-064.6 | IT-021.1~2 | E2E-016.1 | - | - |
+| AC-185 | Graceful fallback | UT-064.6 | IT-021.1 | E2E-016.4 | - | - |
+| AC-186 | 诊断接口 (frameCount 等) | UT-065.1~4 | - | - | - | - |
+| AC-187 | Overlay 显示后端名称 | UT-065.3 | - | E2E-016.1~2 | - | - |
+| AC-188 | Metal 后端迁移透明 | - | - | - | - | - |
+| AC-189 | Metal 后端消除 MoltenVK | - | - | - | - | - |
+| AC-190 | 帧延迟 ≤ 3ms | - | IT-020.1 | E2E-015.3 | - | - |
+| AC-191 | 画质 ≥ chiaki-ng 默认 | - | - | E2E-015.1~2 | - | - |
 
 > **注**: AC-188、AC-189 为 Phase 2 Metal 后端迁移验收标准，将在 Metal 后端实现后补充对应测试用例。
 

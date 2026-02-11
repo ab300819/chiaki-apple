@@ -907,9 +907,9 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
   │
   └── T-244 C/Swift 桥接层 (P0, 🟡)
         │
-        └── T-245 PlaceboVideoRenderer 核心实现 (P0, 🔴 TDD)
+        └── T-245 PlaceboVideoRenderer 核心实现 (P0, 🔴 TDD) ✅
               │
-              ├── T-246 零拷贝纹理导入 + 渲染管线 (P0, 🔴 TDD)
+              ├── T-246 零拷贝纹理导入 + 渲染管线 (P0, 🔴 TDD) ⏳
               │
               └── T-247 渲染预设映射 + HDR 支持 (P1, 🔴 TDD)
                     │
@@ -993,7 +993,7 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
 
 ---
 
-### T-245: PlaceboVideoRenderer 核心实现 ⏳
+### T-245: PlaceboVideoRenderer 核心实现 ✅
 
 | 属性 | 内容 |
 |------|------|

@@ -10,7 +10,7 @@
 import Testing
 import Foundation
 
-@Suite("UT-061 libplacebo C/Swift 桥接层验证")
+@Suite("PlaceboContext C/Swift 桥接层验证")
 struct PlaceboBridgeTests {
 
     private func requireBridgeAvailable() throws -> PlaceboContext {
