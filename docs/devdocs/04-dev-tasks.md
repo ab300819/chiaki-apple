@@ -1,7 +1,7 @@
 # Chiaki-ng Apple 原生客户端 - 开发任务
 
-> **状态更新**: 2026-02-10
-> **当前里程碑**: M17 — 控制器架构分层重构 | M18 — Metal 视频滤波管线
+> **状态更新**: 2026-02-12
+> **当前里程碑**: M19 — libplacebo 渲染后端集成
 > **归档**: [archive/04-dev-tasks-archive.md](archive/04-dev-tasks-archive.md) (M11: 35 任务, M12: 24 任务, M13: 23 任务, M14: 4 任务, M15: 18 任务)
 
 ---
@@ -903,9 +903,9 @@ T-236 VideoUniforms 扩展 + VideoFilterConfig (P0, 🔴 TDD)
 ### 依赖关系
 
 ```
-T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
+T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡) ✅
   │
-  └── T-244 C/Swift 桥接层 (P0, 🟡)
+  └── T-244 C/Swift 桥接层 (P0, 🟡) ✅
         │
         └── T-245 PlaceboVideoRenderer 核心实现 (P0, 🔴 TDD) ✅
               │
@@ -922,7 +922,7 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
 
 ---
 
-### T-243: libplacebo + MoltenVK 构建系统集成 ⏳
+### T-243: libplacebo + MoltenVK 构建系统集成 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -958,7 +958,7 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
 
 ---
 
-### T-244: C/Swift 桥接层 ⏳
+### T-244: C/Swift 桥接层 ✅
 
 | 属性 | 内容 |
 |------|------|
@@ -1217,7 +1217,7 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
 | M17 控制器架构分层重构 | 7 | 100% | ✅ 已完成 |
 | M18 Metal 视频滤波管线 | 7 | 100% | ✅ 已完成 |
-| **M19 libplacebo 渲染后端** | **8** | **0%** | ⏳ 待开始 |
+| **M19 libplacebo 渲染后端** | **8** | **50%** | 🔄 进行中 |
 | Bug 修复 | 12 | 100% | ✅ |
 | **总计** | **140** | — | — |
 
@@ -1226,9 +1226,9 @@ T-243 libplacebo + MoltenVK 构建系统集成 (P0, 🟡)
 ## 下一步
 
 1. T-115 App Icon 资产准备仍待设计师交付
-2. **M19 T-243 开始实施**：libplacebo + MoltenVK 构建系统集成
-3. M17/M18 可考虑归档（已全部完成）
+2. **M19 T-247 开始实施**：渲染预设映射 + HDR 支持
+3. M16/M17/M18 可考虑归档（已全部完成）
 
 ---
 
-*文档由 `/devdocs-sync` 更新 (2026-02-10): M17/M18 全部标记完成，M19 新增*
+*文档由 `/devdocs-sync --absorb` 更新 (2026-02-12): M19 T-243~T-246 标记完成 (50%)，T-247 为下一个待实施任务*

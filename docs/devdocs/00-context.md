@@ -1,6 +1,6 @@
 # 项目上下文：Chiaki-ng Apple 原生客户端
 
-**生成时间**：2026-02-10
+**生成时间**：2026-02-12
 **生成工具**：/devdocs-onboard --update
 
 ---
@@ -35,9 +35,9 @@
 | F-039 | iPhone 串流横屏锁定 | P1 | ✅ 已完成 |
 | F-040 | 控制器架构分层重构 | P0 | ✅ 已完成 |
 | F-041 | Metal 原生高质量视频滤波管线 | P1 | ✅ 已完成（降级为兼容模式） |
-| **F-042** | **libplacebo 渲染后端集成** | **P0** | **⏳ 待实施 (M19)** |
+| **F-042** | **libplacebo 渲染后端集成** | **P0** | **🔄 进行中 (M19 50%)** |
 
-**已完成 41 个功能点**，F-042 为活跃开发功能。
+**已完成 41 个功能点**，F-042 为活跃开发功能 (T-243~T-246 已完成，T-247~T-250 待实施)。
 
 ### 1.3 技术栈
 
@@ -56,12 +56,12 @@
 
 | 指标 | 数值 |
 |------|------|
-| Swift 源文件 | 96 个 |
-| Swift 代码行数 | ~31,500 行 |
-| C Bridge 文件 | 6 个 (1 .h + 5 .swift) |
-| 测试文件 | 52 个 (单元) + 7 个 (UI) |
+| Swift 源文件 | 98 个 |
+| Swift 代码行数 | ~21,400 行 |
+| C Bridge 文件 | 7 个 (2 .h + 1 .m + 4 .swift) |
+| 测试文件 | 56 个 (单元) + 7 个 (UI) |
 | UI 设计文件 | `designs/chiaki-apple-ui.pen` (24 screens) |
-| @satisfies/@verifies 标注 | 708 处 (121 个文件) |
+| @satisfies/@verifies 标注 | 123 个文件 |
 
 ---
 
@@ -111,7 +111,7 @@
 | Features | 功能页面 (HostList, Streaming, Settings) | `Chiaki/Features/` (41 files) |
 | Domain | 业务逻辑服务层 | `Chiaki/Domain/` (4 files) |
 | Core/Bridge | libchiaki C 桥接层 | `Chiaki/Core/Bridge/` (6 files) |
-| Core/Video | Metal 渲染 (HDR/SDR, 滤波管线, VideoToolbox) | `Chiaki/Core/Video/` (10 files) |
+| Core/Video | Metal + Placebo 渲染 (HDR/SDR, 滤波管线, VideoToolbox) | `Chiaki/Core/Video/` (14 files, 含 Placebo/ 子模块) |
 | Core/Audio | 音频播放与 Opus 解码 | `Chiaki/Core/Audio/` (3 files) |
 | Core/Controllers | ControllerOrchestrator + Provider 分层 | `Chiaki/Core/Controllers/` (9 files) |
 | Core/Storage | Keychain、主机/设置持久化 | `Chiaki/Core/Storage/` (4 files) |
@@ -162,7 +162,8 @@ chiaki-apple/
 │   │   ├── Network/            # 网络监控 (NWPathMonitor)
 │   │   ├── Storage/            # 持久化 (HostStore, SettingsStore, Keychain)
 │   │   ├── Streaming/          # 流统计 (StreamStats)
-│   │   └── Video/              # Metal 渲染 (HDR/SDR, 滤波管线, VideoToolbox)
+│   │   └── Video/              # Metal + Placebo 渲染 (HDR/SDR, 滤波管线, VTB)
+│   │       └── Placebo/        # libplacebo C/Swift 桥接 (PlaceboBridge.h, PlaceboContext.m, PlaceboTypes.swift)
 │   ├── Domain/                 # 业务逻辑 (HostManager, PSNService)
 │   ├── Features/
 │   │   ├── AutoConnect/        # 自动连接
@@ -201,7 +202,7 @@ chiaki-apple/
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
 | M17 控制器架构分层重构 | 7 | 100% | ✅ 已完成 |
 | M18 Metal 原生滤波管线 | 7 | 100% | ✅ 已完成 |
-| **M19 libplacebo 渲染后端** | **8** | **0%** | **⏳ 待开始** |
+| **M19 libplacebo 渲染后端** | **8** | **50%** | **🔄 进行中** |
 | Bug 修复 | 12 | 100% | ✅ |
 | **总计** | **140** | **94%** | — |
 
@@ -211,45 +212,40 @@ chiaki-apple/
 
 | 提交 | 任务 | 说明 |
 |------|------|------|
+| efdc498 | T-246 | 零拷贝纹理导入 + 渲染管线 |
+| 470bc2c | T-245 | PlaceboVideoRenderer 协议实现 |
+| 4949f4d | T-244 | libplacebo C/Swift 桥接层 |
+| 69e6df0 | T-243 | libplacebo + MoltenVK 构建脚本 |
 | 77d2ab9 | BUG-020 | Metal shader 编译失败导致黑屏修复 |
-| cec8a6a | T-242 | 全平台验证与测试修复 |
-| df1f2d8 | T-241 | 渲染诊断指标集成到 stats overlay |
-| 3d4603a | T-240 | 视频预设映射到 Metal 滤波参数 |
-| 7df36e6 | T-239 | 去色带 + Bayer 4x4 有序抖动 |
-| d42ca3c | T-221/222 | iPhone 串流横屏锁定 |
+| cec8a6a | T-242 | M18 全平台验证与测试修复 |
 
 ### 4.3 当前活跃任务 (M19 — libplacebo 渲染后端集成)
 
 ```
-T-243 构建系统 (P0, 🟡) ← 起点
-  └── T-244 C/Swift 桥接层 (P0, 🟡)
-        └── T-245 PlaceboVideoRenderer 核心 (P0, 🔴 TDD)
-              └── T-246 零拷贝纹理+渲染管线 (P0, 🔴 TDD)
-                    ├── T-247 预设映射+HDR (P1, 🔴 TDD)
-                    ├── T-248 后端切换+设置UI (P1, 🟡)
-                    └── T-249 诊断+着色器缓存 (P1, 🟡)
-                          └── T-250 全平台验证 (P1, 🟢)
+T-243 构建系统 (P0, 🟡) ✅
+  └── T-244 C/Swift 桥接层 (P0, 🟡) ✅
+        └── T-245 PlaceboVideoRenderer 核心 (P0, 🔴 TDD) ✅
+              └── T-246 零拷贝纹理+渲染管线 (P0, 🔴 TDD) ✅
+                    └── T-247 预设映射+HDR (P1, 🔴 TDD) ⏳ ← 下一个
+                          └── T-248 后端切换+设置UI (P1, 🟡)
+                                └── T-249 诊断+着色器缓存 (P1, 🟡)
+                                      └── T-250 全平台验证 (P1, 🟢)
 ```
 
 ### 4.4 未提交变更
 
 ```
-已修改 (8 文件):
-  M Chiaki/Resources/Localizable.xcstrings
-  M chiaki-ng (submodule)
-  M docs/devdocs/00-feature-log.md
-  M docs/devdocs/01-requirements.md
-  M docs/devdocs/02-system-design.md
-  M docs/devdocs/03-test-cases.md
+已修改 (2 文件):
+  M docs/devdocs/00-progress-report.md
   M docs/devdocs/04-dev-tasks.md
-  M docs/devdocs/05-insights.md
 
-未跟踪 (3 文件):
+未跟踪 (4 文件):
+  ?? chiaki-ng (submodule, untracked content)
   ?? metal-backend-claude.md
   ?? metal-backend-gemini.md
   ?? metal-backend-gpt.md
 
-31 个提交领先 origin/dev
+36 个提交领先 origin/dev
 ```
 
 ---
@@ -258,16 +254,16 @@ T-243 构建系统 (P0, 🟡) ← 起点
 
 ### 5.1 M19 任务清单
 
-| 编号 | 名称 | 优先级 | 新增/修改文件 |
-|------|------|--------|--------------|
-| T-243 | libplacebo + MoltenVK 交叉编译 | P0 | `scripts/build-libplacebo.sh` (新), `Frameworks/` (新 xcframework) |
-| T-244 | C/Swift 桥接层 (PlaceboBridge) | P0 | `PlaceboBridge.h`, `PlaceboContext.m`, `PlaceboTypes.swift` (新) |
-| T-245 | PlaceboVideoRenderer 核心实现 | P0 | `PlaceboVideoRenderer.swift` (新) |
-| T-246 | 零拷贝纹理导入 + pl_render_image | P0 | `PlaceboVideoRenderer.swift` (改) |
-| T-247 | libplacebo 预设映射 + HDR 通路 | P1 | `PlaceboVideoRenderer.swift` (改), `StreamSettings.swift` (改) |
-| T-248 | 后端切换 (RenderBackend) + 设置 UI | P1 | `StreamSettings.swift`, `VideoSettingsView.swift`, `StreamingViewModel.swift` (改) |
-| T-249 | 诊断指标 + 着色器缓存 | P1 | `StreamStatistics.swift`, `StreamingOverlay.swift` (改) |
-| T-250 | 全平台集成验证 | P1 | 测试文件 (新/改) |
+| 编号 | 名称 | 优先级 | 状态 | 涉及文件 |
+|------|------|--------|------|----------|
+| T-243 | libplacebo + MoltenVK 构建系统 | P0 | ✅ | `Scripts/build-libplacebo.sh` |
+| T-244 | C/Swift 桥接层 | P0 | ✅ | `PlaceboBridge.h`, `PlaceboContext.m`, `PlaceboTypes.swift` |
+| T-245 | PlaceboVideoRenderer 核心实现 | P0 | ✅ | `PlaceboVideoRenderer.swift` |
+| T-246 | 零拷贝纹理导入 + 渲染管线 | P0 | ✅ | `PlaceboVideoRenderer.swift`, `PlaceboContext.m` |
+| **T-247** | **预设映射 + HDR 支持** | **P1** | **⏳** | `PlaceboVideoRenderer.swift`, `PlaceboTypes.swift` |
+| T-248 | 后端切换 + 设置 UI | P1 | ⏳ | `StreamSettings.swift`, `VideoSettingsView.swift`, `StreamingViewModel.swift` |
+| T-249 | 诊断接口 + Shader 缓存 | P1 | ⏳ | `StreamStatistics.swift`, `StreamingOverlay.swift` |
+| T-250 | 全平台验证 + 性能基准 | P1 | ⏳ | 测试文件 |
 
 ### 5.2 遗留项
 
@@ -384,12 +380,12 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 ## 接手建议
 
 1. **先读本文档**了解项目全貌
-2. **查看 §5 待办事项** — M19 T-243~T-250 为当前活跃任务
+2. **查看 §5 待办事项** — M19 T-247~T-250 为当前待实施任务
 3. **阅读 02-system-design.md §23** 了解 libplacebo 渲染后端集成设计
-4. **参考 metal-backend-*.md** 了解 Phase 2 Metal 原生后端设计方案
-5. **使用 `/devdocs-dev-workflow T-243`** 从构建系统开始实施
+4. **阅读已完成代码**：`PlaceboVideoRenderer.swift`, `PlaceboTypes.swift`, `PlaceboContext.m`, `PlaceboBridge.h`
+5. **使用 `/devdocs-dev-workflow T-247`** 从渲染预设映射 + HDR 支持开始
 6. 遇到细节问题查阅对应 DevDocs 文档
 
 ---
 
-*文档由 `/devdocs-onboard --update` 生成 (2026-02-10)*
+*文档由 `/devdocs-onboard --update` 生成 (2026-02-12)*
