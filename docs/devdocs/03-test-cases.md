@@ -1480,6 +1480,7 @@ jobs:
 | **F-038** | Swift/C Bridge 安全加固 | US-038 | - | - | - |
 | **F-039** | iPhone 串流横屏锁定 | US-039 | - | - | - |
 | **F-040** | 控制器架构分层重构 | US-040 | UT-049~054 | IT-017~018 | E2E-013 |
+| **F-041** | Metal 原生高质量视频滤波管线 | US-041 | UT-055~059 | IT-019 | E2E-014 |
 
 ### 10.2 验收标准 → 测试用例 → 代码位置追溯
 
@@ -1566,18 +1567,30 @@ jobs:
 | AC-155 | UT-053.1~5, IT-018.1~4 | 单元+集成 | - | - |
 | AC-156 | UT-054.1~4 | 单元测试 | - | - |
 | AC-157 | IT-018.3~4, E2E-013.3~4 | 集成+E2E | - | - |
+| AC-158 | UT-055.1~2, IT-019.1 | 单元+集成 | - | - |
+| AC-159 | UT-055.3, IT-019.4 | 单元+集成 | - | - |
+| AC-160 | UT-056.1~2, IT-019.1 | 单元+集成 | - | - |
+| AC-161 | UT-056.3~4 | 单元测试 | - | - |
+| AC-162 | UT-057.1~2, IT-019.1 | 单元+集成 | - | - |
+| AC-163 | UT-057.3~4 | 单元测试 | - | - |
+| AC-164 | UT-058.1~3, IT-019.4, E2E-014.1 | 单元+集成+E2E | - | - |
+| AC-165 | UT-058.1~3 | 单元测试 | - | - |
+| AC-166 | UT-059.1~4, E2E-014.4 | 单元+E2E | - | - |
+| AC-167 | IT-019.1~2, E2E-014.4 | 集成+E2E | - | - |
+| AC-168 | IT-019.3, IT-019.5 | 集成测试 | - | - |
+| AC-169 | IT-019.2, E2E-014.1~4 | 集成+E2E | - | - |
 
 ### 10.3 测试覆盖状态
 
 | 测试类型 | 总数 | 已实现 | 待实现 | 备注 |
 |----------|------|--------|--------|------|
-| 单元测试 (UT) | 54 组 | 20 | 34 | UT-001~054 |
-| 集成测试 (IT) | 18 组 | 6 | 12 | IT-001~018 |
+| 单元测试 (UT) | 59 组 | 20 | 39 | UT-001~059 |
+| 集成测试 (IT) | 19 组 | 6 | 13 | IT-001~019 |
 | 高级测试 (P0/P1) | 5 组 | 5 | 0 | Session/Discovery/ViewModel/Keychain/Statistics |
-| E2E 测试 | 13 组 | 5 | 8 | E2E-001~013 |
+| E2E 测试 | 14 组 | 5 | 9 | E2E-001~014 |
 | 代码审查 (CR) | 4 项 | 4 | 0 | CR-001~004 |
 
-> **更新时间**: 2026-02-10 (F-040 测试用例设计)
+> **更新时间**: 2026-02-10 (F-041 测试用例设计)
 > **通过率**: 173/181 已实现单元测试通过 (8 个音频测试因模拟器限制失败)
 
 ### 10.4 测试实现详情
@@ -5375,3 +5388,302 @@ echo "=== Check Complete ==="
 ---
 
 *§27 新增 (2026-02-10): F-040 控制器架构分层重构测试*
+
+## 28. F-041 Metal 原生高质量视频滤波管线测试 (2026-02-10)
+
+> **关联需求**: F-041 (AC-158 ~ AC-169)
+> **新增测试**: UT-055 ~ UT-059, IT-019, E2E-014
+
+### 28.1 测试策略
+
+| 测试层级 | 覆盖范围 | 数量 |
+|----------|---------|------|
+| 单元测试 | 滤波算法正确性、参数验证、预设映射 | 5 组 (20 个用例) |
+| 集成测试 | 渲染管线端到端、HDR/SDR 兼容 | 1 组 (5 个用例) |
+| E2E 测试 | 全平台画质验证、性能预算 | 1 组 (4 个用例) |
+
+### 28.2 单元测试
+
+#### UT-055: Bicubic Catmull-Rom 上采样正确性
+> [验证] AC-158, AC-159
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-055.1 | testBicubicWeightSum | Catmull-Rom 权重求和 | 对任意 fractional 位置，9-tap 权重和 ≈ 1.0（误差 < 1e-5） | P0 |
+| UT-055.2 | testBicubicPassthrough | 整数纹素位置采样 | bicubic 在整数位置输出与原始纹素值一致（Catmull-Rom 为插值型） | P0 |
+| UT-055.3 | testUpscaleFilterSwitch | uniform upscaleFilter=0/1/2 切换 | 切换后下一帧立即使用新滤波器，无崩溃 | P0 |
+| UT-055.4 | testBicubicEdgeClamping | 纹理边缘（0,0）和（1,1）处采样 | clamp_to_edge 模式下无越界采样伪影 | P1 |
+
+#### UT-056: CAS 自适应锐化正确性
+> [验证] AC-160, AC-161
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-056.1 | testCASUniformRegion | 纯色区域输入 | 锐化输出 ≈ 输入（平坦区域无过锐） | P0 |
+| UT-056.2 | testCASEdgeEnhancement | 高对比度边缘输入 | 边缘对比度增强但无光晕（自适应降低锐化） | P0 |
+| UT-056.3 | testCASStrengthZero | casStrength=0.0 | 输出与输入完全一致（bypass） | P0 |
+| UT-056.4 | testCASStrengthRange | casStrength=0.0/0.5/1.0 | 锐化强度单调递增，无 NaN/Inf | P1 |
+
+#### UT-057: 去色带 + 抖动正确性
+> [验证] AC-162, AC-163
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-057.1 | testDebandSmoothGradient | 线性渐变输入（有色带） | 输出色带减轻，梯度更平滑 | P0 |
+| UT-057.2 | testDebandPreservesDetail | 高频纹理输入 | 阈值以上的细节不被平滑 | P0 |
+| UT-057.3 | testDebandDisabled | debandEnabled=0 | 输出与输入一致 | P1 |
+| UT-057.4 | testBayerDitherPattern | 检查 4x4 区域抖动分布 | 16 个不同的抖动值，覆盖 [0, 15/16] 范围 | P1 |
+
+#### UT-058: 视频预设→渲染参数映射
+> [验证] AC-164, AC-165
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-058.1 | testPerformancePreset | 设置 Performance 预设 | upscaleFilter=0, casStrength=0.0, debandEnabled=false | P0 |
+| UT-058.2 | testDefaultPreset | 设置 Default 预设 | upscaleFilter=1, casStrength=0.5, debandEnabled=true | P0 |
+| UT-058.3 | testHighQualityPreset | 设置 High Quality 预设 | upscaleFilter=1, casStrength=0.7, debandEnabled=true, grain=0.004 | P0 |
+| UT-058.4 | testPresetSwitchImmediate | 切换预设 | 下一帧 uniforms 立即反映新参数 | P1 |
+
+#### UT-059: 渲染诊断指标
+> [验证] AC-166
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-059.1 | testRenderDeltaRecording | 渲染一帧 | renderDeltaMs > 0 且 < 16.6 | P1 |
+| UT-059.2 | testFrameDropCount | 模拟帧到达时上一帧未完成 | droppedFrameCount 递增 | P1 |
+| UT-059.3 | testFrameRepeatCount | 模拟 draw 时无新帧 | frameRepeatCount 递增 | P1 |
+| UT-059.4 | testCurrentFilterLabel | 设置不同 upscaleFilter | currentFilter 返回 "bilinear"/"bicubic"/"lanczos2" | P1 |
+
+### 28.3 集成测试
+
+#### IT-019: 滤波管线端到端集成
+> [验证] AC-167, AC-168, AC-169
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-019.1 | testFullPipelineSDR | 提交 NV12 帧 + Default 预设 + SDR | 渲染成功，无崩溃，GPU 耗时 < 2ms | P0 |
+| IT-019.2 | testFullPipelineHDR | 提交 P010 帧 + HQ 预设 + BT.2020 | HDR 管线（PQ EOTF→CAS→去色带）完整执行，无 NaN | P0 |
+| IT-019.3 | testZeroCopyPreserved | 检查纹理创建路径 | 仍使用 CVMetalTextureCache 零拷贝，无中间纹理分配 | P0 |
+| IT-019.4 | testPresetSwitchDuringStream | 串流中切换预设 | 无闪烁、无崩溃，参数平滑切换 | P1 |
+| IT-019.5 | testUniformStructAlignment | CPU/GPU VideoUniforms 大小一致性 | sizeof(VideoUniforms) == MemoryLayout<VideoUniforms>.size | P0 |
+
+### 28.4 E2E 测试
+
+#### E2E-014: 全平台画质与性能验证
+> [验证] AC-167, AC-169
+
+| 编号 | 测试步骤 | 预期结果 | 优先级 |
+|------|---------|---------|--------|
+| E2E-014.1 | iOS 设备串流 1080p + Default 预设 | 画面清晰度优于 bilinear，Overlay 显示 filter=bicubic | P0 |
+| E2E-014.2 | macOS 窗口最大化 + HQ 预设 | 放大后画面保持清晰（BUG-017 验证） | P0 |
+| E2E-014.3 | macOS 快速运动场景 + HQ 预设 | 运动画面边缘锐利（BUG-016 验证） | P0 |
+| E2E-014.4 | tvOS 4K 输出 + Default 预设 | 全管线 GPU 耗时 ≤ 2ms（通过 Overlay 统计确认） | P1 |
+
+### 28.5 需求追溯矩阵
+
+| AC 编号 | 描述 | 单元测试 | 集成测试 | E2E 测试 |
+|---------|------|----------|----------|----------|
+| AC-158 | Bicubic Catmull-Rom Y 通道 9-tap | UT-055.1~2 | IT-019.1 | - |
+| AC-159 | 上采样滤波器可切换 | UT-055.3 | IT-019.4 | - |
+| AC-160 | CAS 自适应锐化 | UT-056.1~2 | IT-019.1 | - |
+| AC-161 | CAS 强度可配置 | UT-056.3~4 | - | - |
+| AC-162 | 去色带滤波 | UT-057.1~2 | IT-019.1 | - |
+| AC-163 | 去色带可开关和配置 | UT-057.3~4 | - | - |
+| AC-164 | 三级预设绑定渲染参数 | UT-058.1~3 | IT-019.4 | E2E-014.1 |
+| AC-165 | 预设参数定义 | UT-058.1~3 | - | - |
+| AC-166 | 渲染诊断指标 | UT-059.1~4 | - | E2E-014.4 |
+| AC-167 | GPU 开销 ≤ 2ms | - | IT-019.1~2 | E2E-014.4 |
+| AC-168 | 保持零拷贝架构 | - | IT-019.3, IT-019.5 | - |
+| AC-169 | 三平台 + HDR/SDR 兼容 | - | IT-019.2 | E2E-014.1~4 |
+
+### 28.6 测试编号范围
+
+| 类型 | 编号范围 | 数量 |
+|------|---------|------|
+| 单元测试 | UT-055 ~ UT-059 | 5 组 (20 个用例) |
+| 集成测试 | IT-019 | 1 组 (5 个用例) |
+| E2E 测试 | E2E-014 | 1 组 (4 个用例) |
+
+---
+
+*§28 新增 (2026-02-10): F-041 Metal 原生高质量视频滤波管线测试*
+
+## 29. F-042 libplacebo 渲染后端集成测试 (2026-02-10)
+
+> **关联需求**: F-042 (AC-170 ~ AC-191)
+> **新增测试**: UT-060 ~ UT-066, IT-020 ~ IT-022, E2E-015 ~ E2E-016
+
+### 29.1 测试策略
+
+| 测试层级 | 覆盖范围 | 数量 |
+|----------|---------|------|
+| 单元测试 | 构建依赖验证、PlaceboVideoRenderer 协议合规、零拷贝纹理、渲染配置映射、后端切换、诊断接口、shader 缓存 | 7 组 (28 个用例) |
+| 集成测试 | libplacebo 渲染管线端到端、后端 fallback、HDR 色彩管线 | 3 组 (12 个用例) |
+| E2E 测试 | 全平台串流画质验证、后端切换用户流程 | 2 组 (8 个用例) |
+
+### 29.2 单元测试
+
+#### UT-060: libplacebo 构建与依赖验证
+> [验证] AC-170, AC-171, AC-172
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-060.1 | testLibplaceboFrameworkLoads | 动态 framework 加载 | `dlopen("libplacebo.framework")` 成功，`pl_log_create` 符号可解析 | P0 |
+| UT-060.2 | testMoltenVKFrameworkLoads | MoltenVK framework 加载 | `vkCreateInstance` 可调用，MoltenVK Vulkan 1.2+ 报告 | P0 |
+| UT-060.3 | testLibplaceboIsDynamicFramework | LGPL 合规：动态链接验证 | libplacebo 以 `.framework` 动态链接，非静态库 | P1 |
+| UT-060.4 | testPlatformBuild | macOS + iOS 双平台编译 | xcframework 包含 macos-arm64_x86_64 和 ios-arm64 slices | P0 |
+
+#### UT-061: PlaceboVideoRenderer 协议合规
+> [验证] AC-173
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-061.1 | testConformsToVideoRenderer | 协议一致性 | `PlaceboVideoRenderer` 符合 `VideoRenderer` 协议，所有属性和方法可访问 | P0 |
+| UT-061.2 | testInitReturnsNonNil | 正常初始化 | `PlaceboVideoRenderer()` 返回非 nil（libplacebo + Vulkan 上下文创建成功） | P0 |
+| UT-061.3 | testInitialPropertyDefaults | 默认属性值 | displayMode=.normal, zoomFactor=1.0, vrrEnabled=false, hasFrame=false | P0 |
+| UT-061.4 | testDisplayModeSetGet | 显示模式设置 | 设置 .stretch/.zoom/.normal 后 getter 返回一致值 | P1 |
+
+#### UT-062: 零拷贝纹理导入
+> [验证] AC-174
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-062.1 | testSubmitFrameNV12 | 提交 NV12 CVPixelBuffer | submitFrame 成功，hasFrame=true，无 CPU 像素拷贝 | P0 |
+| UT-062.2 | testSubmitFrameP010 | 提交 P010 CVPixelBuffer | submitFrame 成功，HDR 10-bit 纹理正确导入 | P0 |
+| UT-062.3 | testIOSurfaceRetained | IOSurface 生命周期 | pl_tex 持有期间 IOSurface 引用计数 > 0，不被提前释放 | P1 |
+| UT-062.4 | testFrameSizeAfterSubmit | 帧尺寸查询 | 提交 1920x1080 帧后 frameSize == CGSize(1920, 1080) | P0 |
+
+#### UT-063: libplacebo 渲染预设映射
+> [验证] AC-181, AC-182, AC-183
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-063.1 | testPerformancePresetMapping | Performance 预设 | 映射到 `pl_render_fast_params`，去色带关闭 | P0 |
+| UT-063.2 | testDefaultPresetMapping | Default 预设 | 映射到 `pl_render_default_params`，去色带开启（`pl_deband_default_params`） | P0 |
+| UT-063.3 | testHighQualityPresetMapping | High Quality 预设 | 映射到 `pl_render_high_quality_params`，上采样使用 `ewa_lanczossharp` | P0 |
+| UT-063.4 | testSetFilterConfigUpdatesParams | 动态切换预设 | `setFilterConfig()` 调用后下一帧使用新渲染参数 | P1 |
+
+#### UT-064: 后端切换机制
+> [验证] AC-178, AC-179, AC-180, AC-184, AC-185
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-064.1 | testRenderBackendEnum | 枚举完整性 | `RenderBackend` 含 `.metalNative` 和 `.libplacebo` 两个 case | P0 |
+| UT-064.2 | testDefaultBackendIsLibplacebo | 默认值 | `StreamSettings().renderBackend == .libplacebo` | P0 |
+| UT-064.3 | testRenderBackendCodable | 序列化/反序列化 | RenderBackend JSON 编解码正确，持久化后恢复一致 | P1 |
+| UT-064.4 | testCreateRendererLibplacebo | libplacebo 后端创建 | `renderBackend = .libplacebo` 时 createRenderer 返回 PlaceboVideoRenderer | P0 |
+| UT-064.5 | testCreateRendererMetalNative | Metal 原生后端创建 | `renderBackend = .metalNative` 时 createRenderer 返回 MetalVideoRenderer | P0 |
+| UT-064.6 | testGracefulFallback | libplacebo 初始化失败 | PlaceboVideoRenderer() 返回 nil 时自动回退到 MetalVideoRenderer，不崩溃 | P0 |
+
+#### UT-065: 诊断接口合规
+> [验证] AC-186, AC-187
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-065.1 | testFrameCountIncrement | 渲染帧计数 | 每次 render 调用后 frameCount 递增 | P0 |
+| UT-065.2 | testDroppedFrameTracking | 丢帧计数 | droppedFrameCount 在丢帧时递增 | P1 |
+| UT-065.3 | testFilterNameReturnsLibplacebo | 后端标识 | filterName 返回 "libplacebo" | P0 |
+| UT-065.4 | testResetStatistics | 统计重置 | resetStatistics() 后 frameCount/droppedFrameCount 归零 | P1 |
+
+#### UT-066: Shader 缓存管理
+> [验证] AC-190（首次编译延迟缓解）
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| UT-066.1 | testShaderCacheCreation | 缓存初始化 | `pl_cache_create` 成功，max_total_size = 10MB | P1 |
+| UT-066.2 | testShaderCachePersistence | 缓存持久化 | saveCache() 写入文件 → 重新初始化 → loadCache() 读取成功 | P1 |
+
+### 29.3 集成测试
+
+#### IT-020: libplacebo 渲染管线端到端
+> [验证] AC-175, AC-176, AC-190
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-020.1 | testFullPipelineSDR | NV12 帧 + Default 预设 + SDR | `pl_render_image` 成功返回，输出到 swapchain，GPU 耗时 < 3ms | P0 |
+| IT-020.2 | testFullPipelineHDR | P010 帧 + HQ 预设 + BT.2020 PQ | HDR 色调映射 + EWA Lanczos 上采样完整执行 | P0 |
+| IT-020.3 | testFullPipelinePerformance | NV12 帧 + Performance 预设 | `pl_render_fast_params` 路径，最小开销 | P1 |
+| IT-020.4 | testPresetSwitchDuringStreaming | 串流中切换预设 | Default→HQ→Performance 连续切换，无崩溃、无闪屏 | P0 |
+| IT-020.5 | testContinuousFrameSubmission | 60fps 连续帧提交 | 1000 帧连续提交 + 渲染，无内存泄漏（IOSurface 引用释放正确） | P0 |
+
+#### IT-021: 后端 fallback 集成
+> [验证] AC-184, AC-185
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-021.1 | testFallbackToMetalNative | 模拟 libplacebo 初始化失败 | StreamingViewModel 自动回退到 MetalVideoRenderer，串流正常 | P0 |
+| IT-021.2 | testMetalNativeDirectSelection | 用户选择 Metal Native 后端 | MetalVideoRenderer 正常初始化和渲染，F-041 滤波管线可用 | P0 |
+| IT-021.3 | testBackendSwitchPersistence | 切换后端 + 重启 app | renderBackend 设置持久化，重启后使用用户选择的后端 | P1 |
+
+#### IT-022: HDR 色彩管线集成
+> [验证] AC-177
+
+| 编号 | 方法名 | 场景 | 预期结果 | 优先级 |
+|------|--------|------|----------|--------|
+| IT-022.1 | testHDRToneMappingPQ | BT.2020 PQ 输入 + SDR 显示器 | libplacebo 色调映射输出在 SDR 值域内（0-1.0） | P0 |
+| IT-022.2 | testEDRHeadroomInjection | EDR headroom = 3.0 | `dst_csp.hdr.max_luma = 3.0 * 203`，libplacebo 使用正确目标亮度 | P0 |
+| IT-022.3 | testSDRPassthrough | BT.709 SDR 输入 | libplacebo 跳过色调映射，直通渲染 | P1 |
+| IT-022.4 | testHDRConfigurationSwitch | 运行时 SDR↔HDR 切换 | 切换 hdrConfiguration 后 libplacebo 色彩空间参数正确更新 | P1 |
+
+### 29.4 E2E 测试
+
+#### E2E-015: 全平台 libplacebo 串流画质验证
+> [验证] AC-190, AC-191
+
+| 编号 | 测试步骤 | 预期结果 | 优先级 |
+|------|---------|---------|--------|
+| E2E-015.1 | macOS 串流 1080p + libplacebo Default 预设 | 画面清晰度优于 F-041 Metal Native Default，Overlay 显示 Backend: libplacebo | P0 |
+| E2E-015.2 | macOS 串流 + HQ 预设 + 窗口最大化 | EWA Lanczos 上采样，放大后画面清晰锐利，无 BUG-017 复现 | P0 |
+| E2E-015.3 | iOS 串流 + Default 预设 | libplacebo 在 iOS MoltenVK 上正常渲染，帧延迟 ≤ 3ms | P0 |
+| E2E-015.4 | macOS 串流 + HDR + HQ 预设 | HDR 色调映射正确，EDR headroom 生效，亮度自然 | P1 |
+
+#### E2E-016: 后端切换用户流程验证
+> [验证] AC-178, AC-179, AC-180, AC-184, AC-187
+
+| 编号 | 测试步骤 | 预期结果 | 优先级 |
+|------|---------|---------|--------|
+| E2E-016.1 | 设置页选择 Metal Native → 开始串流 | MetalVideoRenderer 激活，Overlay 显示 Backend: Metal Native | P0 |
+| E2E-016.2 | 设置页选择 libplacebo → 开始串流 | PlaceboVideoRenderer 激活，Overlay 显示 Backend: libplacebo | P0 |
+| E2E-016.3 | 切换后端 → 退出 app → 重启 → 串流 | 后端选择持久化，重启后自动使用上次选择的后端 | P1 |
+| E2E-016.4 | 不支持 Vulkan 的设备 → 串流 | 自动 fallback 到 Metal Native，用户收到提示 toast | P1 |
+
+### 29.5 需求追溯矩阵
+
+| AC 编号 | 描述 | 单元测试 | 集成测试 | E2E 测试 |
+|---------|------|----------|----------|----------|
+| AC-170 | libplacebo MoltenVK 平台编译 | UT-060.1~2, UT-060.4 | - | - |
+| AC-171 | 预编译 xcframework 集成 | UT-060.4 | - | - |
+| AC-172 | 动态 framework 链接 (LGPL) | UT-060.3 | - | - |
+| AC-173 | PlaceboVideoRenderer 协议实现 | UT-061.1~4 | - | - |
+| AC-174 | 零拷贝纹理导入 | UT-062.1~4 | IT-020.5 | - |
+| AC-175 | pl_render_image 渲染管线 | - | IT-020.1~3 | E2E-015.1~2 |
+| AC-176 | pl_swapchain 输出 | - | IT-020.1 | E2E-015.1 |
+| AC-177 | SDR + HDR 色彩空间 | - | IT-022.1~4 | E2E-015.4 |
+| AC-178 | renderBackend 设置属性 | UT-064.1~3 | IT-021.3 | E2E-016.3 |
+| AC-179 | 设置页后端选择器 | - | - | E2E-016.1~2 |
+| AC-180 | StreamingViewModel 后端初始化 | UT-064.4~5 | IT-021.1~2 | E2E-016.1~2 |
+| AC-181 | 三级预设→libplacebo 参数映射 | UT-063.1~3 | IT-020.4 | - |
+| AC-182 | 去色带配置接入 | UT-063.2~3 | IT-020.1~2 | - |
+| AC-183 | 上采样算法配置 (ewa_lanczossharp) | UT-063.3 | IT-020.2 | E2E-015.2 |
+| AC-184 | MetalVideoRenderer 兼容模式保留 | UT-064.6 | IT-021.1~2 | E2E-016.1 |
+| AC-185 | Graceful fallback | UT-064.6 | IT-021.1 | E2E-016.4 |
+| AC-186 | 诊断接口 (frameCount 等) | UT-065.1~4 | - | - |
+| AC-187 | Overlay 显示后端名称 | UT-065.3 | - | E2E-016.1~2 |
+| AC-188 | Metal 后端迁移透明 | - | - | - |
+| AC-189 | Metal 后端消除 MoltenVK | - | - | - |
+| AC-190 | 帧延迟 ≤ 3ms | - | IT-020.1 | E2E-015.3 |
+| AC-191 | 画质 ≥ chiaki-ng 默认 | - | - | E2E-015.1~2 |
+
+> **注**: AC-188、AC-189 为 Phase 2 Metal 后端迁移验收标准，将在 Metal 后端实现后补充对应测试用例。
+
+### 29.6 测试编号范围
+
+| 类型 | 编号范围 | 数量 |
+|------|---------|------|
+| 单元测试 | UT-060 ~ UT-066 | 7 组 (28 个用例) |
+| 集成测试 | IT-020 ~ IT-022 | 3 组 (12 个用例) |
+| E2E 测试 | E2E-015 ~ E2E-016 | 2 组 (8 个用例) |
+
+---
+
+*§29 新增 (2026-02-10): F-042 libplacebo 渲染后端集成测试*

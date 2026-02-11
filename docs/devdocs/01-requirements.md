@@ -69,6 +69,8 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 | **F-038** | Swift/C Bridge 安全加固 | P1 | 回调生命周期、内存泄漏、线程边界、指针安全 [安全加固] |
 | **F-039** | iPhone 串流横屏锁定 | P1 | 串流画面锁定横屏方向（左/右均支持），防止意外旋转 [体验优化] |
 | **F-040** | 控制器架构分层重构 | P1 | Provider 协议分离、HID 优先策略、反馈输出统一、DS4 HID 扩展 [架构重构] |
+| **F-041** | Metal 原生高质量视频滤波管线 | P0 | Bicubic 上采样、CAS 锐化、去色带抖动、预设绑定、渲染诊断 [画质修复] |
+| **F-042** | libplacebo 渲染后端集成 | P0 | libplacebo 替代自有 shader 为默认渲染后端，MoltenVK 初始路径，Metal 后端迁移，后端切换 [渲染架构] |
 
 ---
 
@@ -236,6 +238,70 @@ Chiaki-ng 是一个开源的 PlayStation 4/5 远程游玩客户端，支持多�
 - AC-155: ControllerManager 拆分为编排器（<300 行）+ 独立 Provider 模块
 - AC-156: 新增 DualShock 4 HID Provider（VID 0x054C / PID 0x05C4, 0x09CC），PS button 和 rumble 在 macOS 上工作
 - AC-157: 现有 GameController 标准输入（摇杆、面按键、扳机）不受影响，所有平台通过回归测试
+
+### US-041: Metal 原生高质量视频滤波管线
+> 关联功能: F-041 | 来源: INS-082~INS-084 | 关联 Bug: BUG-016, BUG-017
+
+**作为** 用户，**我想要** 串流画面在放大到高分辨率显示器时清晰锐利、运动场景无明显模糊，**以便** 获得接近 chiaki-ng（libplacebo）的视觉体验，同时保持 Apple 平台原生性能优势。
+
+**验收标准**：
+- AC-158: Y 通道使用 Bicubic Catmull-Rom 9-tap 上采样替代双线性采样，UV 通道保持硬件双线性（人眼对色度细节不敏感）
+- AC-159: 上采样滤波器可通过 `VideoUniforms.upscaleFilter` 切换（0=bilinear, 1=bicubic, 2=lanczos2），默认 bicubic
+- AC-160: 支持 CAS（Contrast Adaptive Sharpening）后处理锐化，3x3 邻域 9 taps，自动降低高对比度区域锐化强度避免光晕
+- AC-161: CAS 锐化强度可配置（0.0=关闭, 0.0-1.0 范围），默认 0.5
+- AC-162: 支持去色带（deband）滤波，随机邻域阈值平滑 + Bayer 4x4 有序抖动，减少串流压缩色带伪影
+- AC-163: 去色带可独立开关，默认开启；阈值和抖动强度可配置
+- AC-164: 三级视频预设（Performance / Default / High Quality）绑定真实渲染参数，切换预设立即改变上采样算法、锐化强度、去色带配置
+- AC-165: Performance 预设: bilinear + 无锐化 + 无去色带；Default 预设: bicubic + CAS 0.5 + 去色带；High Quality 预设: bicubic + CAS 0.7 + 去色带 + 抖动
+- AC-166: StreamingOverlay 统计面板新增渲染诊断指标：render delta(ms)、frame drop/repeat 计数、present interval、当前 upscale filter 标识
+- AC-167: 全管线 GPU 开销 ≤ 2ms（1080p→4K, 60fps, Apple Silicon），不造成可感知的输入延迟增加
+- AC-168: 保持 CVMetalTextureCache 零拷贝架构，不引入中间纹理分配或额外 render pass
+- AC-169: iOS/macOS/tvOS 三平台行为一致，HDR（BT.2020 PQ）和 SDR（BT.709）路径均支持新滤波管线
+
+### US-042: libplacebo 渲染后端集成
+> 关联功能: F-042 | 来源: INS-088~INS-091 | 关联: F-041（降级为兼容模式）
+
+**作为** 用户，**我想要** 串流画面使用 libplacebo 专业渲染管线处理，**以便** 获得与 chiaki-ng 同等的高画质体验（EWA Lanczos 上采样、HDR 动态色调映射、高质量去色带、自定义着色器支持），同时保持 Apple 平台原生性能。
+
+**验收标准**：
+
+#### 构建与依赖
+- AC-170: libplacebo 通过 MoltenVK (Vulkan) 路径集成，支持 macOS (arm64/x86_64) 和 iOS (arm64) 平台编译
+- AC-171: MoltenVK、libplacebo、SPIRV-Cross 作为预编译 xcframework 或通过 SPM/构建脚本集成，不要求用户手动安装 Vulkan SDK
+- AC-172: libplacebo 以动态 framework 方式链接（LGPL 2.1 合规路径），非静态链接
+
+#### 渲染器实现
+- AC-173: 新增 `PlaceboVideoRenderer` 类实现 `VideoRenderer` 协议，与现有 `MetalVideoRenderer` 并存
+- AC-174: CVPixelBuffer → IOSurface → `VK_EXT_metal_objects` → VkImage 零拷贝纹理导入，不引入 CPU 端像素拷贝
+- AC-175: 通过 `pl_renderer` + `pl_render_image()` 执行完整渲染管线（上采样、去色带、色调映射、着色器）
+- AC-176: 渲染输出通过 `pl_swapchain` → CAMetalLayer 呈现，与现有 MTKView 架构兼容
+- AC-177: 支持 SDR (BT.709) 和 HDR (BT.2020 PQ) 两种色彩空间路径
+
+#### 后端切换
+- AC-178: StreamSettings 新增 `renderBackend` 属性（枚举: `.metalNative` / `.libplacebo`），默认 `.libplacebo`
+- AC-179: 设置页 Video 分区新增渲染后端选择器，切换后下次串流会话生效
+- AC-180: StreamingViewModel 根据 `renderBackend` 设置初始化对应的 VideoRenderer 实现
+
+#### libplacebo 渲染配置
+- AC-181: 支持 libplacebo 三级渲染预设映射：Performance → `pl_render_fast_params`，Default → `pl_render_default_params`，High Quality → `pl_render_high_quality_params`
+- AC-182: 去色带（deband）配置接入 libplacebo `pl_deband_params`，默认开启
+- AC-183: 上采样算法配置接入 libplacebo `pl_filter_config`，High Quality 预设使用 `ewa_lanczossharp`
+
+#### 兼容与回退
+- AC-184: `MetalVideoRenderer`（F-041 Metal 原生 shader）保留为兼容/轻量模式，当 libplacebo 不可用时自动回退
+- AC-185: 设备不支持 Vulkan/MoltenVK 时（如旧设备），graceful fallback 到 Metal Native 后端，不崩溃
+
+#### 诊断与统计
+- AC-186: PlaceboVideoRenderer 实现 StreamStatsManager 所需的诊断接口（frameCount、droppedFrameCount、presentInterval）
+- AC-187: StreamingOverlay 渲染诊断显示当前活跃后端名称（"Metal Native" / "libplacebo"）
+
+#### Metal 后端迁移（Phase 2）
+- AC-188: libplacebo Metal 原生后端完成后，可替换 MoltenVK 层，PlaceboVideoRenderer 内部切换，对上层透明
+- AC-189: Metal 后端模式下消除 MoltenVK 依赖，减少包体积 ~10-15MB
+
+#### 性能与质量
+- AC-190: libplacebo 渲染路径帧延迟 ≤ 3ms（1080p→4K, 60fps, Apple Silicon），不超过 F-041 Metal 原生路径的 2 倍
+- AC-191: libplacebo High Quality 预设画质主观评估 ≥ chiaki-ng 默认配置（EWA Lanczos + deband 基准）
 
 ---
 

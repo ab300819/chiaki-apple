@@ -2852,3 +2852,811 @@ Chiaki/Core/Controllers/
 
 *§21 新增 (2026-02-10): F-040 控制器架构分层重构*
 
+## §22. Metal 原生高质量视频滤波管线 (F-041)
+
+> **来源**: INS-082~INS-084 深度技术调研
+> **关联 Bug**: BUG-016（运动模糊残留）, BUG-017（窗口最大化模糊残留）
+> **方案决策**: Metal 原生 shader 实现（排除 libplacebo+MoltenVK 方案，详见 INS-085 评估）
+
+### 22.1 问题根因与方案选择
+
+**当前渲染管线瓶颈**：
+
+```
+CVPixelBuffer (NV12/P010)
+    │
+    ▼
+[bilinear 采样] ← 仅 mag_filter::linear, min_filter::linear
+    │                4 texel 线性插值，720p→4K 放大时细节严重丢失
+    ▼
+[YUV→RGB + HDR]
+    │
+    ▼
+输出 drawable    ← 无锐化、无去色带、无抖动
+```
+
+**chiaki-ng（libplacebo）对照**：
+
+| 能力 | chiaki-ng | 当前 Chiaki Apple | F-041 目标 |
+|------|-----------|-------------------|------------|
+| 上采样 | EWA Lanczos Sharp | bilinear | Bicubic Catmull-Rom 9-tap |
+| 下采样 | Hermite | bilinear | bilinear（下采样场景少） |
+| 锐化 | 隐式（EWA Sharp 变体） | 无 | CAS 自适应锐化 |
+| 去色带 | 4-tap + grain | 无 | 4-tap + Bayer 抖动 |
+| Sigmoid | 有 | 无 | 暂不实现（收益有限） |
+| 帧混合 | oversample/linear | 无 | 暂不实现（增加延迟） |
+| 预设 | fast/default/hq | 未接入渲染 | Performance/Default/HQ |
+
+**方案排除记录**：
+
+| 方案 | 排除原因 |
+|------|----------|
+| libplacebo + MoltenVK | 翻译层 5-15% 开销、LGPL 许可证风险、iOS/tvOS 不原生支持、+15-25MB 包体积 |
+| MetalFX Spatial Scaler | 需额外 render pass（YUV→RGB→scale→输出）、操作 RGB 不能直接处理 YUV |
+| MPSImageLanczosScale | 需中间纹理分配，打破零拷贝架构 |
+
+### 22.2 目标渲染管线
+
+```
+CVPixelBuffer (NV12/P010)
+    │
+    ├─ Y plane ──► [Bicubic Catmull-Rom 9-tap]  ← 利用硬件 bilinear 合并相邻 tap
+    │                                                16 taps → 9 taps 优化
+    ├─ UV plane ─► [bilinear 硬件采样]           ← 色度半分辨率，人眼不敏感
+    │
+    ▼
+[YUV→RGB 转换 + HDR 处理]                        ← 现有逻辑不变
+    │
+    ▼
+[CAS 自适应锐化]                                  ← 3x3 邻域 9 taps
+    │                                                高对比度区域自动降低锐化
+    ▼
+[去色带 + Bayer 抖动]                              ← 4 taps 随机邻域 + 4x4 抖动矩阵
+    │
+    ▼
+输出 drawable
+```
+
+**关键设计约束**：
+- [satisfies] AC-168: 全部在单次 fragment shader 内完成，无额外 render pass
+- [satisfies] AC-168: 保持 CVMetalTextureCache 零拷贝，不引入中间纹理
+- [satisfies] AC-167: 全管线 ≤ 2ms（1080p→4K, 60fps, Apple Silicon）
+
+### 22.3 VideoUniforms 扩展
+
+```metal
+struct VideoUniforms {
+    // === 现有字段（不变） ===
+    float4x4 transform;
+    float2 textureSizeY;
+    float2 textureSizeUV;
+    float brightness;
+    float contrast;
+    float saturation;
+    uint colorSpace;
+    uint colorRange;
+    float edrHeadroom;
+    uint tonemapMode;
+    float edrIntensity;
+    uint gamutMappingEnabled;
+
+    // === F-041 新增字段 ===
+    uint upscaleFilter;       // [satisfies] AC-159: 0=bilinear, 1=bicubic, 2=lanczos2
+    float casStrength;        // [satisfies] AC-161: 0.0=off, 0.0-1.0
+    uint debandEnabled;       // [satisfies] AC-163: 0=off, 1=on
+    float debandThreshold;    // [satisfies] AC-163: 默认 0.004
+    float debandGrain;        // [satisfies] AC-163: 默认 0.003
+    float _pad4;              // 对齐到 16 字节边界
+};
+```
+
+**struct 大小**：从 128 字节扩展到 160 字节（+32 字节，含对齐填充）。
+
+### 22.4 Bicubic Catmull-Rom 上采样算法
+
+**原理**：Catmull-Rom 是一种 C1 连续的插值样条，使用 4x4 邻域（16 taps）。通过利用 Metal 硬件 bilinear 采样，将相邻权重为正的两个 tap 合并为一次 bilinear `sample()` 调用，优化为 3x3 = 9 taps。
+
+```metal
+// [satisfies] AC-158
+float4 sampleBicubicCatmullRom(texture2d<float> tex, sampler s,
+                                float2 uv, float2 texSize) {
+    float2 samplePos = uv * texSize;
+    float2 texPos1 = floor(samplePos - 0.5) + 0.5;
+    float2 f = samplePos - texPos1;
+
+    // Catmull-Rom 权重（Horner 形式，减少乘法）
+    float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+    float2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+    float2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+    float2 w3 = f * f * (-0.5 + 0.5 * f);
+
+    // 合并中间两个权重用于 bilinear 优化
+    float2 w12 = w1 + w2;
+    float2 offset12 = w2 / w12;
+
+    float2 texPos0  = (texPos1 - 1.0) / texSize;
+    float2 texPos3  = (texPos1 + 2.0) / texSize;
+    float2 texPos12 = (texPos1 + offset12) / texSize;
+
+    // 3x3 = 9 次 bilinear 采样
+    float4 result = float4(0.0);
+    result += tex.sample(s, float2(texPos0.x,  texPos0.y))  * w0.x  * w0.y;
+    result += tex.sample(s, float2(texPos12.x, texPos0.y))  * w12.x * w0.y;
+    result += tex.sample(s, float2(texPos3.x,  texPos0.y))  * w3.x  * w0.y;
+    result += tex.sample(s, float2(texPos0.x,  texPos12.y)) * w0.x  * w12.y;
+    result += tex.sample(s, float2(texPos12.x, texPos12.y)) * w12.x * w12.y;
+    result += tex.sample(s, float2(texPos3.x,  texPos12.y)) * w3.x  * w12.y;
+    result += tex.sample(s, float2(texPos0.x,  texPos3.y))  * w0.x  * w3.y;
+    result += tex.sample(s, float2(texPos12.x, texPos3.y))  * w12.x * w3.y;
+    result += tex.sample(s, float2(texPos3.x,  texPos3.y))  * w3.x  * w3.y;
+    return result;
+}
+```
+
+**应用策略**：
+- Y 通道：`sampleBicubicCatmullRom(textureY, s, uv, uniforms.textureSizeY).r`
+- UV 通道：保持 `textureUV.sample(s, uv).rg`（半分辨率色度，bilinear 足够）
+
+### 22.5 CAS 自适应锐化算法
+
+**原理**：AMD FidelityFX CAS 通过分析 3x3 邻域的亮度对比度，自适应调节锐化强度 — 平坦区域锐化增强细节，边缘区域降低锐化避免光晕/振铃。
+
+```metal
+// [satisfies] AC-160, AC-161
+float3 contrastAdaptiveSharpening(float3 center, texture2d<float> tex, sampler s,
+                                   float2 uv, float2 texSize, float strength) {
+    if (strength <= 0.0) return center;
+
+    float2 px = 1.0 / texSize;
+
+    // 采样十字邻域（4 taps，对角由 center 替代）
+    float3 b = tex.sample(s, uv + float2( 0, -1) * px).rgb;
+    float3 d = tex.sample(s, uv + float2(-1,  0) * px).rgb;
+    float3 f = tex.sample(s, uv + float2( 1,  0) * px).rgb;
+    float3 h = tex.sample(s, uv + float2( 0,  1) * px).rgb;
+
+    // 采样对角邻域（4 taps）
+    float3 a = tex.sample(s, uv + float2(-1, -1) * px).rgb;
+    float3 c = tex.sample(s, uv + float2( 1, -1) * px).rgb;
+    float3 g = tex.sample(s, uv + float2(-1,  1) * px).rgb;
+    float3 i = tex.sample(s, uv + float2( 1,  1) * px).rgb;
+
+    // BT.709 亮度
+    float3 lw = float3(0.2126, 0.7152, 0.0722);
+    float lb = dot(b, lw), ld = dot(d, lw), le = dot(center, lw);
+    float lf = dot(f, lw), lh = dot(h, lw);
+    float la = dot(a, lw), lc = dot(c, lw), lg = dot(g, lw), li = dot(i, lw);
+
+    // 软 min/max
+    float mnC = min(min(lb, min(ld, lf)), min(lh, le));
+    float mxC = max(max(lb, max(ld, lf)), max(lh, le));
+    float mn = 0.5 * (mnC + min(mnC, min(min(la, lc), min(lg, li))));
+    float mx = 0.5 * (mxC + max(mxC, max(max(la, lc), max(lg, li))));
+
+    float amp = saturate(min(mn, 1.0 - mx) / max(mx, 1e-5));
+    amp = sqrt(amp);
+
+    float peak = -1.0 / mix(8.0, 5.0, saturate(strength));
+    float w = amp * peak;
+
+    return saturate((b * w + d * w + f * w + h * w + center) / (1.0 + 4.0 * w));
+}
+```
+
+**注意**：CAS 在 YUV→RGB 转换**之后**应用（操作 RGB 域），因此需要在已转换的 RGB 值上执行。对 HDR 路径，CAS 应在 tone mapping 之后、最终输出之前执行。
+
+### 22.6 去色带 + 有序抖动
+
+**去色带原理**：检测低频区域（相邻像素差值低于阈值），用随机邻域平均值平滑，消除压缩色带。
+
+**有序抖动原理**：使用 Bayer 4x4 矩阵在量化级别之间添加结构化噪声，在 8-bit 输出时掩盖残余色带。
+
+```metal
+// [satisfies] AC-162, AC-163
+// Bayer 4x4 有序抖动矩阵
+constant float bayer4x4[16] = {
+     0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+    12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
+     3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+    15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
+};
+
+float3 deband(float3 color, texture2d<float> tex, sampler s,
+              float2 uv, float2 texSize, float2 screenPos,
+              float threshold, float grain) {
+    float2 px = 1.0 / texSize;
+    float seed = fract(uv.x * 1337.0 + uv.y * 7.13);
+
+    // 随机方向 4-tap 采样
+    float angle = fract(sin(dot(uv * texSize + seed, float2(12.9898, 78.233))) * 43758.5453)
+                  * 2.0 * M_PI_F;
+    float dist = fract(sin(dot(uv * texSize + seed, float2(39.346, 11.135))) * 43758.5453)
+                 * 16.0;  // 16 pixel 采样半径
+    float2 offset = float2(cos(angle), sin(angle)) * dist * px;
+
+    float3 s0 = tex.sample(s, uv + offset).rgb;
+    float3 s1 = tex.sample(s, uv - offset).rgb;
+    float3 s2 = tex.sample(s, uv + float2(offset.y, -offset.x)).rgb;
+    float3 s3 = tex.sample(s, uv + float2(-offset.y, offset.x)).rgb;
+    float3 avg = (s0 + s1 + s2 + s3) * 0.25;
+
+    float diff = max(abs(color.r - avg.r), max(abs(color.g - avg.g), abs(color.b - avg.b)));
+    if (diff < threshold) {
+        color = mix(color, avg, 0.5);
+    }
+
+    // Bayer 抖动
+    int2 pos = int2(screenPos) % 4;
+    float dither = bayer4x4[pos.y * 4 + pos.x] - 0.5;
+    color += dither * grain;
+
+    return color;
+}
+```
+
+**注意**：去色带需要访问 RGB 纹理（转换后值），因此**不能**直接在 YUV 采样阶段使用。在 CAS 之后、`return` 之前执行。对 HDR（EDR > 1.0）路径，抖动幅度需缩放以匹配更大的值域。
+
+### 22.7 预设→渲染参数映射
+
+```
+[satisfies] AC-164, AC-165
+
+┌─────────────────────────────────────────────────────────────┐
+│                    VideoPreset 枚举                          │
+├─────────────┬──────────────┬──────────────┬─────────────────┤
+│ 参数         │ Performance  │ Default      │ High Quality    │
+├─────────────┼──────────────┼──────────────┼─────────────────┤
+│ upscaleFilter│ 0 (bilinear) │ 1 (bicubic)  │ 1 (bicubic)     │
+│ casStrength  │ 0.0 (off)    │ 0.5          │ 0.7             │
+│ debandEnabled│ 0 (off)      │ 1 (on)       │ 1 (on)          │
+│ debandThresh │ —            │ 0.004        │ 0.004           │
+│ debandGrain  │ —            │ 0.002        │ 0.004           │
+└─────────────┴──────────────┴──────────────┴─────────────────┘
+```
+
+**集成点**：`StreamingViewModel.setVideoPreset()` 现有 TODO 标记处，调用 `MetalVideoRenderer` 新增的配置方法：
+
+```swift
+// MetalVideoRenderer 新增方法
+func setFilterConfig(_ config: VideoFilterConfig)
+
+struct VideoFilterConfig {
+    var upscaleFilter: UInt32 = 1      // bicubic
+    var casStrength: Float = 0.5
+    var debandEnabled: Bool = true
+    var debandThreshold: Float = 0.004
+    var debandGrain: Float = 0.003
+}
+```
+
+### 22.8 渲染诊断指标
+
+```
+[satisfies] AC-166
+
+新增到 StreamStatistics:
+├── renderDeltaMs: Double        // GPU command buffer 完成耗时
+├── frameDropCount: UInt64       // 丢帧计数（frame 到达时上一帧未渲染完）
+├── frameRepeatCount: UInt64     // 重复帧计数（draw 时无新帧）
+├── presentInterval: Double      // 相邻 present 间隔 (ms)
+└── currentFilter: String        // 当前上采样滤波器标识
+```
+
+**展示位置**：StreamingOverlay 统计面板现有指标行下方新增一行：
+`Filter: bicubic | Render: 0.8ms | Drop: 0 | Repeat: 2 | PresentΔ: 16.7ms`
+
+### 22.9 Shader 集成策略
+
+**核心原则**：所有新增滤波逻辑内联到现有 `videoBiplanarFragmentShader`，通过 uniform 条件分支控制。不新增 render pass 或 pipeline state。
+
+```metal
+fragment float4 videoBiplanarFragmentShader(...) {
+    // Step 1: 上采样（替换原有 bilinear 采样）
+    float y, float2 uv;
+    if (uniforms.upscaleFilter == 1u) {
+        y = sampleBicubicCatmullRom(textureY, s, in.texCoord, uniforms.textureSizeY).r;
+    } else if (uniforms.upscaleFilter == 2u) {
+        y = sampleLanczos2(textureY, s, in.texCoord, uniforms.textureSizeY).r;
+    } else {
+        y = textureY.sample(s, in.texCoord).r;
+    }
+    uv = textureUV.sample(s, in.texCoord).rg;  // UV 始终 bilinear
+
+    // Step 2: YUV→RGB + HDR（现有逻辑不变）
+    ...
+
+    // Step 3: CAS 锐化（RGB 域，tone mapping 之后）
+    if (uniforms.casStrength > 0.0) {
+        rgb = contrastAdaptiveSharpening(rgb, ...);
+    }
+
+    // Step 4: 去色带 + 抖动（最后一步）
+    if (uniforms.debandEnabled != 0u) {
+        rgb = deband(rgb, ...);
+    }
+
+    return float4(rgb, 1.0);
+}
+```
+
+**GPU 分支开销**：Metal 在 fragment shader 中的 uniform 条件分支成本极低（全 wavefront 走同一分支），不会造成 divergence。
+
+### 22.10 HDR 路径兼容性
+
+[satisfies] AC-169
+
+| 阶段 | SDR (BT.709) | HDR (BT.2020 PQ) |
+|------|-------------|-------------------|
+| Bicubic 上采样 | Y 通道 9-tap | Y 通道 9-tap（10-bit r16Unorm） |
+| CAS 锐化 | RGB gamma 域 | RGB 线性域（EDR/ACES 之后） |
+| 去色带阈值 | 0.004 | 需缩放（EDR 值域更大） |
+| Bayer 抖动 | grain / 255 | grain * edrHeadroom（匹配 EDR 值域） |
+
+**HDR 特殊处理**：去色带的 `threshold` 和 `grain` 在 HDR 路径需乘以 `edrHeadroom` 因子，以匹配 EDR 扩展值域（SDR 1.0 → EDR 可达 ~8.0）。
+
+### 22.11 性能预算
+
+| 阶段 | 采样数 | M1 预估 | A14 预估 |
+|------|--------|---------|----------|
+| Bicubic Y | 9 taps | 0.3ms | 0.5ms |
+| Bilinear UV | 1 tap | 0.05ms | 0.08ms |
+| YUV→RGB + HDR | ALU | 0.1ms | 0.15ms |
+| CAS | 9 taps | 0.3ms | 0.5ms |
+| 去色带+抖动 | 4 taps + ALU | 0.2ms | 0.3ms |
+| **总计** | | **~1.0ms** | **~1.5ms** |
+
+帧预算 16.6ms（60fps），余量充足。Performance 预设（纯 bilinear）退回到现有开销水平。
+
+### 22.12 回归风险
+
+| 风险 | 影响范围 | 缓解措施 |
+|------|---------|---------|
+| Uniform struct 大小变更 | 所有 pipeline state | 确保 16 字节对齐，验证 CPU/GPU struct 一致性 |
+| Bicubic 在纹理边缘采样越界 | 画面边缘伪影 | Catmull-Rom 权重自然衰减 + clamp_to_edge |
+| CAS 在 HDR 值域误锐化 | HDR 画面过锐 | CAS 在 tone mapping 之后执行（值域已归一化） |
+| 去色带误平滑细节 | 画面丢失纹理 | 阈值默认保守（0.004），可关闭 |
+| Performance 预设退化 | 用户期望不匹配 | Performance = 纯 bilinear，等同当前行为 |
+
+---
+
+*§22 新增 (2026-02-10): F-041 Metal 原生高质量视频滤波管线*
+
+## §23. libplacebo 渲染后端集成 (F-042)
+
+> **关联需求**: F-042 (AC-170 ~ AC-191)
+> **来源洞察**: INS-088~INS-091
+> **影响模块**: VideoRenderer, PlaceboVideoRenderer(新), StreamingViewModel, StreamSettings, 构建系统
+> **关联功能**: F-026（VideoRenderer 协议）, F-041（降级为兼容模式）
+
+### 23.1 动机与方案选择
+
+**问题**: F-041 Metal 原生 shader 管线（Bicubic + CAS + Deband）已实现基础画质增强，但存在以下不足：
+- 自维护 Metal shader 代码脆弱（BUG-020: `constant` vs `const` 导致黑屏）
+- 缺少 libplacebo 的高级功能：EWA Lanczos 上采样、帧混合、HDR 动态色调映射、自定义 mpv .hook 着色器
+- 画质仍不及 chiaki-ng 的 libplacebo 管线
+
+**方案选择**:
+
+| 方案 | 优势 | 劣势 | 决策 |
+|------|------|------|------|
+| 继续扩展 Metal 原生 shader | 零依赖、最小包体积 | 功能追赶 libplacebo 不现实，维护成本高 | ❌ 作为兼容模式保留 |
+| libplacebo + MoltenVK (Phase 1) | 可立即开始、验证集成架构 | MoltenVK 翻译层 5-15% 开销、+10-15MB 包体积 | ✅ 初始路径 |
+| libplacebo Metal 原生后端 (Phase 2) | 无翻译层、最优性能、直接 Metal API | 需要自行实现 ~3,170 行后端代码 | ✅ 迁移目标 |
+
+**分阶段策略**:
+- **Phase 1**: MoltenVK (Vulkan) 路径集成 libplacebo，验证完整渲染管线和集成架构
+- **Phase 2**: 自研 libplacebo Metal 后端就绪后，替换 MoltenVK 层，对上层 API 透明
+
+### 23.2 架构概述
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    StreamingViewModel                            │
+│  renderBackend: .metalNative / .libplacebo                      │
+│  videoRenderer: any VideoRenderer                               │
+└──────────┬──────────────────────────────┬───────────────────────┘
+           │                              │
+           ▼                              ▼
+┌─────────────────────┐    ┌──────────────────────────────────────┐
+│ MetalVideoRenderer  │    │      PlaceboVideoRenderer            │
+│ (F-041 兼容模式)     │    │                                      │
+│                     │    │  ┌─────────────────────────────────┐  │
+│ • Bicubic + CAS     │    │  │     libplacebo (pl_renderer)    │  │
+│ • Deband            │    │  │  • EWA Lanczos / Polar filters  │  │
+│ • VideoFilterConfig │    │  │  • HDR tone mapping             │  │
+│ • 零外部依赖        │    │  │  • Deband + dithering           │  │
+└─────────────────────┘    │  │  • Custom mpv shaders           │  │
+                           │  └───────────┬─────────────────────┘  │
+                           │              │                        │
+                           │  ┌───────────▼─────────────────────┐  │
+                           │  │  Phase 1: MoltenVK (Vulkan)     │  │
+                           │  │  Phase 2: Metal 原生后端         │  │
+                           │  └─────────────────────────────────┘  │
+                           └──────────────────────────────────────┘
+```
+
+**VideoRenderer 协议兼容性**: `PlaceboVideoRenderer` 实现现有 `VideoRenderer` 协议（F-026 定义），与 `MetalVideoRenderer` 完全并存。上层代码（StreamingViewModel、StreamStatsManager）通过协议接口操作，无需感知具体后端。
+
+### 23.3 PlaceboVideoRenderer 设计
+
+```swift
+// PlaceboVideoRenderer.swift
+import Foundation
+import CoreVideo
+import MetalKit
+
+/// libplacebo 渲染后端实现
+/// @requirement F-042
+/// @satisfies AC-173, AC-174, AC-175, AC-176, AC-177
+final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
+
+    // MARK: - libplacebo 核心对象 (C interop)
+    private var plLog: OpaquePointer?           // pl_log
+    private var plVulkan: OpaquePointer?        // pl_vulkan (Phase 1) / pl_metal (Phase 2)
+    private var plGpu: OpaquePointer?           // pl_gpu
+    private var plRenderer: OpaquePointer?      // pl_renderer
+    private var plSwapchain: OpaquePointer?     // pl_swapchain
+    private var plCache: OpaquePointer?         // pl_cache (shader 缓存)
+
+    // MARK: - VideoRenderer 协议属性
+    weak var mtkView: MTKView?
+    var displayMode: VideoDisplayMode = .normal
+    var zoomFactor: Float = 1.0
+    var vrrEnabled: Bool = false
+    var hdrConfiguration: HDRConfiguration = .sdr
+    var edrHeadroom: Float = 1.0
+    var filterConfig: VideoFilterConfig { ... }
+    // ... 完整协议实现
+
+    // MARK: - libplacebo 渲染参数
+    private var renderParams: PlaceboRenderParams = .default
+    private var debandParams: PlaceboDebandParams = .default
+
+    // MARK: - 初始化
+    init?() {
+        // 1. 创建 pl_log
+        // 2. Phase 1: pl_vulkan_create() (MoltenVK)
+        //    Phase 2: pl_metal_create() (原生后端)
+        // 3. pl_renderer_create(plLog, plGpu)
+        // 4. 加载 shader 缓存
+    }
+
+    // MARK: - 帧提交与渲染
+    func submitFrame(_ pixelBuffer: CVPixelBuffer) {
+        // CVPixelBuffer → IOSurface → pl_tex (零拷贝)
+    }
+
+    func render(to view: MTKView, descriptor: MTLRenderPassDescriptor?) {
+        // 1. pl_swapchain_start_frame()
+        // 2. 构建 pl_frame (source + target)
+        // 3. pl_render_image(plRenderer, &sourceFrame, &targetFrame, &renderParams)
+        // 4. pl_swapchain_swap_buffers()
+    }
+}
+```
+
+### 23.4 零拷贝纹理导入
+
+**Phase 1 (MoltenVK) 路径**:
+
+```
+CVPixelBuffer
+    │
+    ▼
+IOSurfaceRef (CVPixelBufferGetIOSurface)
+    │
+    ▼
+VkImage (VK_EXT_metal_objects: vkUseIOSurfaceMVK 或 VkImportMetalIOSurfaceInfoEXT)
+    │
+    ▼
+pl_tex (pl_vulkan_wrap)
+    │
+    ▼
+pl_frame { .planes[0] = Y plane, .planes[1] = UV plane }
+    │
+    ▼
+pl_render_image() → 完整渲染管线
+    │
+    ▼
+pl_swapchain → CAMetalLayer drawable
+```
+
+**关键约束**:
+- `VK_EXT_metal_objects` 扩展必须可用（MoltenVK 1.2+ 支持）
+- NV12 (420YpCbCr8BiPlanarVideoRange) 和 P010 (420YpCbCr10BiPlanarVideoRange) 双格式支持
+- IOSurface 引用计数管理：pl_tex 持有期间 IOSurface 不得释放
+
+**Phase 2 (Metal 原生后端) 路径**:
+
+```
+CVPixelBuffer
+    │
+    ▼
+IOSurfaceRef
+    │
+    ▼
+MTLTexture (MTLDevice.makeTexture(descriptor:iosurface:plane:))
+    │
+    ▼
+pl_tex (pl_metal_wrap: PL_HANDLE_MTL_TEX)
+    │
+    ▼
+pl_render_image() → 完整渲染管线
+```
+
+Phase 2 消除 Vulkan 层，直接使用 Metal 纹理，减少一次格式转换。
+
+### 23.5 渲染管线配置
+
+libplacebo 渲染参数通过 `pl_render_params` 结构体配置：
+
+```c
+// 三级预设映射 (AC-181)
+// Performance → pl_render_fast_params
+struct pl_render_params fast = pl_render_fast_params;
+// 禁用所有后处理，最低延迟
+
+// Default → pl_render_default_params
+struct pl_render_params default_p = pl_render_default_params;
+default_p.deband_params = &pl_deband_default_params;  // AC-182
+
+// High Quality → pl_render_high_quality_params
+struct pl_render_params hq = pl_render_high_quality_params;
+hq.deband_params = &pl_deband_default_params;          // AC-182
+// ewa_lanczossharp 上采样由 hq_params 默认配置          // AC-183
+```
+
+**上采样算法对比**（libplacebo vs F-041 Metal 原生）:
+
+| 特性 | F-041 Metal 原生 | libplacebo |
+|------|-----------------|------------|
+| 上采样 | Bicubic Catmull-Rom 9-tap | EWA Lanczos Sharp (极坐标滤波) |
+| 下采样 | N/A | Hermite |
+| 锐化 | CAS 9-tap | 内置于上采样滤波器 |
+| 去色带 | 4-tap 随机邻域 + Bayer 4x4 | 梯度检测 + 自适应阈值 |
+| HDR 色调映射 | 简单 Reinhard | 动态场景检测 + 峰值统计 |
+| 帧混合 | 无 | Oversample / Mitchell-Clamp |
+| 自定义着色器 | 无 | mpv .hook 格式 |
+| 色域映射 | 无 | 感知色域拉伸 |
+
+### 23.6 后端切换机制
+
+```swift
+// StreamSettings.swift (AC-178)
+enum RenderBackend: String, Codable, CaseIterable {
+    case metalNative    // F-041 Metal 原生 shader
+    case libplacebo     // libplacebo 渲染管线
+
+    var displayName: String {
+        switch self {
+        case .metalNative: return "Metal Native"
+        case .libplacebo: return "libplacebo"
+        }
+    }
+}
+
+// StreamSettings 扩展
+var renderBackend: RenderBackend = .libplacebo  // 默认 libplacebo
+```
+
+```swift
+// StreamingViewModel.swift (AC-180)
+private func createRenderer() -> (any VideoRenderer)? {
+    switch settings.renderBackend {
+    case .libplacebo:
+        if let renderer = PlaceboVideoRenderer() {
+            return renderer
+        }
+        // Graceful fallback (AC-185)
+        Logger.video.warning("libplacebo init failed, falling back to Metal Native")
+        return MetalVideoRenderer()
+    case .metalNative:
+        return MetalVideoRenderer()
+    }
+}
+```
+
+### 23.7 构建系统集成
+
+**依赖链**:
+
+```
+libplacebo (LGPL 2.1, 动态 framework)
+    ├── SPIRV-Cross (Apache 2.0, 静态链接到 libplacebo)
+    ├── shaderc/glslang (BSD, GLSL→SPIR-V 编译)
+    └── Phase 1: MoltenVK (Apache 2.0, 动态 framework)
+        └── vulkan-headers (Apache 2.0)
+```
+
+**xcframework 结构** (AC-171):
+
+```
+Frameworks/
+├── libplacebo.xcframework/
+│   ├── macos-arm64_x86_64/libplacebo.framework/
+│   └── ios-arm64/libplacebo.framework/
+├── MoltenVK.xcframework/           (Phase 1 only)
+│   ├── macos-arm64_x86_64/MoltenVK.framework/
+│   └── ios-arm64/MoltenVK.framework/
+└── (Phase 2: MoltenVK 移除)
+```
+
+**LGPL 合规** (AC-172):
+- libplacebo 必须以动态 framework 链接（用户可替换）
+- MoltenVK (Apache 2.0) 无限制
+- 应用内提供 libplacebo 源码链接和许可证声明
+
+**构建脚本**:
+- 新增 `scripts/build-libplacebo.sh`：交叉编译 libplacebo + MoltenVK 为 xcframework
+- Meson 交叉编译配置（macOS arm64/x86_64、iOS arm64）
+- CI 集成：预编译 xcframework 缓存，避免每次构建
+
+### 23.8 Swapchain 与 MTKView 集成
+
+libplacebo 的 `pl_swapchain` 需要与现有 MTKView 渲染循环协作：
+
+**Phase 1 (MoltenVK)**:
+```
+MTKView.delegate.draw(in:)
+    │
+    ▼
+PlaceboVideoRenderer.render(to:descriptor:)
+    │
+    ├── pl_swapchain_start_frame() → 获取 target texture
+    ├── 构建 pl_frame (source: Y+UV planes, target: swapchain frame)
+    ├── pl_render_image(renderer, &source, &target, &params)
+    └── pl_swapchain_swap_buffers()
+```
+
+**MoltenVK swapchain 与 CAMetalLayer**:
+- `pl_vulkan_create_swapchain()` 接受 `VkSurfaceKHR`
+- MoltenVK 通过 `VK_EXT_metal_surface` 从 CAMetalLayer 创建 VkSurfaceKHR
+- MTKView 底层使用 CAMetalLayer，两者可共享
+
+**替代方案**（若 swapchain 共享困难）:
+- 使用 `pl_renderer` 离屏渲染到 `pl_tex`
+- 将结果 `pl_tex` 对应的 MTLTexture 通过 `VK_EXT_metal_objects` 导出
+- 用简单的 Metal blit pass 复制到 MTKView drawable
+- 额外开销 ~0.1ms，但架构更简洁
+
+### 23.9 HDR 支持
+
+libplacebo 内置完整 HDR 管线 (AC-177):
+
+```c
+// 源帧色彩空间
+struct pl_color_space src_csp = {
+    .primaries = PL_COLOR_PRIM_BT_2020,
+    .transfer = PL_COLOR_TRC_PQ,
+    // HDR10 静态元数据
+    .hdr = {
+        .max_luma = 1000,  // 来自 PS5 流元数据
+    },
+};
+
+// 目标色彩空间（自动检测显示器能力）
+struct pl_color_space dst_csp = {
+    .primaries = PL_COLOR_PRIM_BT_2020,  // EDR 扩展色域
+    .transfer = PL_COLOR_TRC_LINEAR,      // EDR 线性光
+};
+
+// 渲染参数
+render_params.color_map_params = &pl_color_map_default_params;
+// 动态色调映射：自动场景检测 + 峰值统计
+```
+
+- EDR headroom 注入：`dst_csp.hdr.max_luma = edrHeadroom * 203.0`（203 nit = SDR 白点）
+- SDR 路径：src/dst 均为 BT.709，libplacebo 自动跳过色调映射
+
+### 23.10 Shader 缓存
+
+libplacebo 首次使用某配置时需编译 shader（GLSL→SPIR-V→MSL），后续从缓存加载：
+
+```swift
+// 缓存路径: ~/Library/Caches/com.chiaki.app/placebo_cache.bin
+private func setupShaderCache() {
+    let cacheParams = pl_cache_params(
+        log: plLog,
+        max_total_size: 10 * 1024 * 1024  // 10 MB
+    )
+    plCache = pl_cache_create(&cacheParams)
+    pl_gpu_set_cache(plGpu, plCache)
+
+    // 加载已有缓存
+    if let file = fopen(cacheFilePath, "rb") {
+        pl_cache_load_file(plCache, file)
+        fclose(file)
+    }
+}
+
+// 应用退出时保存缓存
+func saveCache() {
+    if let file = fopen(cacheFilePath, "wb") {
+        pl_cache_save_file(plCache, file)
+        fclose(file)
+    }
+}
+```
+
+### 23.11 C/Swift 桥接
+
+libplacebo 是纯 C 库，需要 Swift 桥接头：
+
+```
+Chiaki/
+├── Core/
+│   └── Video/
+│       ├── VideoRenderer.swift          (协议，不变)
+│       ├── MetalVideoRenderer.swift     (不变，兼容模式)
+│       ├── PlaceboVideoRenderer.swift   (新增，Swift 主体)
+│       └── Placebo/
+│           ├── PlaceboBridge.h          (桥接头：#include <libplacebo/*.h>)
+│           ├── PlaceboContext.m/.c       (C 层初始化/销毁封装)
+│           └── PlaceboTypes.swift       (Swift 类型映射)
+```
+
+**桥接策略**:
+- libplacebo C API 通过 Objective-C 桥接头暴露给 Swift
+- 不透明指针（`OpaquePointer`）管理 libplacebo 对象生命周期
+- 配置结构体通过 Swift wrapper 类型安全封装
+- 渲染热路径（submitFrame/render）通过最小化桥接调用减少开销
+
+### 23.12 诊断接口
+
+PlaceboVideoRenderer 实现 StreamStatsManager 所需接口 (AC-186, AC-187):
+
+```swift
+// PlaceboVideoRenderer 统计属性
+var frameCount: UInt64 { get }           // 渲染帧计数
+var droppedFrameCount: UInt64 { get }    // 丢帧计数
+var frameRepeatCount: UInt64 { get }     // 重复帧计数
+var presentInterval: Double { get }      // 帧间间隔 (ms)
+var filterName: String { "libplacebo" }  // 后端标识
+
+// StreamingOverlay 显示当前后端名称
+// 渲染诊断项增加 "Backend: libplacebo" 或 "Backend: Metal Native"
+```
+
+### 23.13 Phase 2: Metal 后端迁移路径
+
+Metal 原生后端完成后，`PlaceboVideoRenderer` 内部切换 (AC-188, AC-189):
+
+```swift
+// Phase 1 → Phase 2 切换（对 VideoRenderer 协议透明）
+private func initializeGpu() -> Bool {
+    #if PLACEBO_METAL_BACKEND
+    // Phase 2: 直接创建 Metal 上下文
+    plMetal = pl_metal_create(plLog, &metalParams)
+    plGpu = plMetal?.pointee.gpu
+    #else
+    // Phase 1: 通过 MoltenVK 创建 Vulkan 上下文
+    plVulkan = pl_vulkan_create(plLog, &vulkanParams)
+    plGpu = plVulkan?.pointee.gpu
+    #endif
+    return plGpu != nil
+}
+```
+
+**迁移检查清单**:
+- [ ] `pl_metal_create()` 替换 `pl_vulkan_create()`
+- [ ] `pl_metal_wrap()` 替换 VK_EXT_metal_objects 纹理导入
+- [ ] `CAMetalLayer` 直接创建 swapchain（无需 VkSurfaceKHR）
+- [ ] 移除 MoltenVK.xcframework 依赖
+- [ ] 编译标志 `PLACEBO_METAL_BACKEND` 控制切换
+
+### 23.14 回归风险
+
+| 风险 | 影响范围 | 缓解措施 |
+|------|---------|---------|
+| MoltenVK 在 iOS 上 Vulkan 能力不完整 | 部分 libplacebo shader 不可用 | 运行时检测 GPU 能力，降级配置 |
+| libplacebo 动态 framework 签名 | App Store 提审 | 正确签名 + 嵌入 framework |
+| Shader 首次编译延迟 | 首次串流启动慢 ~2-3s | Shader 缓存持久化 + 预热 |
+| CVPixelBuffer → VkImage 零拷贝失败 | 帧延迟增加 | Fallback 到 CPU copy + 性能警告日志 |
+| MetalVideoRenderer 回退路径未测试 | libplacebo 失败时黑屏 | 集成测试覆盖 fallback 路径 |
+| 包体积增加 ~15-25MB (MoltenVK) | 用户下载体验 | Phase 2 消除 MoltenVK 后降至 ~5MB |
+| libplacebo API 版本兼容性 | 升级 libplacebo 后编译失败 | 锁定 libplacebo 版本，CI 验证 |
+
+---
+
+*§23 新增 (2026-02-10): F-042 libplacebo 渲染后端集成*
+

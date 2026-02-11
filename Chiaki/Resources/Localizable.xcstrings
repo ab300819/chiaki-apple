@@ -4,6 +4,16 @@
     "" : {
 
     },
+    "%@ | R:%@ms" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ | R:%2$@ms"
+          }
+        }
+      }
+    },
     "%lld%%" : {
       "localizations" : {
         "en" : {
@@ -1299,6 +1309,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "缩放填充"
+          }
+        }
+      }
+    },
+    "Drop:%llu Rep:%llu PΔ:%@ms" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Drop:%1$llu Rep:%2$llu PΔ:%3$@ms"
           }
         }
       }

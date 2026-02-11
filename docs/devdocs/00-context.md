@@ -33,9 +33,11 @@
 | F-031~F-033 | 主题色/自动发现/TabView | P2 | ✅ 已完成 |
 | F-034~F-038 | macOS 侧边栏/Slider/UI/Bridge 安全 | P1~P2 | ✅ 已完成 |
 | F-039 | iPhone 串流横屏锁定 | P1 | ✅ 已完成 |
-| **F-040** | **控制器架构分层重构** | **P0** | **⏳ 设计完成，待实施** |
+| F-040 | 控制器架构分层重构 | P0 | ✅ 已完成 |
+| F-041 | Metal 原生高质量视频滤波管线 | P1 | ✅ 已完成（降级为兼容模式） |
+| **F-042** | **libplacebo 渲染后端集成** | **P0** | **⏳ 待实施 (M19)** |
 
-**已完成 39 个功能点**，F-040 为活跃开发功能。
+**已完成 41 个功能点**，F-042 为活跃开发功能。
 
 ### 1.3 技术栈
 
@@ -43,10 +45,10 @@
 |------|------|
 | UI 框架 | SwiftUI (iOS 17+ / macOS 14+ / tvOS 17+) |
 | 状态管理 | @Observable (Observation 框架) |
-| 视频渲染 | Metal + MetalKit + VideoToolbox |
+| 视频渲染 | Metal + MetalKit + VideoToolbox（当前）→ libplacebo + MoltenVK（F-042 目标） |
 | 音频播放 | AVFoundation + Opus 解码 |
 | 网络通信 | libchiaki (C 核心库 via Bridge) |
-| 手柄输入 | GameController + IOKit HID (macOS) |
+| 手柄输入 | GameController + IOKit HID (macOS) — ControllerOrchestrator 架构 |
 | 本地存储 | UserDefaults + Keychain |
 | 国际化 | String Catalogs (Localizable.xcstrings) |
 
@@ -54,12 +56,12 @@
 
 | 指标 | 数值 |
 |------|------|
-| Swift 源文件 | 92 个 |
-| Swift 代码行数 | ~19,700 行 |
+| Swift 源文件 | 96 个 |
+| Swift 代码行数 | ~31,500 行 |
 | C Bridge 文件 | 6 个 (1 .h + 5 .swift) |
-| 测试文件 | 49 个 (单元) + 7 个 (UI) |
+| 测试文件 | 52 个 (单元) + 7 个 (UI) |
 | UI 设计文件 | `designs/chiaki-apple-ui.pen` (24 screens) |
-| @satisfies/@verifies 标注 | 459 处 (106 个文件) |
+| @satisfies/@verifies 标注 | 708 处 (121 个文件) |
 
 ---
 
@@ -82,12 +84,19 @@
 ├──────────┼─────────────────┼─────────────────┼──────────────┤
 │          ▼                 ▼                 ▼              │
 │                    Core Services                            │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
-│  │HostManager │ │ChiakiSession│ │VideoRenderer│ │AudioPlayer│   │
-│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └─────┬─────┘   │
-├────────┼─────────────┼─────────────┼─────────────┼──────────┤
-│        ▼             ▼             ▼             ▼          │
-│                    C Bridge Layer                           │
+│  ┌──────────┐ ┌────────────┐ ┌──────────────┐ ┌──────────┐ │
+│  │HostManager│ │ChiakiSession│ │VideoRenderer │ │AudioPlayer│ │
+│  └────┬─────┘ └─────┬──────┘ └──────┬───────┘ └────┬─────┘ │
+│       │              │               │               │       │
+│       │              │        ┌──────┴───────┐       │       │
+│       │              │        │              │       │       │
+│       │              │  MetalVideo     Placebo       │       │
+│       │              │  Renderer       Video         │       │
+│       │              │  (兼容模式)     Renderer       │       │
+│       │              │               (F-042 目标)     │       │
+├───────┼──────────────┼───────────────────────────────┼──────┤
+│       ▼              ▼                               ▼      │
+│                    C Bridge Layer                            │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │           libchiaki (C Core Library)                │    │
 │  └────────────────────────────────────────────────────┘    │
@@ -101,30 +110,42 @@
 | App | 应用入口、导航管理、方向控制 | `Chiaki/App/` (4 files) |
 | Features | 功能页面 (HostList, Streaming, Settings) | `Chiaki/Features/` (41 files) |
 | Domain | 业务逻辑服务层 | `Chiaki/Domain/` (4 files) |
-| Core/Bridge | libchiaki C 桥接层 | `Chiaki/Core/Bridge/` (5 files) |
-| Core/Video | Metal 视频渲染 (HDR/SDR) | `Chiaki/Core/Video/` (9 files) |
+| Core/Bridge | libchiaki C 桥接层 | `Chiaki/Core/Bridge/` (6 files) |
+| Core/Video | Metal 渲染 (HDR/SDR, 滤波管线, VideoToolbox) | `Chiaki/Core/Video/` (10 files) |
 | Core/Audio | 音频播放与 Opus 解码 | `Chiaki/Core/Audio/` (3 files) |
-| Core/Controllers | GameController + DualSense HID | `Chiaki/Core/Controllers/` (6 files) |
+| Core/Controllers | ControllerOrchestrator + Provider 分层 | `Chiaki/Core/Controllers/` (9 files) |
 | Core/Storage | Keychain、主机/设置持久化 | `Chiaki/Core/Storage/` (4 files) |
 | Shared | 跨功能协议 (PSNServicing, PinManaging) | `Chiaki/Shared/` |
 | Utilities | 通用工具 (Logger, Theme, Haptics) | `Chiaki/Utilities/` (11 files) |
 | Platforms | 平台特定代码 (tvOS/macOS) | `Chiaki/Platforms/` |
 
-### 2.3 控制器架构 (F-040 待重构)
+### 2.3 控制器架构 (F-040 ✅ 已完成)
 
-**当前架构** (单体):
-```
-StreamingViewModel → ControllerManager (824 行)
-                     └── DualSenseHIDManager (468 行, macOS)
-```
-
-**目标架构** (Provider 分层, §21):
+**Provider 分层架构** (§21):
 ```
 StreamingViewModel → ControllerOrchestrator (<300 行)
                      ├── GameControllerProvider (所有平台)
                      ├── DualSenseHIDProvider (macOS, HID 优先)
                      └── DualShock4HIDProvider (macOS, P2)
 ```
+
+### 2.4 视频渲染架构 (F-041 ✅ + F-042 ⏳)
+
+**当前双后端架构** (§22 + §23):
+```
+StreamingViewModel
+  ├── MetalVideoRenderer (F-041 兼容模式)
+  │   └── Metal 原生: Bicubic + CAS + Deband
+  └── PlaceboVideoRenderer (F-042 目标)
+        └── libplacebo (pl_renderer)
+              └── Phase 1: MoltenVK / Phase 2: Metal 原生后端
+```
+
+- **RenderBackend 枚举**: `.metalNative` / `.libplacebo` 切换
+- **VideoRenderer 协议**: 统一接口，工厂方法按设置创建后端
+- **Phase 1**: MoltenVK (Vulkan) 路径 → M19 里程碑
+- **Phase 2**: libplacebo Metal 原生后端 → 后续里程碑
+- **Phase 3**: libplacebo 默认，Metal 原生作为兼容/轻量模式
 
 ---
 
@@ -137,11 +158,11 @@ chiaki-apple/
 │   ├── Core/
 │   │   ├── Audio/              # 音频播放 (AVFoundation + Opus)
 │   │   ├── Bridge/             # C 桥接 (ChiakiSession, Discovery, Regist)
-│   │   ├── Controllers/        # 手柄管理 (GCController, DualSense HID)
+│   │   ├── Controllers/        # 手柄管理 (Orchestrator + Provider 分层)
 │   │   ├── Network/            # 网络监控 (NWPathMonitor)
 │   │   ├── Storage/            # 持久化 (HostStore, SettingsStore, Keychain)
 │   │   ├── Streaming/          # 流统计 (StreamStats)
-│   │   └── Video/              # Metal 渲染 (HDR/SDR, VideoToolbox)
+│   │   └── Video/              # Metal 渲染 (HDR/SDR, 滤波管线, VideoToolbox)
 │   ├── Domain/                 # 业务逻辑 (HostManager, PSNService)
 │   ├── Features/
 │   │   ├── AutoConnect/        # 自动连接
@@ -154,11 +175,13 @@ chiaki-apple/
 │   ├── Utilities/              # 工具 (Logger, Theme, CrashReporter)
 │   ├── Resources/              # Assets, Localizable.xcstrings
 │   └── Platforms/              # tvOS/macOS 平台特定代码
-├── ChiakiTests/                # 49 个测试文件
+├── ChiakiTests/                # 52 个测试文件
 ├── ChiakiUITests/              # 7 个 UI 测试文件
 ├── Frameworks/                 # XCFrameworks (libchiaki, opus, mbedtls)
 ├── Scripts/                    # 构建脚本 (build_libchiaki.sh 等)
 ├── docs/devdocs/               # DevDocs 文档体系
+├── designs/                    # Pencil UI 设计文件
+├── metal-backend-*.md          # libplacebo Metal 后端设计文档 (3 份)
 └── Chiaki.xcodeproj            # Xcode 项目
 ```
 
@@ -176,68 +199,93 @@ chiaki-apple/
 | M14 macOS 设置侧边栏 | 4 | 100% | ✅ 已归档 |
 | M15 UI/UX+Bridge 安全 | 18 | 100% | ✅ 已归档 |
 | M16 iPhone 串流横屏锁定 | 2 | 100% | ✅ 已完成 |
-| **M17 控制器架构分层重构** | **7** | **0%** | **⏳ 待开始** |
-| Bug 修复 | 11 | 100% | ✅ |
-| **总计** | **124** | **94%** | — |
+| M17 控制器架构分层重构 | 7 | 100% | ✅ 已完成 |
+| M18 Metal 原生滤波管线 | 7 | 100% | ✅ 已完成 |
+| **M19 libplacebo 渲染后端** | **8** | **0%** | **⏳ 待开始** |
+| Bug 修复 | 12 | 100% | ✅ |
+| **总计** | **140** | **94%** | — |
 
-> T-115 (App Icon 资产) 待设计师交付。BUG-018/019 待真机验证。
+> T-115 (App Icon 资产) 待设计师交付。
 
 ### 4.2 最近完成
 
 | 提交 | 任务 | 说明 |
 |------|------|------|
-| 0eda629 | — | 文档同步至 M17 当前状态 |
-| 52843ac | — | 全局追溯矩阵更新 F-023~F-040 |
-| e594c25 | — | F-040 控制器架构设计与任务拆分 |
-| 33fc790 | BUG-018/019 | IOKit HID: DualSense PS button + rumble (macOS) |
-| 4a5d5a5 | BUG-017 | macOS 窗口最大化后视频模糊修复 |
-| 9ebd0ac | BUG-016 | VideoToolbox 解码器重排缓冲优化 |
-| f2286d8 | T-227/228 | HDR EDR 亮度与 macOS Retina 分辨率修复 |
+| 77d2ab9 | BUG-020 | Metal shader 编译失败导致黑屏修复 |
+| cec8a6a | T-242 | 全平台验证与测试修复 |
+| df1f2d8 | T-241 | 渲染诊断指标集成到 stats overlay |
+| 3d4603a | T-240 | 视频预设映射到 Metal 滤波参数 |
+| 7df36e6 | T-239 | 去色带 + Bayer 4x4 有序抖动 |
 | d42ca3c | T-221/222 | iPhone 串流横屏锁定 |
 
-### 4.3 当前活跃任务 (M17)
+### 4.3 当前活跃任务 (M19 — libplacebo 渲染后端集成)
 
 ```
-T-229 协议定义 (P0, 🔴 TDD) ← 起点
-  ├── T-230 GameControllerProvider (P0, 🟡)
-  ├── T-231 DualSenseHIDProvider (P0, 🟡)
-  └── T-232 ControllerOrchestrator (P0, 🔴 TDD)
-        ├── T-233 StreamingVM 集成 (P0, 🟢)
-        ├── T-234 DS4 HID Provider (P2, 🔴 TDD)
-        └── T-235 清理+验证 (P1, 🟢)
+T-243 构建系统 (P0, 🟡) ← 起点
+  └── T-244 C/Swift 桥接层 (P0, 🟡)
+        └── T-245 PlaceboVideoRenderer 核心 (P0, 🔴 TDD)
+              └── T-246 零拷贝纹理+渲染管线 (P0, 🔴 TDD)
+                    ├── T-247 预设映射+HDR (P1, 🔴 TDD)
+                    ├── T-248 后端切换+设置UI (P1, 🟡)
+                    └── T-249 诊断+着色器缓存 (P1, 🟡)
+                          └── T-250 全平台验证 (P1, 🟢)
 ```
 
 ### 4.4 未提交变更
 
 ```
-无 — 工作区干净
+已修改 (8 文件):
+  M Chiaki/Resources/Localizable.xcstrings
+  M chiaki-ng (submodule)
+  M docs/devdocs/00-feature-log.md
+  M docs/devdocs/01-requirements.md
+  M docs/devdocs/02-system-design.md
+  M docs/devdocs/03-test-cases.md
+  M docs/devdocs/04-dev-tasks.md
+  M docs/devdocs/05-insights.md
+
+未跟踪 (3 文件):
+  ?? metal-backend-claude.md
+  ?? metal-backend-gemini.md
+  ?? metal-backend-gpt.md
+
+31 个提交领先 origin/dev
 ```
 
 ---
 
 ## 5. 待办事项
 
-### 5.1 M17 任务清单
+### 5.1 M19 任务清单
 
 | 编号 | 名称 | 优先级 | 新增/修改文件 |
 |------|------|--------|--------------|
-| T-229 | ControllerInputProvider + FeedbackOutput 协议 | P0 | `ControllerInputProvider.swift` (新) |
-| T-230 | GameControllerProvider 实现 | P0 | `GameControllerProvider.swift` (新) |
-| T-231 | DualSenseHIDManager → DualSenseHIDProvider | P0 | `DualSenseHIDProvider.swift` (新/删旧) |
-| T-232 | ControllerOrchestrator 实现 | P0 | `ControllerOrchestrator.swift` (新) |
-| T-233 | StreamingViewModel 切换到 Orchestrator | P0 | `StreamingViewModel.swift` (改) |
-| T-234 | DualShock4HIDProvider (macOS only) | P2 | `DualShock4HIDProvider.swift` (新) |
-| T-235 | 清理旧代码 + 全平台验证 | P1 | 删除 ControllerManager.swift |
+| T-243 | libplacebo + MoltenVK 交叉编译 | P0 | `scripts/build-libplacebo.sh` (新), `Frameworks/` (新 xcframework) |
+| T-244 | C/Swift 桥接层 (PlaceboBridge) | P0 | `PlaceboBridge.h`, `PlaceboContext.m`, `PlaceboTypes.swift` (新) |
+| T-245 | PlaceboVideoRenderer 核心实现 | P0 | `PlaceboVideoRenderer.swift` (新) |
+| T-246 | 零拷贝纹理导入 + pl_render_image | P0 | `PlaceboVideoRenderer.swift` (改) |
+| T-247 | libplacebo 预设映射 + HDR 通路 | P1 | `PlaceboVideoRenderer.swift` (改), `StreamSettings.swift` (改) |
+| T-248 | 后端切换 (RenderBackend) + 设置 UI | P1 | `StreamSettings.swift`, `VideoSettingsView.swift`, `StreamingViewModel.swift` (改) |
+| T-249 | 诊断指标 + 着色器缓存 | P1 | `StreamStatistics.swift`, `StreamingOverlay.swift` (改) |
+| T-250 | 全平台集成验证 | P1 | 测试文件 (新/改) |
 
 ### 5.2 遗留项
 
 | 项目 | 说明 | 状态 |
 |------|------|------|
 | T-115 | App Icon 资产准备 | 待设计师提供 |
-| BUG-018/019 | macOS DualSense BT HID 验证 | 🔧 待真机验证 |
 | INS-047 | 解码重排策略优化 | ⏸️ 暂缓 |
 | INS-060 | 空状态视图引导动画 | ⏳ P3 |
 | INS-061 | 批量删除确认对话框 | ⏳ P3 |
+
+### 5.3 libplacebo Metal 后端 (Phase 2)
+
+用户正在并行推进 libplacebo Metal 原生后端，有 3 份独立设计文档：
+- `metal-backend-claude.md`
+- `metal-backend-gemini.md`
+- `metal-backend-gpt.md`
+
+Phase 2 完成后将替代 MoltenVK，消除 Vulkan 翻译层开销。
 
 ---
 
@@ -280,6 +328,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 /devdocs-dev-workflow → 执行开发任务 (TDD + 骨架优先)
 /devdocs-sync        → 同步文档与代码状态
 /devdocs-bugfix      → Bug 修复工作流
+/devdocs-insights    → 收集改进洞察
+/devdocs-onboard     → 生成项目上下文
 ```
 
 ---
@@ -319,14 +369,13 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | 项目上下文 | `docs/devdocs/00-context.md` | 本文档 |
-| 进度报告 | `docs/devdocs/00-progress-report.md` | M17 当前进度 |
-| 功能日志 | `docs/devdocs/00-feature-log.md` | 新增功能变更记录 |
-| 需求文档 | `docs/devdocs/01-requirements.md` | 40 功能点、用户故事、157 验收标准 |
-| 系统设计 | `docs/devdocs/02-system-design.md` | 架构 §1~§21，含 F-040 控制器设计 |
-| 测试用例 | `docs/devdocs/03-test-cases.md` | UT-054/IT-018/E2E-013，追溯矩阵 |
-| 开发任务 | `docs/devdocs/04-dev-tasks.md` | 124 任务 (M11~M17)、依赖关系 |
-| 洞察收集 | `docs/devdocs/05-insights.md` | 81 条洞察 (75 完成, 4 待实现) |
-| Bug 日志 | `docs/devdocs/05-bugfix-log.md` | BUG-001~019 修复记录 |
+| 功能日志 | `docs/devdocs/00-feature-log.md` | 新增功能变更记录 (F-040~F-042) |
+| 需求文档 | `docs/devdocs/01-requirements.md` | 42 功能点、用户故事、191 验收标准 |
+| 系统设计 | `docs/devdocs/02-system-design.md` | 架构 §1~§23，含 F-042 libplacebo 设计 |
+| 测试用例 | `docs/devdocs/03-test-cases.md` | UT-066/IT-022/E2E-016，追溯矩阵 |
+| 开发任务 | `docs/devdocs/04-dev-tasks.md` | 140 任务 (M11~M19)、依赖关系 |
+| 洞察收集 | `docs/devdocs/05-insights.md` | 91 条洞察 (82 完成, 5 进行中, 3 暂缓) |
+| Bug 日志 | `docs/devdocs/05-bugfix-log.md` | BUG-001~020 修复记录 |
 | 归档 | `docs/devdocs/archive/` | 已完成里程碑/设计/洞察归档 |
 | UI 设计 | `designs/chiaki-apple-ui.pen` | Pencil 设计 (10 组件, 24 screens) |
 
@@ -335,10 +384,11 @@ xcodebuild test -scheme Chiaki -destination 'platform=macOS'
 ## 接手建议
 
 1. **先读本文档**了解项目全貌
-2. **查看 §5 待办事项** — M17 T-229~T-235 为当前活跃任务
-3. **阅读 02-system-design.md §21** 了解控制器架构重构设计
-4. **使用 `/devdocs-dev-workflow T-229`** 从协议定义开始实施
-5. 遇到细节问题查阅对应 DevDocs 文档
+2. **查看 §5 待办事项** — M19 T-243~T-250 为当前活跃任务
+3. **阅读 02-system-design.md §23** 了解 libplacebo 渲染后端集成设计
+4. **参考 metal-backend-*.md** 了解 Phase 2 Metal 原生后端设计方案
+5. **使用 `/devdocs-dev-workflow T-243`** 从构建系统开始实施
+6. 遇到细节问题查阅对应 DevDocs 文档
 
 ---
 
