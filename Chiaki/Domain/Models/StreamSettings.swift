@@ -32,6 +32,7 @@ struct StreamSettings: Codable, Equatable {
     var displayMode: DisplayMode = .normal
     var zoomFactor: Double = 1.0
     var videoPreset: VideoPreset = .default
+    var renderBackend: RenderBackend = .libplacebo
 
     // Controller settings
     var stickDeadzone: Double = 0.1 // 0.0 - 0.3
@@ -47,7 +48,7 @@ struct StreamSettings: Codable, Equatable {
         case volume, audioBufferSize, microphoneEnabled, hapticFeedbackEnabled, isTouchControllerEnabled
         case resolution, frameRate, bitrate, displayMode, zoomFactor
         case stickDeadzone, swapCrossCircle, touchControllerOpacity, motionControlsEnabled, showControllerHints, vrrEnabled
-        case videoPreset
+        case videoPreset, renderBackend
     }
 
     /// Video display mode for streaming
@@ -110,6 +111,27 @@ struct StreamSettings: Codable, Equatable {
         }
     }
 
+    enum RenderBackend: String, Codable, CaseIterable, Identifiable {
+        case metalNative = "Metal Native"
+        case libplacebo = "libplacebo"
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .metalNative: return "Metal Native"
+            case .libplacebo: return "libplacebo"
+            }
+        }
+
+        var description: String {
+            switch self {
+            case .metalNative: return "Legacy Metal shader pipeline"
+            case .libplacebo: return "libplacebo pipeline with advanced filtering"
+            }
+        }
+    }
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -147,6 +169,8 @@ struct StreamSettings: Codable, Equatable {
         self.motionControlsEnabled = (try? container.decode(Bool.self, forKey: .motionControlsEnabled)) ?? false
         self.showControllerHints = (try? container.decode(Bool.self, forKey: .showControllerHints)) ?? true
         self.vrrEnabled = (try? container.decode(Bool.self, forKey: .vrrEnabled)) ?? true
+        self.videoPreset = (try? container.decode(VideoPreset.self, forKey: .videoPreset)) ?? .default
+        self.renderBackend = (try? container.decode(RenderBackend.self, forKey: .renderBackend)) ?? .libplacebo
     }
 
     func encode(to encoder: Encoder) throws {
@@ -172,6 +196,8 @@ struct StreamSettings: Codable, Equatable {
         try container.encode(motionControlsEnabled, forKey: .motionControlsEnabled)
         try container.encode(showControllerHints, forKey: .showControllerHints)
         try container.encode(vrrEnabled, forKey: .vrrEnabled)
+        try container.encode(videoPreset, forKey: .videoPreset)
+        try container.encode(renderBackend, forKey: .renderBackend)
     }
 
     enum Resolution: String, Codable, CaseIterable, Identifiable {

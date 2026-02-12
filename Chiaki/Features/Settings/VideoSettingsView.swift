@@ -194,6 +194,16 @@ struct VideoSettingsView: View {
                         Text(colorSpace.displayName).tag(colorSpace)
                     }
                 }
+
+                Picker("Render Backend", selection: $store.streamSettings.renderBackend) {
+                    ForEach(StreamSettings.RenderBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+
+                Text(store.streamSettings.renderBackend.description)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text(L10n.Settings.Video.advanced)
             }

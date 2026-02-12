@@ -294,6 +294,39 @@ final class StreamingViewModel {
         statsManager.videoRenderer = renderer
     }
 
+    func createRenderer(renderBackend: StreamSettings.RenderBackend) -> VideoRenderer? {
+        createRenderer(
+            renderBackend: renderBackend,
+            placeboFactory: { PlaceboVideoRenderer() },
+            metalFactory: { MetalVideoRenderer() }
+        )
+    }
+
+    func createRenderer(
+        renderBackend: StreamSettings.RenderBackend,
+        placeboFactory: @MainActor () -> VideoRenderer?,
+        metalFactory: @MainActor () -> VideoRenderer?
+    ) -> VideoRenderer? {
+        switch renderBackend {
+        case .metalNative:
+            guard let renderer = metalFactory() else {
+                Logger.video.error("Metal Native renderer initialization failed")
+                return nil
+            }
+            return renderer
+        case .libplacebo:
+            if let renderer = placeboFactory() {
+                return renderer
+            }
+            Logger.video.warning("libplacebo init failed, falling back to Metal Native")
+            guard let fallback = metalFactory() else {
+                Logger.video.error("Metal Native fallback initialization failed")
+                return nil
+            }
+            return fallback
+        }
+    }
+
     // MARK: - Connection
 
     /// Connect to the PlayStation host

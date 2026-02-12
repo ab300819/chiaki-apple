@@ -271,8 +271,9 @@ struct StreamingView: View {
         }
         #endif
         .onAppear {
-            rendererHolder.initialize()
-            if let renderer = rendererHolder.renderer {
+            let renderer = viewModel.createRenderer(renderBackend: settingsStore.streamSettings.renderBackend)
+            rendererHolder.setRenderer(renderer)
+            if let renderer {
                 viewModel.setVideoRenderer(renderer)
             }
             // Setup onConnected callback

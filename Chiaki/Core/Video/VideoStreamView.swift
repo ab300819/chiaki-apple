@@ -329,11 +329,8 @@ final class VideoRendererHolder: ObservableObject {
     /// Whether renderer is ready
     var isReady: Bool { renderer != nil }
 
-    /// Initialize renderer
-    func initialize() {
-        guard renderer == nil else { return }
-        renderer = MetalVideoRenderer()
-
+    func setRenderer(_ renderer: VideoRenderer?) {
+        self.renderer = renderer
         if renderer != nil {
             logInfo("VideoRendererHolder: Renderer initialized")
         } else {
