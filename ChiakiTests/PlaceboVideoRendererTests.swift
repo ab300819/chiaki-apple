@@ -40,13 +40,16 @@ struct PlaceboVideoRendererTests {
      * @verifies AC-173, BUG-021
      * @testcase UT-061.2
      */
-    @Test("Stub 渲染管线：init 返回 nil（触发 Metal Native 回退）")
-    func testInitReturnsNilWhenRenderingNotReady() throws {
-        // BUG-021: When the C bridge rendering pipeline is a stub,
-        // PlaceboVideoRenderer.init should return nil so the factory
-        // falls back to Metal Native instead of producing a black screen.
+    @Test("渲染就绪状态与 init 行为一致")
+    func testInitMatchesRenderingReadiness() throws {
+        let context = PlaceboContext()
         let renderer = PlaceboVideoRenderer()
-        #expect(renderer == nil)
+
+        if context?.isRenderingReady == true {
+            #expect(renderer != nil)
+        } else {
+            #expect(renderer == nil)
+        }
     }
 
     /**
@@ -215,14 +218,16 @@ struct PlaceboVideoRendererTests {
      * @verifies BUG-021
      * @testcase UT-061.5
      */
-    @Test("Stub 渲染管线应返回 nil 触发 Metal Native 回退")
-    func testStubRenderingPipelineReturnsNil() {
-        // BUG-021: PlaceboVideoRenderer init succeeds with stub/token handles
-        // even when rendering is not implemented, causing black screen.
-        // Expected: init returns nil when rendering pipeline is a stub,
-        // allowing the factory's Metal Native fallback to activate.
+    @Test("BUG-021: 渲染未就绪时回退，渲染就绪时启用 libplacebo")
+    func testBug021FallbackOrEnablement() {
+        let context = PlaceboContext()
         let renderer = PlaceboVideoRenderer()
-        #expect(renderer == nil, "PlaceboVideoRenderer should return nil when rendering pipeline is not implemented")
+
+        if context?.isRenderingReady == true {
+            #expect(renderer != nil, "rendering ready 时应启用 libplacebo")
+        } else {
+            #expect(renderer == nil, "rendering not ready 时应回退到 Metal Native")
+        }
     }
 
     /**
