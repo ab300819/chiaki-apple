@@ -365,7 +365,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				HEADER_SEARCH_PATHS = (
+				"HEADER_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/Frameworks/libplacebo.xcframework/macos-arm64/libplacebo.framework/Headers",
 				);
@@ -420,7 +420,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				HEADER_SEARCH_PATHS = (
+				"HEADER_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/Frameworks/libplacebo.xcframework/macos-arm64/libplacebo.framework/Headers",
 				);
