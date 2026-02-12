@@ -297,6 +297,9 @@ private struct RenderDiagnosticsItem: View {
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 2) {
+                Text("Backend: \(stats.renderBackend)")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(.secondary)
                 Text("\(stats.currentFilter) | R:\(String(format: "%.1f", stats.renderTimeMs))ms")
                     .font(.system(size: 16, design: .monospaced))
                     .foregroundStyle(.primary)
@@ -310,6 +313,9 @@ private struct RenderDiagnosticsItem: View {
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 0) {
+                Text("Backend:\(stats.renderBackend)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
                 Text("\(stats.currentFilter) | R:\(String(format: "%.1f", stats.renderTimeMs))ms")
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(.primary)

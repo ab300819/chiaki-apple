@@ -186,4 +186,48 @@ struct PlaceboVideoRendererTests {
         #expect(params.render.targetMaxLuma == 609.0)
         #expect(params.render.colorSpace == 2)
     }
+
+    /**
+     * @verifies AC-187
+     * @testcase UT-065.3
+     */
+    @Test("诊断标识返回 libplacebo")
+    func testFilterNameReturnsLibplacebo() throws {
+        let renderer = try requireRenderer()
+        #expect(renderer.filterName == "libplacebo")
+    }
+
+    /**
+     * @verifies AC-186
+     * @testcase UT-065.4
+     */
+    @Test("重置统计会清零扩展诊断字段")
+    func testResetStatisticsResetsDiagnostics() throws {
+        let renderer = try requireRenderer()
+        renderer.resetStatistics()
+        #expect(renderer.frameCount == 0)
+        #expect(renderer.droppedFrameCount == 0)
+        #expect(renderer.frameRepeatCount == 0)
+        #expect(renderer.presentInterval == 0)
+    }
+
+    /**
+     * @verifies AC-190
+     * @testcase UT-066.2
+     */
+    @Test("Shader 缓存可持久化写入文件")
+    func testShaderCachePersistence() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let cacheURL = tempDir.appendingPathComponent("placebo_cache.bin", isDirectory: false)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        guard let renderer = PlaceboVideoRenderer(shaderCacheFileURL: cacheURL) else {
+            throw Skip("PlaceboVideoRenderer not available (missing libplacebo/MoltenVK frameworks)")
+        }
+
+        #expect(renderer.saveShaderCacheForTesting())
+        #expect(FileManager.default.fileExists(atPath: cacheURL.path))
+    }
 }

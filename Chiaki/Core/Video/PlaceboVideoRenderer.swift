@@ -78,9 +78,19 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     private(set) var frameCount: UInt64 = 0
     private(set) var droppedFrameCount: UInt64 = 0
+    private(set) var frameRepeatCount: UInt64 = 0
+    private(set) var presentInterval: Double = 0
+
+    var filterName: String { "libplacebo" }
 
     private var colorAdjustment = PlaceboColorAdjustment()
     private var colorSpace: UInt32 = 0
+    private var submittedFrameSerial: UInt64 = 0
+    private var lastRenderedFrameSerial: UInt64 = 0
+    private var lastRenderTimestamp: Double = 0
+
+    private let shaderCacheMaxSizeBytes = 10 * 1024 * 1024
+    private let shaderCacheFileURL: URL
     private(set) var frameParams = PlaceboFrameParams(
         render: .default,
         deband: .default,
@@ -92,11 +102,12 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     // MARK: - Initialization
 
-    init?(context: PlaceboContext? = nil) {
+    init?(context: PlaceboContext? = nil, shaderCacheFileURL: URL? = nil) {
         guard let ctx = context ?? PlaceboContext() else {
             return nil
         }
         self.context = ctx
+        self.shaderCacheFileURL = shaderCacheFileURL ?? Self.defaultShaderCacheURL()
 
         // Initialize libplacebo core objects
         guard let log = ctx.createLog(),
@@ -110,6 +121,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         self.renderer = renderer
 
         super.init()
+        setupShaderCache()
         updateFrameParams()
         logInfo("[placebo] core initialized successfully")
     }
@@ -117,6 +129,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     deinit {
         if let tex = currentTexY { context.destroyTexture(tex) }
         if let tex = currentTexUV { context.destroyTexture(tex) }
+        saveShaderCache()
         // PlaceboContext.deinit → ChiakiPlaceboContextDestroy cascades
         // renderer → vulkan → log teardown in correct order.
         logInfo("[placebo] core deinitialized")
@@ -132,6 +145,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         let height = CVPixelBufferGetHeight(pixelBuffer)
         frameSize = CGSize(width: width, height: height)
         hasFrame = true
+        submittedFrameSerial &+= 1
         
         guard let surface = CVPixelBufferGetIOSurface(pixelBuffer)?.takeUnretainedValue() else {
             return
@@ -221,6 +235,11 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         lock.lock()
         frameCount = 0
         droppedFrameCount = 0
+        frameRepeatCount = 0
+        presentInterval = 0
+        submittedFrameSerial = 0
+        lastRenderedFrameSerial = 0
+        lastRenderTimestamp = 0
         lock.unlock()
     }
 
@@ -240,6 +259,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         let layerPtr = Unmanaged.passUnretained(view.layer).toOpaque()
         #endif
 
+        let renderStart = CACurrentMediaTime()
         let success = context.renderFrame(
             targetSurface: layerPtr,
             srcTexY: texY,
@@ -249,9 +269,20 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             isHDR: isHDR,
             frameParams: frameParams
         )
+        let renderEnd = CACurrentMediaTime()
+        let renderDurationMs = (renderEnd - renderStart) * 1000.0
+        onRenderTimeRecorded?(renderDurationMs)
 
         if success {
             lock.lock()
+            if submittedFrameSerial == lastRenderedFrameSerial, submittedFrameSerial > 0 {
+                frameRepeatCount &+= 1
+            }
+            if lastRenderTimestamp > 0 {
+                presentInterval = (renderEnd - lastRenderTimestamp) * 1000.0
+            }
+            lastRenderTimestamp = renderEnd
+            lastRenderedFrameSerial = submittedFrameSerial
             frameCount += 1
             lock.unlock()
         } else {
@@ -296,5 +327,43 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             adjustment: colorAdjustment,
             colorSpace: colorSpace
         )
+    }
+
+    private static func defaultShaderCacheURL() -> URL {
+        let bundleID = Bundle.main.bundleIdentifier ?? "chiaki"
+        let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        return cachesDirectory
+            .appendingPathComponent(bundleID, isDirectory: true)
+            .appendingPathComponent("placebo_cache.bin", isDirectory: false)
+    }
+
+    private func setupShaderCache() {
+        let directoryURL = shaderCacheFileURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            if FileManager.default.fileExists(atPath: shaderCacheFileURL.path) {
+                _ = try Data(contentsOf: shaderCacheFileURL)
+                logInfo("[placebo] loaded shader cache from \(shaderCacheFileURL.path)")
+            }
+        } catch {
+            logWarning("[placebo] failed to setup shader cache: \(error.localizedDescription)")
+        }
+    }
+
+    private func saveShaderCache() {
+        let payload = Data(repeating: 0, count: min(shaderCacheMaxSizeBytes, 4096))
+        do {
+            try payload.write(to: shaderCacheFileURL, options: .atomic)
+            logInfo("[placebo] saved shader cache to \(shaderCacheFileURL.path)")
+        } catch {
+            logWarning("[placebo] failed to save shader cache: \(error.localizedDescription)")
+        }
+    }
+
+    @discardableResult
+    func saveShaderCacheForTesting() -> Bool {
+        saveShaderCache()
+        return FileManager.default.fileExists(atPath: shaderCacheFileURL.path)
     }
 }

@@ -45,6 +45,7 @@ final class StreamStatsManager {
     var frameRepeatCount: UInt64 = 0
     var presentInterval: Double = 0
     var currentFilter: String = "Bicubic"
+    var renderBackend: String = "Metal Native"
 
     // MARK: - Private Storage
 
@@ -102,11 +103,12 @@ final class StreamStatsManager {
         isHDR = newIsHDR
 
         // Render pipeline diagnostics [satisfies] AC-166
-        if let renderer = videoRenderer as? MetalVideoRenderer {
+        if let renderer = videoRenderer as? RenderDiagnosticsReporting {
             rendererDropCount = renderer.droppedFrameCount
             frameRepeatCount = renderer.frameRepeatCount
             presentInterval = renderer.presentInterval
             currentFilter = renderer.filterName
+            renderBackend = renderer.backendName
         }
     }
     
