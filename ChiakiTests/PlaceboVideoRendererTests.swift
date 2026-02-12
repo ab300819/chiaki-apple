@@ -109,4 +109,81 @@ struct PlaceboVideoRendererTests {
         renderer.zoomFactor = 2.0
         #expect(renderer.zoomFactor == 2.0)
     }
+
+    /**
+     * @verifies AC-181
+     * @testcase UT-063.1
+     */
+    @Test("Performance 预设映射为 fast + bilinear")
+    func testPerformancePresetMapping() {
+        let params = PlaceboFrameParams.map(
+            filterConfig: .performance,
+            hdrConfiguration: .sdr,
+            edrHeadroom: 1.0,
+            adjustment: PlaceboColorAdjustment(),
+            colorSpace: 0
+        )
+
+        #expect(params.render.preset == .performance)
+        #expect(params.render.upscaler == .bilinear)
+        #expect(params.deband.iterations == 0)
+    }
+
+    /**
+     * @verifies AC-181, AC-182
+     * @testcase UT-063.2
+     */
+    @Test("Default 预设映射为 default + deband")
+    func testDefaultPresetMapping() {
+        let params = PlaceboFrameParams.map(
+            filterConfig: .default,
+            hdrConfiguration: .sdr,
+            edrHeadroom: 1.0,
+            adjustment: PlaceboColorAdjustment(),
+            colorSpace: 0
+        )
+
+        #expect(params.render.preset == .default)
+        #expect(params.render.upscaler == .lanczos)
+        #expect(params.deband.iterations > 0)
+        #expect(params.deband.iterations == PlaceboDebandParams.default.iterations)
+    }
+
+    /**
+     * @verifies AC-181, AC-182, AC-183
+     * @testcase UT-063.3
+     */
+    @Test("High Quality 预设映射为 high_quality + ewa_lanczossharp")
+    func testHighQualityPresetMapping() {
+        let params = PlaceboFrameParams.map(
+            filterConfig: .highQuality,
+            hdrConfiguration: .sdr,
+            edrHeadroom: 1.0,
+            adjustment: PlaceboColorAdjustment(),
+            colorSpace: 0
+        )
+
+        #expect(params.render.preset == .highQuality)
+        #expect(params.render.upscaler == .ewaLanczosSharp)
+        #expect(params.deband.iterations > 0)
+    }
+
+    /**
+     * @verifies AC-177
+     * @testcase IT-022.2
+     */
+    @Test("HDR 映射注入 targetMaxLuma")
+    func testHDRHeadroomMapping() {
+        let params = PlaceboFrameParams.map(
+            filterConfig: .default,
+            hdrConfiguration: .hdr,
+            edrHeadroom: 3.0,
+            adjustment: PlaceboColorAdjustment(),
+            colorSpace: 2
+        )
+
+        #expect(params.render.tonemapEnabled == true)
+        #expect(params.render.targetMaxLuma == 609.0)
+        #expect(params.render.colorSpace == 2)
+    }
 }

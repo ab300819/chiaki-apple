@@ -18,29 +18,73 @@ enum PlaceboRenderPreset: String, CaseIterable, Sendable {
     case highQuality
 }
 
+enum PlaceboUpscalerMode: Int32, Equatable, Sendable {
+    case bilinear = 0
+    case lanczos = 1
+    case ewaLanczosSharp = 2
+}
+
 /// Swift-side render parameter mapping for libplacebo.
 struct PlaceboRenderParams: Equatable, Sendable {
     var preset: PlaceboRenderPreset
     var enableDeband: Bool
     var enableSigmoidUpScaling: Bool
+    var upscaler: PlaceboUpscalerMode
+    var tonemapEnabled: Bool
+    var targetMaxLuma: Float
+    var colorSpace: UInt32
 
     static let performance = PlaceboRenderParams(
         preset: .performance,
         enableDeband: false,
-        enableSigmoidUpScaling: false
+        enableSigmoidUpScaling: false,
+        upscaler: .bilinear,
+        tonemapEnabled: false,
+        targetMaxLuma: 203.0,
+        colorSpace: 0
     )
 
     static let `default` = PlaceboRenderParams(
         preset: .default,
         enableDeband: true,
-        enableSigmoidUpScaling: true
+        enableSigmoidUpScaling: true,
+        upscaler: .lanczos,
+        tonemapEnabled: false,
+        targetMaxLuma: 203.0,
+        colorSpace: 0
     )
 
     static let highQuality = PlaceboRenderParams(
         preset: .highQuality,
         enableDeband: true,
-        enableSigmoidUpScaling: true
+        enableSigmoidUpScaling: true,
+        upscaler: .ewaLanczosSharp,
+        tonemapEnabled: false,
+        targetMaxLuma: 203.0,
+        colorSpace: 0
     )
+
+    static func map(
+        filterConfig: VideoFilterConfig,
+        hdrConfiguration: HDRConfiguration,
+        edrHeadroom: Float,
+        colorSpace: UInt32
+    ) -> PlaceboRenderParams {
+        var params: PlaceboRenderParams
+        if filterConfig == .performance {
+            params = .performance
+        } else if filterConfig == .highQuality {
+            params = .highQuality
+        } else {
+            params = .default
+        }
+
+        let hdrEnabled = hdrConfiguration.isHDR
+        params.tonemapEnabled = hdrEnabled
+        params.targetMaxLuma = max(203.0, max(1.0, edrHeadroom) * 203.0)
+        params.colorSpace = min(colorSpace, 2)
+        return params
+    }
 }
 
 /// Swift-side deband tuning mapping for libplacebo.
@@ -56,6 +100,92 @@ struct PlaceboDebandParams: Equatable, Sendable {
         radius: 16.0,
         grain: 4.0
     )
+
+    static let disabled = PlaceboDebandParams(
+        iterations: 0,
+        threshold: 0,
+        radius: 0,
+        grain: 0
+    )
+}
+
+struct PlaceboColorAdjustment: Equatable, Sendable {
+    var brightness: Float = 1.0
+    var contrast: Float = 1.0
+    var saturation: Float = 1.0
+
+    mutating func updateBrightness(_ value: Float) {
+        brightness = clamp(value)
+    }
+
+    mutating func updateContrast(_ value: Float) {
+        contrast = clamp(value)
+    }
+
+    mutating func updateSaturation(_ value: Float) {
+        saturation = clamp(value)
+    }
+
+    private func clamp(_ value: Float) -> Float {
+        max(0.0, min(2.0, value))
+    }
+}
+
+struct PlaceboFrameParams: Equatable, Sendable {
+    var render: PlaceboRenderParams
+    var deband: PlaceboDebandParams
+    var adjustment: PlaceboColorAdjustment
+
+    static func map(
+        filterConfig: VideoFilterConfig,
+        hdrConfiguration: HDRConfiguration,
+        edrHeadroom: Float,
+        adjustment: PlaceboColorAdjustment,
+        colorSpace: UInt32
+    ) -> PlaceboFrameParams {
+        let render = PlaceboRenderParams.map(
+            filterConfig: filterConfig,
+            hdrConfiguration: hdrConfiguration,
+            edrHeadroom: edrHeadroom,
+            colorSpace: colorSpace
+        )
+        let deband: PlaceboDebandParams = render.enableDeband ? .default : .disabled
+        return PlaceboFrameParams(render: render, deband: deband, adjustment: adjustment)
+    }
+
+    var bridgeValue: ChiakiPlaceboFrameParams {
+        var params = ChiakiPlaceboFrameParams()
+        switch render.preset {
+        case .performance:
+            params.preset = CHIAKI_PLACEBO_RENDER_PRESET_PERFORMANCE
+        case .default:
+            params.preset = CHIAKI_PLACEBO_RENDER_PRESET_DEFAULT
+        case .highQuality:
+            params.preset = CHIAKI_PLACEBO_RENDER_PRESET_HIGH_QUALITY
+        }
+
+        switch render.upscaler {
+        case .bilinear:
+            params.upscaler = CHIAKI_PLACEBO_UPSCALER_BILINEAR
+        case .lanczos:
+            params.upscaler = CHIAKI_PLACEBO_UPSCALER_LANCZOS
+        case .ewaLanczosSharp:
+            params.upscaler = CHIAKI_PLACEBO_UPSCALER_EWA_LANCZOSSHARP
+        }
+
+        params.tonemapEnabled = render.tonemapEnabled
+        params.targetMaxLuma = render.targetMaxLuma
+        params.colorSpace = render.colorSpace
+        params.deband.enabled = deband.iterations > 0
+        params.deband.iterations = deband.iterations
+        params.deband.threshold = deband.threshold
+        params.deband.radius = deband.radius
+        params.deband.grain = deband.grain
+        params.adjustment.brightness = adjustment.brightness
+        params.adjustment.contrast = adjustment.contrast
+        params.adjustment.saturation = adjustment.saturation
+        return params
+    }
 }
 
 /// Vulkan bootstrap parameters used by bridge init.
@@ -158,8 +288,23 @@ final class PlaceboContext {
         srcTexUV: OpaquePointer?,
         width: Int,
         height: Int,
-        isHDR: Bool
+        isHDR: Bool,
+        frameParams: PlaceboFrameParams? = nil
     ) -> Bool {
+        if let frameParams {
+            var bridgeParams = frameParams.bridgeValue
+            return ChiakiPlaceboContextRenderFrameEx(
+                rawContext,
+                targetSurface,
+                UnsafeMutableRawPointer(srcTexY),
+                srcTexUV != nil ? UnsafeMutableRawPointer(srcTexUV!) : nil,
+                Int32(width),
+                Int32(height),
+                isHDR,
+                &bridgeParams
+            )
+        }
+
         return ChiakiPlaceboContextRenderFrame(
             rawContext,
             targetSurface,

@@ -367,9 +367,36 @@ bool ChiakiPlaceboContextRenderFrame(
     int width, int height,
     bool isHDR
 ) {
+    return ChiakiPlaceboContextRenderFrameEx(
+        context,
+        targetSurface,
+        srcTexY,
+        srcTexUV,
+        width,
+        height,
+        isHDR,
+        NULL
+    );
+}
+
+bool ChiakiPlaceboContextRenderFrameEx(
+    ChiakiPlaceboContextRef context,
+    void *targetSurface,
+    void *srcTexY,
+    void *srcTexUV,
+    int width, int height,
+    bool isHDR,
+    const ChiakiPlaceboFrameParams *frameParams
+) {
     if (context == NULL || targetSurface == NULL || srcTexY == NULL) {
         return false;
     }
+
+    (void)srcTexUV;
+    (void)width;
+    (void)height;
+    (void)isHDR;
+    (void)frameParams;
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
     // TODO(T-247): Real pl_render_image call

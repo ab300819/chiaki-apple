@@ -91,8 +91,11 @@ struct PlaceboBridgeTests {
     @Test("PlaceboRenderParams 预设值正确")
     func testRenderParamsPresets() {
         #expect(PlaceboRenderParams.performance.enableDeband == false)
+        #expect(PlaceboRenderParams.performance.upscaler == .bilinear)
         #expect(PlaceboRenderParams.default.enableDeband == true)
+        #expect(PlaceboRenderParams.default.upscaler == .lanczos)
         #expect(PlaceboRenderParams.highQuality.enableSigmoidUpScaling == true)
+        #expect(PlaceboRenderParams.highQuality.upscaler == .ewaLanczosSharp)
     }
 
     /**

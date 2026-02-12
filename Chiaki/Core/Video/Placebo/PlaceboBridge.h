@@ -35,6 +35,42 @@ extern "C" {
 typedef struct ChiakiPlaceboContext ChiakiPlaceboContext;
 typedef ChiakiPlaceboContext * ChiakiPlaceboContextRef;
 
+typedef enum {
+    CHIAKI_PLACEBO_RENDER_PRESET_PERFORMANCE = 0,
+    CHIAKI_PLACEBO_RENDER_PRESET_DEFAULT = 1,
+    CHIAKI_PLACEBO_RENDER_PRESET_HIGH_QUALITY = 2,
+} ChiakiPlaceboRenderPreset;
+
+typedef enum {
+    CHIAKI_PLACEBO_UPSCALER_BILINEAR = 0,
+    CHIAKI_PLACEBO_UPSCALER_LANCZOS = 1,
+    CHIAKI_PLACEBO_UPSCALER_EWA_LANCZOSSHARP = 2,
+} ChiakiPlaceboUpscaler;
+
+typedef struct {
+    bool enabled;
+    uint32_t iterations;
+    float threshold;
+    float radius;
+    float grain;
+} ChiakiPlaceboDebandParams;
+
+typedef struct {
+    float brightness;
+    float contrast;
+    float saturation;
+} ChiakiPlaceboColorAdjustment;
+
+typedef struct {
+    ChiakiPlaceboRenderPreset preset;
+    ChiakiPlaceboUpscaler upscaler;
+    bool tonemapEnabled;
+    float targetMaxLuma;
+    uint32_t colorSpace;
+    ChiakiPlaceboDebandParams deband;
+    ChiakiPlaceboColorAdjustment adjustment;
+} ChiakiPlaceboFrameParams;
+
 /// Create/destroy lifecycle owner for libplacebo bridge resources.
 ChiakiPlaceboContextRef _Nullable ChiakiPlaceboContextCreate(void);
 void ChiakiPlaceboContextDestroy(ChiakiPlaceboContextRef _Nullable context);
@@ -73,6 +109,16 @@ bool ChiakiPlaceboContextRenderFrame(
     void * _Nullable srcTexUV,
     int width, int height,
     bool isHDR
+);
+
+bool ChiakiPlaceboContextRenderFrameEx(
+    ChiakiPlaceboContextRef _Nullable context,
+    void * _Nonnull targetSurface,
+    void * _Nonnull srcTexY,
+    void * _Nullable srcTexUV,
+    int width, int height,
+    bool isHDR,
+    const ChiakiPlaceboFrameParams * _Nullable frameParams
 );
 
 #ifdef __cplusplus

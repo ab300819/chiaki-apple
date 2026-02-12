@@ -58,11 +58,17 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     var vrrEnabled: Bool = true
 
     var hdrConfiguration: HDRConfiguration = .sdr {
-        didSet { triggerRedraw() }
+        didSet {
+            updateFrameParams()
+            triggerRedraw()
+        }
     }
 
     var edrHeadroom: Float = 1.0 {
-        didSet { triggerRedraw() }
+        didSet {
+            updateFrameParams()
+            triggerRedraw()
+        }
     }
 
     private(set) var filterConfig: VideoFilterConfig = .default
@@ -72,6 +78,14 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     private(set) var frameCount: UInt64 = 0
     private(set) var droppedFrameCount: UInt64 = 0
+
+    private var colorAdjustment = PlaceboColorAdjustment()
+    private var colorSpace: UInt32 = 0
+    private(set) var frameParams = PlaceboFrameParams(
+        render: .default,
+        deband: .default,
+        adjustment: PlaceboColorAdjustment()
+    )
 
     var onFrameSubmitted: ((CVPixelBuffer) -> Void)?
     var onRenderTimeRecorded: ((Double) -> Void)?
@@ -96,6 +110,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         self.renderer = renderer
 
         super.init()
+        updateFrameParams()
         logInfo("[placebo] core initialized successfully")
     }
 
@@ -147,25 +162,41 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     func setFilterConfig(_ config: VideoFilterConfig) {
         lock.lock()
         filterConfig = config
+        updateFrameParamsLocked()
         lock.unlock()
-        // TODO(T-247): Map config to pl_render_params
         triggerRedraw()
     }
 
     func setBrightness(_ value: Float) {
-        // TODO(T-247): Map to pl_color_adjustment
+        lock.lock()
+        colorAdjustment.updateBrightness(value)
+        updateFrameParamsLocked()
+        lock.unlock()
+        triggerRedraw()
     }
 
     func setContrast(_ value: Float) {
-        // TODO(T-247): Map to pl_color_adjustment
+        lock.lock()
+        colorAdjustment.updateContrast(value)
+        updateFrameParamsLocked()
+        lock.unlock()
+        triggerRedraw()
     }
 
     func setSaturation(_ value: Float) {
-        // TODO(T-247): Map to pl_color_adjustment
+        lock.lock()
+        colorAdjustment.updateSaturation(value)
+        updateFrameParamsLocked()
+        lock.unlock()
+        triggerRedraw()
     }
 
     func setColorSpace(_ value: UInt32) {
-        // TODO(T-247): Map to pl_color_space
+        lock.lock()
+        colorSpace = min(value, 2)
+        updateFrameParamsLocked()
+        lock.unlock()
+        triggerRedraw()
     }
 
     // MARK: - Lifecycle & View Integration
@@ -215,7 +246,8 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             srcTexUV: currentTexUV,
             width: width,
             height: height,
-            isHDR: isHDR
+            isHDR: isHDR,
+            frameParams: frameParams
         )
 
         if success {
@@ -248,5 +280,21 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             view.setNeedsDisplay()
             #endif
         }
+    }
+
+    private func updateFrameParams() {
+        lock.lock()
+        updateFrameParamsLocked()
+        lock.unlock()
+    }
+
+    private func updateFrameParamsLocked() {
+        frameParams = PlaceboFrameParams.map(
+            filterConfig: filterConfig,
+            hdrConfiguration: hdrConfiguration,
+            edrHeadroom: edrHeadroom,
+            adjustment: colorAdjustment,
+            colorSpace: colorSpace
+        )
     }
 }
