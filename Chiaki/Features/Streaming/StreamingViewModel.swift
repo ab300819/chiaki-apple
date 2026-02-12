@@ -307,15 +307,18 @@ final class StreamingViewModel {
         placeboFactory: @MainActor () -> VideoRenderer?,
         metalFactory: @MainActor () -> VideoRenderer?
     ) -> VideoRenderer? {
+        Logger.video.info("Requested render backend: \(renderBackend.rawValue)")
         switch renderBackend {
         case .metalNative:
             guard let renderer = metalFactory() else {
                 Logger.video.error("Metal Native renderer initialization failed")
                 return nil
             }
+            Logger.video.info("Using Metal Native renderer")
             return renderer
         case .libplacebo:
             if let renderer = placeboFactory() {
+                Logger.video.info("Using libplacebo renderer")
                 return renderer
             }
             Logger.video.warning("libplacebo init failed, falling back to Metal Native")

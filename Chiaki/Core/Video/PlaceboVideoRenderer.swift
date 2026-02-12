@@ -104,8 +104,11 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     init?(context: PlaceboContext? = nil, shaderCacheFileURL: URL? = nil) {
         guard let ctx = context ?? PlaceboContext() else {
+            logWarning("[placebo] context creation failed")
             return nil
         }
+
+        logInfo("[placebo] context available=\(ctx.isAvailable) metalObjectsExt=\(ctx.hasMetalObjectsExtension) renderingReady=\(ctx.isRenderingReady)")
 
         // BUG-021: Verify the rendering pipeline is fully implemented
         // before proceeding. When WrapIOSurface/RenderFrameEx are stubs,
@@ -119,9 +122,16 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         self.shaderCacheFileURL = shaderCacheFileURL ?? Self.defaultShaderCacheURL()
 
         // Initialize libplacebo core objects
-        guard let log = ctx.createLog(),
-              let vulkan = ctx.createVulkanDevice(),
-              let renderer = ctx.createRenderer() else {
+        guard let log = ctx.createLog() else {
+            logWarning("[placebo] createLog failed, fallback to Metal Native")
+            return nil
+        }
+        guard let vulkan = ctx.createVulkanDevice() else {
+            logWarning("[placebo] createVulkanDevice failed, fallback to Metal Native")
+            return nil
+        }
+        guard let renderer = ctx.createRenderer() else {
+            logWarning("[placebo] createRenderer failed, fallback to Metal Native")
             return nil
         }
 

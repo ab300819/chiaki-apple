@@ -319,8 +319,7 @@ bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef context) {
     return chiakiHasSymbol(context, "pl_render_image") &&
            chiakiHasSymbol(context, "pl_swapchain_start_frame") &&
            chiakiHasSymbol(context, "pl_vulkan_create_swapchain") &&
-           chiakiHasSymbol(context, "pl_tex_create") &&
-           chiakiHasSymbol(context, "vkCreateMetalSurfaceEXT");
+           chiakiHasSymbol(context, "pl_tex_create");
 #else
     (void)context;
     return false;
@@ -425,9 +424,11 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
         typedef struct pl_vulkan *(*pl_vulkan_create_fn)(struct pl_log *, const struct pl_vulkan_params *);
         pl_vulkan_create_fn createFn = (pl_vulkan_create_fn)dlsym(context->libplaceboHandle, "pl_vulkan_create");
         if (createFn && context->log) {
-            static const char *instanceExts[] = {
+            static const char *requiredInstanceExts[] = {
                 VK_KHR_SURFACE_EXTENSION_NAME,
                 VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+            };
+            static const char *optionalInstanceExts[] = {
                 VK_EXT_METAL_OBJECTS_EXTENSION_NAME,
                 VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
             };
@@ -436,8 +437,10 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
             };
 
             struct pl_vk_inst_params instParams = pl_vk_inst_default_params;
-            instParams.extensions = instanceExts;
-            instParams.num_extensions = (int)(sizeof(instanceExts) / sizeof(instanceExts[0]));
+            instParams.extensions = requiredInstanceExts;
+            instParams.num_extensions = (int)(sizeof(requiredInstanceExts) / sizeof(requiredInstanceExts[0]));
+            instParams.opt_extensions = optionalInstanceExts;
+            instParams.num_opt_extensions = (int)(sizeof(optionalInstanceExts) / sizeof(optionalInstanceExts[0]));
 
             struct pl_vulkan_params params = pl_vulkan_default_params;
             params.instance_params = &instParams;
