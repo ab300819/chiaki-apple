@@ -168,6 +168,16 @@ static bool chiakiHasSymbol(struct ChiakiPlaceboContext *context, const char *sy
         return true;
     }
 
+    // libplacebo may version some exported symbols (e.g. pl_log_create_349).
+    if (strcmp(symbol, "pl_log_create") == 0) {
+        if (dlsym(RTLD_DEFAULT, "pl_log_create_349") != NULL) {
+            return true;
+        }
+        if (context->libplaceboHandle != NULL && dlsym(context->libplaceboHandle, "pl_log_create_349") != NULL) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -421,6 +431,9 @@ void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
         typedef struct pl_log *(*pl_log_create_fn)(int api_ver, const struct pl_log_params *params);
         pl_log_create_fn createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create");
+        if (createFn == NULL) {
+            createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create_349");
+        }
         if (createFn) {
             context->log = createFn(PL_API_VER, NULL);
         }
