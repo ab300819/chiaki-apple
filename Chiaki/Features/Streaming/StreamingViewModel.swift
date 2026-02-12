@@ -317,6 +317,17 @@ final class StreamingViewModel {
             Logger.video.info("Using Metal Native renderer")
             return renderer
         case .libplacebo:
+            if let ctx = PlaceboContext() {
+                let preLog = ctx.createLog() != nil
+                let preVk = ctx.createVulkanDevice() != nil
+                let preRenderer = ctx.createRenderer() != nil
+                Logger.video.info(
+                    "libplacebo preflight: available=\(ctx.isAvailable), renderingReady=\(ctx.isRenderingReady), " +
+                    "log=\(preLog), vulkan=\(preVk), renderer=\(preRenderer)"
+                )
+            } else {
+                Logger.video.warning("libplacebo preflight: failed to create context")
+            }
             if let renderer = placeboFactory() {
                 Logger.video.info("Using libplacebo renderer")
                 return renderer

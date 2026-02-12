@@ -446,6 +446,10 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
             params.instance_params = &instParams;
             params.extensions = deviceExts;
             params.num_extensions = (int)(sizeof(deviceExts) / sizeof(deviceExts[0]));
+            params.get_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr");
+            if (params.get_proc_addr == NULL && context->moltenVKHandle != NULL) {
+                params.get_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(context->moltenVKHandle, "vkGetInstanceProcAddr");
+            }
             context->vulkan = createFn((struct pl_log *)context->log, &params);
         }
 #endif
