@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#import <Foundation/Foundation.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <IOSurface/IOSurface.h>
 
@@ -84,7 +85,30 @@ static void *chiakiOpenLibrary(const char *path) {
     if (path == NULL) {
         return NULL;
     }
-    return dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    void *handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    if (handle == NULL) {
+        const char *err = dlerror();
+        NSLog(@"[placebo] dlopen failed for %s: %s", path, err != NULL ? err : "unknown");
+    }
+    return handle;
+}
+
+static void *chiakiOpenFrameworkFromBundle(NSString *frameworkName, NSString *binaryName) {
+    NSString *frameworksPath = [[NSBundle mainBundle] privateFrameworksPath];
+    if (frameworksPath.length == 0) {
+        return NULL;
+    }
+
+    NSString *rootBinary = [[frameworksPath stringByAppendingPathComponent:[frameworkName stringByAppendingString:@".framework"]]
+        stringByAppendingPathComponent:binaryName];
+    void *handle = chiakiOpenLibrary(rootBinary.fileSystemRepresentation);
+    if (handle != NULL) {
+        return handle;
+    }
+
+    NSString *versionedBinary = [[[[frameworksPath stringByAppendingPathComponent:[frameworkName stringByAppendingString:@".framework"]]
+        stringByAppendingPathComponent:@"Versions"] stringByAppendingPathComponent:@"A"] stringByAppendingPathComponent:binaryName];
+    return chiakiOpenLibrary(versionedBinary.fileSystemRepresentation);
 }
 
 static void chiakiEnsureLibraries(struct ChiakiPlaceboContext *context) {
@@ -97,6 +121,12 @@ static void chiakiEnsureLibraries(struct ChiakiPlaceboContext *context) {
         if (context->libplaceboHandle == NULL) {
             context->libplaceboHandle = chiakiOpenLibrary("@loader_path/../Frameworks/libplacebo.framework/libplacebo");
         }
+        if (context->libplaceboHandle == NULL) {
+            context->libplaceboHandle = chiakiOpenLibrary("@executable_path/../Frameworks/libplacebo.framework/libplacebo");
+        }
+        if (context->libplaceboHandle == NULL) {
+            context->libplaceboHandle = chiakiOpenFrameworkFromBundle(@"libplacebo", @"libplacebo");
+        }
     }
 
     if (context->moltenVKHandle == NULL) {
@@ -104,7 +134,15 @@ static void chiakiEnsureLibraries(struct ChiakiPlaceboContext *context) {
         if (context->moltenVKHandle == NULL) {
             context->moltenVKHandle = chiakiOpenLibrary("@loader_path/../Frameworks/MoltenVK.framework/MoltenVK");
         }
+        if (context->moltenVKHandle == NULL) {
+            context->moltenVKHandle = chiakiOpenLibrary("@executable_path/../Frameworks/MoltenVK.framework/MoltenVK");
+        }
+        if (context->moltenVKHandle == NULL) {
+            context->moltenVKHandle = chiakiOpenFrameworkFromBundle(@"MoltenVK", @"MoltenVK");
+        }
     }
+
+    NSLog(@"[placebo] library handles: libplacebo=%p moltenvk=%p", context->libplaceboHandle, context->moltenVKHandle);
 }
 
 static bool chiakiHasSymbol(struct ChiakiPlaceboContext *context, const char *symbol) {

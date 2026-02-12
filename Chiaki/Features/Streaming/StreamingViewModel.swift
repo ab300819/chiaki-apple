@@ -317,6 +317,16 @@ final class StreamingViewModel {
             Logger.video.info("Using Metal Native renderer")
             return renderer
         case .libplacebo:
+            let frameworksPath = Bundle.main.privateFrameworksPath ?? ""
+            let fm = FileManager.default
+            let libplaceboPath = (frameworksPath as NSString).appendingPathComponent("libplacebo.framework/libplacebo")
+            let moltenVKPath = (frameworksPath as NSString).appendingPathComponent("MoltenVK.framework/MoltenVK")
+            Logger.video.info(
+                "framework preflight: frameworksPath=\(frameworksPath), " +
+                "libplaceboExists=\(fm.fileExists(atPath: libplaceboPath)), " +
+                "moltenvkExists=\(fm.fileExists(atPath: moltenVKPath))"
+            )
+
             if let ctx = PlaceboContext() {
                 let preLog = ctx.createLog() != nil
                 let preVk = ctx.createVulkanDevice() != nil
