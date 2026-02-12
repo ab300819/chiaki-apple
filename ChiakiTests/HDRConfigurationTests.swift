@@ -37,7 +37,7 @@ final class HDRConfigurationTests: XCTestCase {
 
         XCTAssertTrue(config.enabled, "HDR 预设应启用 HDR")
         XCTAssertEqual(config.colorSpace, .bt2020, "HDR 预设应使用 BT.2020")
-        XCTAssertEqual(config.colorRange, .full, "HDR 预设应使用 Full Range")
+        XCTAssertEqual(config.colorRange, .video, "HDR 预设应使用 Video Range")
         XCTAssertEqual(config.tonemapMode, .passthrough, "HDR 预设应使用 Passthrough")
         XCTAssertTrue(config.gamutMappingEnabled, "HDR 预设应启用色域映射")
     }

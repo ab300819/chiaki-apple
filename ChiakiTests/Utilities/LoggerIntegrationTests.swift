@@ -10,6 +10,21 @@ import XCTest
 @testable import Chiaki
 
 final class LoggerIntegrationTests: XCTestCase {
+
+    private func waitForContent(_ url: URL, containing token: String, timeout: TimeInterval = 3.0) -> String {
+        let deadline = Date().addingTimeInterval(timeout)
+        var latestContent = ""
+
+        while Date() < deadline {
+            latestContent = (try? String(contentsOf: url)) ?? ""
+            if latestContent.contains(token) {
+                return latestContent
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        return latestContent
+    }
     
     /// @verifies AC-049 - 日志写入 Documents/Logs
     /// @testcase UT-19.4
@@ -22,23 +37,16 @@ final class LoggerIntegrationTests: XCTestCase {
     /// @testcase IT-19.1
     @MainActor
     func testLoggerIntegration() throws {
-        // Log a message via global function
         let testMessage = "Integration test log message \(UUID().uuidString)"
-        logInfo(testMessage)
-        
-        // Wait for async write in FileLogHandler queue
-        let expectation = XCTestExpectation(description: "Wait for log write")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 2.0)
+        Logger.shared.info(testMessage)
+        Logger.shared.fileLogHandler?.flush()
         
         // Verify file content via shared FileLogHandler if possible, or just check file
         let logFileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Logs/chiaki-current.log")
         
         XCTAssertTrue(FileManager.default.fileExists(atPath: logFileURL.path), "Log file should exist")
-        let content = try String(contentsOf: logFileURL)
+        let content = waitForContent(logFileURL, containing: testMessage)
         XCTAssertTrue(content.contains(testMessage), "Log file should contain the integration test message")
     }
 }

@@ -10,25 +10,44 @@ import XCTest
 @testable import Chiaki
 
 final class FileLogHandlerTests: XCTestCase {
+
+    private func makeIsolatedLogDirectory() throws -> URL {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent("ChiakiTests-Logs", isDirectory: true)
+        let dir = base.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private func waitForFileContains(_ url: URL, expected: [String], timeout: TimeInterval = 2.0) -> String {
+        let deadline = Date().addingTimeInterval(timeout)
+        var latestContent = ""
+
+        while Date() < deadline {
+            latestContent = (try? String(contentsOf: url)) ?? ""
+            if !latestContent.isEmpty && expected.allSatisfy({ latestContent.contains($0) }) {
+                return latestContent
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        return latestContent
+    }
     
     /// @verifies AC-049 - 日志写入 Documents/Logs
     /// @testcase UT-19.1
     func testLogWriting() throws {
-        let handler = try FileLogHandler()
+        let logDirectory = try makeIsolatedLogDirectory()
+        let handler = try FileLogHandler(logDirectory: logDirectory)
+        defer { try? FileManager.default.removeItem(at: logDirectory) }
+
         let testMessage = "Test log message"
         handler.log(level: .info, message: testMessage, category: "TestCat", file: "TestFile.swift", function: "testFunc", line: 42)
+        handler.flush()
         
-        let expectation = XCTestExpectation(description: "Wait for log write")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 1.0)
-        
-        let logFileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs/chiaki-current.log")
-        
+        let logFileURL = logDirectory.appendingPathComponent("chiaki-current.log")
+
         XCTAssertTrue(FileManager.default.fileExists(atPath: logFileURL.path), "Log file should exist")
-        let content = try String(contentsOf: logFileURL)
+        let content = waitForFileContains(logFileURL, expected: [testMessage, "[I]", "TestFile.swift:42"])
         XCTAssertTrue(content.contains(testMessage), "Log file should contain the test message")
         XCTAssertTrue(content.contains("[I]"), "Log file should contain level symbol")
         XCTAssertTrue(content.contains("TestFile.swift:42"), "Log file should contain file info")
@@ -38,24 +57,17 @@ final class FileLogHandlerTests: XCTestCase {
     /// @testcase UT-19.2
     func testLogRotation() throws {
         let fileManager = FileManager.default
-        let logDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs")
+        let logDirectory = try makeIsolatedLogDirectory()
+        defer { try? fileManager.removeItem(at: logDirectory) }
+
         let currentLogURL = logDirectory.appendingPathComponent("chiaki-current.log")
-        
-        try? fileManager.removeItem(at: logDirectory)
-        try fileManager.createDirectory(at: logDirectory, withIntermediateDirectories: true)
-        
+
         let largeData = Data(repeating: 0, count: 5 * 1024 * 1024 + 100)
         try largeData.write(to: currentLogURL)
         
-        let handler = try FileLogHandler()
+        let handler = try FileLogHandler(logDirectory: logDirectory)
         handler.log(level: .info, message: "Trigger rotation", category: "Test", file: "File.swift", function: "func", line: 1)
-        
-        let expectation = XCTestExpectation(description: "Wait for rotation")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 1.0)
+        handler.flush()
         
         let currentAttributes = try fileManager.attributesOfItem(atPath: currentLogURL.path)
         let currentSize = currentAttributes[.size] as? Int64 ?? 0
@@ -70,12 +82,9 @@ final class FileLogHandlerTests: XCTestCase {
     /// @testcase UT-19.3
     func testLogCleanup() throws {
         let fileManager = FileManager.default
-        let logDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Logs")
-        
-        try? fileManager.removeItem(at: logDirectory)
-        try fileManager.createDirectory(at: logDirectory, withIntermediateDirectories: true)
-        
+        let logDirectory = try makeIsolatedLogDirectory()
+        defer { try? fileManager.removeItem(at: logDirectory) }
+
         for i in 1...10 {
             let fileURL = logDirectory.appendingPathComponent("chiaki-old-\(i).log")
             try "Log \(i)".write(to: fileURL, atomically: true, encoding: .utf8)
@@ -86,14 +95,9 @@ final class FileLogHandlerTests: XCTestCase {
         let largeData = Data(repeating: 0, count: 5 * 1024 * 1024 + 100)
         try largeData.write(to: currentLogURL)
         
-        let handler = try FileLogHandler()
+        let handler = try FileLogHandler(logDirectory: logDirectory)
         handler.log(level: .info, message: "Trigger cleanup", category: "Test", file: "File.swift", function: "func", line: 1)
-        
-        let expectation = XCTestExpectation(description: "Wait for cleanup")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 1.0)
+        handler.flush()
         
         let files = try fileManager.contentsOfDirectory(at: logDirectory, includingPropertiesForKeys: nil)
         let archivedLogs = files.filter { $0.lastPathComponent.hasPrefix("chiaki-") && $0.lastPathComponent != "chiaki-current.log" }

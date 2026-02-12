@@ -23,11 +23,15 @@ final class FileLogHandler: LogHandler, @unchecked Sendable {
     private let queue = DispatchQueue(label: "ltd.hotter.chiaki.filelogger", qos: .background)
     private var fileHandle: FileHandle?
 
-    init() throws {
-        let paths = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
-        let documentsURL = paths[0]
-        self.logDirectory = documentsURL.appendingPathComponent("Logs")
-        self.currentLogURL = logDirectory.appendingPathComponent("chiaki-current.log")
+    init(logDirectory customLogDirectory: URL? = nil) throws {
+        if let customLogDirectory {
+            self.logDirectory = customLogDirectory
+        } else {
+            let paths = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
+            let documentsURL = paths[0]
+            self.logDirectory = documentsURL.appendingPathComponent("Logs")
+        }
+        self.currentLogURL = self.logDirectory.appendingPathComponent("chiaki-current.log")
         
         if !fileManager.fileExists(atPath: logDirectory.path) {
             try fileManager.createDirectory(at: logDirectory, withIntermediateDirectories: true)
@@ -56,6 +60,12 @@ final class FileLogHandler: LogHandler, @unchecked Sendable {
             if let data = logLine.data(using: .utf8) {
                 self.fileHandle?.write(data)
             }
+        }
+    }
+
+    func flush() {
+        queue.sync {
+            fileHandle?.synchronizeFile()
         }
     }
 

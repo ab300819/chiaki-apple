@@ -462,6 +462,9 @@
         }
       }
     },
+    "Backend:%@" : {
+
+    },
     "Battery.AccessibilityLabel" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -2556,6 +2559,9 @@
           }
         }
       }
+    },
+    "Render Backend" : {
+
     },
     "Select a host to start streaming" : {
       "extractionState" : "stale",
