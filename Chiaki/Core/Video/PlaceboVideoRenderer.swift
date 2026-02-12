@@ -106,6 +106,15 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         guard let ctx = context ?? PlaceboContext() else {
             return nil
         }
+
+        // BUG-021: Verify the rendering pipeline is fully implemented
+        // before proceeding. When WrapIOSurface/RenderFrameEx are stubs,
+        // init returns nil so the factory falls back to Metal Native.
+        guard ctx.isRenderingReady else {
+            logWarning("[placebo] rendering pipeline not ready, deferring to Metal Native")
+            return nil
+        }
+
         self.context = ctx
         self.shaderCacheFileURL = shaderCacheFileURL ?? Self.defaultShaderCacheURL()
 

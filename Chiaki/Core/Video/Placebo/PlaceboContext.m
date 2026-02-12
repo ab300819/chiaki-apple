@@ -137,6 +137,14 @@ bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContextRef context) {
     return chiakiHasSymbol(context, "pl_log_create") && chiakiHasSymbol(context, "pl_renderer_create");
 }
 
+bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef context) {
+    // Returns false while WrapIOSurface and RenderFrameEx are still stubs.
+    // When the real pl_render_image pipeline is implemented, change to true
+    // (or perform an actual capability probe).
+    (void)context;
+    return false;
+}
+
 bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContextRef context) {
 #if CHIAKI_HAS_VULKAN_HEADERS
     if (context == NULL || !chiakiHasSymbol(context, "vkEnumerateInstanceExtensionProperties")) {

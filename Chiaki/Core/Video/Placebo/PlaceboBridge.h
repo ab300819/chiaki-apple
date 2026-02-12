@@ -79,6 +79,11 @@ void ChiakiPlaceboContextDestroy(ChiakiPlaceboContextRef _Nullable context);
 bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContextRef _Nullable context);
 bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContextRef _Nullable context);
 
+/// Returns true only when WrapIOSurface and RenderFrameEx are fully implemented
+/// (not stub/token-handle mode). Used by PlaceboVideoRenderer to decide whether
+/// to return nil from init and trigger Metal Native fallback.
+bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef _Nullable context);
+
 /// Opaque lifecycle operations used by Swift wrappers.
 void * _Nullable ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef _Nullable context);
 void ChiakiPlaceboContextDestroyLog(ChiakiPlaceboContextRef _Nullable context);

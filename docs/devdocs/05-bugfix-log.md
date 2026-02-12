@@ -41,6 +41,72 @@
 
 ---
 
+## BUG-021: 连接成功后进入串流页面黑屏
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 用户反馈 |
+| **关联功能** | F-042 (libplacebo 渲染后端集成), AC-178 |
+| **Issue** | N/A |
+| **严重程度** | P1 |
+| **修复日期** | 2026-02-13 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+用户在成功连接 PS5 后进入串流页面仅看到黑屏，无视频画面。
+
+### 复现步骤
+
+1. 启动应用并连接 PS5（连接流程成功）
+2. 进入串流页面
+3. 观察到画面保持黑屏
+
+### 根因分析
+
+libplacebo C 桥接层的渲染管线（`WrapIOSurface` 和 `RenderFrameEx`）是 **stub 实现**（no-op），但 `PlaceboVideoRenderer.init()` 仍然"成功"返回非 nil 对象，原因：
+
+1. `ChiakiPlaceboContextCreateLog/CreateVulkanDevice/CreateRenderer` 在无真实 libplacebo 时返回 token handle（1 字节 calloc），`guard let` 通过
+2. `ChiakiPlaceboContextWrapIOSurface` 返回 token handle 而非真纹理（`PlaceboContext.m:344` TODO）
+3. `ChiakiPlaceboContextRenderFrameEx` 将所有参数 `(void)` 丢弃，**返回 `true`**（`PlaceboContext.m:395-406` TODO）
+4. `render()` 从未向 MTKView 绘制任何像素，但报告渲染"成功"
+5. `createRenderer()` 工厂的 Metal Native 回退永远不触发（因为 placeboFactory 返回非 nil）
+
+### 解决方案
+
+新增 **渲染就绪检查**，在 stub 模式下使 `PlaceboVideoRenderer.init()` 返回 nil，触发已有的 Metal Native 回退路径：
+
+1. **PlaceboBridge.h** — 新增 `ChiakiPlaceboContextIsRenderingReady()` 声明
+2. **PlaceboContext.m** — 实现返回 `false`（渲染管线为 stub 时）；未来 `WrapIOSurface`/`RenderFrameEx` 真实实现后改为 `true`
+3. **PlaceboTypes.swift** — `PlaceboContext` 暴露 `isRenderingReady` 属性
+4. **PlaceboVideoRenderer.swift** — `init?()` 新增 `guard ctx.isRenderingReady` 检查，失败时 logWarning 并返回 nil
+
+**回退流程**（修复后）：
+```
+StreamingView.onAppear
+  → createRenderer(renderBackend: .libplacebo)
+    → PlaceboVideoRenderer() → nil (isRenderingReady == false)
+    → Logger.warning("libplacebo init failed, falling back to Metal Native")
+    → MetalVideoRenderer() → 成功
+  → 视频正常显示 ✅
+```
+
+### 回归测试
+
+- `PlaceboVideoRendererTests.testStubRenderingPipelineReturnsNil()` (UT-061.5) — 验证 stub 管线 init 返回 nil
+- `PlaceboVideoRendererTests.testInitReturnsNilWhenRenderingNotReady()` (UT-061.2) — 原 `testInitReturnsNonNil` 改为验证 nil
+- `StreamingViewModelRenderBackendTests.testProductionFallbackWhenPlaceboStub()` (UT-064.7) — 生产工厂回退集成验证
+- 编译验证：`xcodebuild build-for-testing` 通过
+- 运行时验证需在可签名环境执行（已知 libplacebo.framework codesign 阻断）
+
+### 经验教训
+
+1. **Stub 对象不应让初始化成功**：当核心功能（渲染）是 stub 时，init 应该失败（返回 nil），而不是返回一个"看起来正常但什么都不做"的对象。这直接导致了回退机制失效。
+2. **Token handle 模式的陷阱**：使用 `calloc(1, 1)` 作为占位 handle 可以让生命周期管理正确工作，但会欺骗上层代码认为资源已就绪。需要额外的"功能就绪"检查来区分"对象存在"和"功能可用"。
+3. **`return true` 的隐患**：stub 函数返回 `true`/成功状态会隐藏问题，应该返回 `false` 或使用明确的"未实现"标志。
+
+---
+
 ## BUG-002: RegistrationView 缺少 hostManager 参数导致编译失败
 
 | 属性 | 内容 |

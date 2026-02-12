@@ -238,6 +238,12 @@ final class PlaceboContext {
         ChiakiPlaceboContextHasMetalObjectsExtension(rawContext)
     }
 
+    /// True only when the rendering pipeline (WrapIOSurface + RenderFrameEx)
+    /// is fully implemented, not in stub/token-handle mode.
+    var isRenderingReady: Bool {
+        ChiakiPlaceboContextIsRenderingReady(rawContext)
+    }
+
     func createLog() -> OpaquePointer? {
         return wrap(ChiakiPlaceboContextCreateLog(rawContext))
     }
