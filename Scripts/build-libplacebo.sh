@@ -180,13 +180,46 @@ build_libplacebo_slice() {
         -Ddemos=false \
         -Dtests=false \
         -Dlcms=disabled \
-        -Dshaderc=enabled \
+        -Dshaderc=disabled \
         -Dprefix="$install_dir"
 
     ninja -C "$build_dir"
     meson install -C "$build_dir"
 
     echo "$install_dir"
+}
+
+patch_libplacebo_framework_deps() {
+    local framework_root="$1"
+    local bin="$framework_root/libplacebo"
+
+    if [[ ! -f "$bin" && -f "$framework_root/Versions/A/libplacebo" ]]; then
+        bin="$framework_root/Versions/A/libplacebo"
+    fi
+    [[ -f "$bin" ]] || error "Cannot find libplacebo binary under $framework_root"
+
+    local deps
+    deps="$(otool -L "$bin" | tr -d '\r')"
+
+    if grep -q "/opt/homebrew/opt/vulkan-loader/lib/libvulkan.1.dylib" <<<"$deps"; then
+        install_name_tool -change \
+            "/opt/homebrew/opt/vulkan-loader/lib/libvulkan.1.dylib" \
+            "@rpath/MoltenVK.framework/MoltenVK" \
+            "$bin"
+    fi
+
+    if grep -q "/opt/homebrew/Cellar/vulkan-loader/.*/lib/libvulkan.1.dylib" <<<"$deps"; then
+        local cellar_vulkan
+        cellar_vulkan="$(grep -Eo "/opt/homebrew/Cellar/vulkan-loader/[^ ]+/lib/libvulkan\\.1\\.dylib" <<<"$deps" | head -n 1)"
+        install_name_tool -change \
+            "$cellar_vulkan" \
+            "@rpath/MoltenVK.framework/MoltenVK" \
+            "$bin"
+    fi
+
+    if grep -q "libshaderc_shared.1.dylib" <<<"$deps"; then
+        error "Unexpected shaderc runtime dependency remains in libplacebo: $bin"
+    fi
 }
 
 create_universal_macos_framework() {
@@ -209,6 +242,8 @@ create_universal_macos_framework() {
         "$arm64_framework/libplacebo" \
         "$x86_framework/libplacebo" \
         -output "$out_framework/libplacebo"
+
+    patch_libplacebo_framework_deps "$out_framework"
 
     echo "$out_framework"
 }
@@ -275,7 +310,16 @@ validate_outputs() {
 
     if [[ -n "$libplacebo_bin" ]]; then
         log "Verifying libplacebo dynamic linkage"
-        otool -L "$libplacebo_bin" | grep -q "libplacebo" || error "libplacebo binary linkage check failed"
+        local deps
+        deps="$(otool -L "$libplacebo_bin")"
+        grep -q "libplacebo" <<<"$deps" || error "libplacebo binary linkage check failed"
+        grep -q "@rpath/MoltenVK.framework/MoltenVK" <<<"$deps" || error "libplacebo does not link to embedded MoltenVK framework"
+        if grep -q "/opt/homebrew/" <<<"$deps"; then
+            error "libplacebo has host-local Homebrew dylib dependency:\n$deps"
+        fi
+        if grep -q "libshaderc_shared.1.dylib" <<<"$deps"; then
+            error "libplacebo unexpectedly links against shaderc shared runtime:\n$deps"
+        fi
     else
         error "No libplacebo binary found in xcframework"
     fi
@@ -319,6 +363,8 @@ main() {
         ios_sim_install="$(build_libplacebo_slice ios-simulator arm64)"
         ios_framework="$ios_install/lib/libplacebo.framework"
         ios_sim_framework="$ios_sim_install/lib/libplacebo.framework"
+        patch_libplacebo_framework_deps "$ios_framework"
+        patch_libplacebo_framework_deps "$ios_sim_framework"
     fi
 
     create_libplacebo_xcframework "$macos_framework" "$ios_framework" "$ios_sim_framework"
