@@ -429,13 +429,13 @@ void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
 
     if (context->log == NULL) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-        typedef struct pl_log *(*pl_log_create_fn)(int api_ver, const struct pl_log_params *params);
+        typedef pl_log (*pl_log_create_fn)(int api_ver, const struct pl_log_params *params);
         pl_log_create_fn createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create");
         if (createFn == NULL) {
             createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create_349");
         }
         if (createFn) {
-            context->log = createFn(PL_API_VER, NULL);
+            context->log = (void *)createFn(PL_API_VER, NULL);
         }
 #else
         context->log = NULL;
@@ -451,10 +451,10 @@ void ChiakiPlaceboContextDestroyLog(ChiakiPlaceboContextRef context) {
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    typedef void (*pl_log_destroy_fn)(struct pl_log **);
+    typedef void (*pl_log_destroy_fn)(pl_log *);
     pl_log_destroy_fn destroyFn = (pl_log_destroy_fn)dlsym(context->libplaceboHandle, "pl_log_destroy");
     if (destroyFn) {
-        struct pl_log *plLog = (struct pl_log *)context->log;
+        pl_log plLog = (pl_log)context->log;
         destroyFn(&plLog);
     }
 #endif
@@ -472,7 +472,7 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
 
     if (context->vulkan == NULL) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-        typedef struct pl_vulkan *(*pl_vulkan_create_fn)(struct pl_log *, const struct pl_vulkan_params *);
+        typedef pl_vulkan (*pl_vulkan_create_fn)(pl_log, const struct pl_vulkan_params *);
         pl_vulkan_create_fn createFn = (pl_vulkan_create_fn)dlsym(context->libplaceboHandle, "pl_vulkan_create");
         if (createFn && context->log) {
             static const char *requiredInstanceExts[] = {
@@ -501,7 +501,7 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
             if (params.get_proc_addr == NULL && context->moltenVKHandle != NULL) {
                 params.get_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(context->moltenVKHandle, "vkGetInstanceProcAddr");
             }
-            context->vulkan = createFn((struct pl_log *)context->log, &params);
+            context->vulkan = (void *)createFn((pl_log)context->log, &params);
         }
 #endif
     }
@@ -517,10 +517,10 @@ void ChiakiPlaceboContextDestroyVulkanDevice(ChiakiPlaceboContextRef context) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
     chiakiDestroySwapchain(context);
 
-    typedef void (*pl_vulkan_destroy_fn)(struct pl_vulkan **);
+    typedef void (*pl_vulkan_destroy_fn)(pl_vulkan *);
     pl_vulkan_destroy_fn destroyFn = (pl_vulkan_destroy_fn)dlsym(context->libplaceboHandle, "pl_vulkan_destroy");
     if (destroyFn) {
-        struct pl_vulkan *plVk = (struct pl_vulkan *)context->vulkan;
+        pl_vulkan plVk = (pl_vulkan)context->vulkan;
         destroyFn(&plVk);
     }
 #endif
@@ -538,11 +538,11 @@ void *ChiakiPlaceboContextCreateRenderer(ChiakiPlaceboContextRef context) {
 
     if (context->renderer == NULL) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-        typedef struct pl_renderer *(*pl_renderer_create_fn)(struct pl_log *, struct pl_gpu *);
+        typedef pl_renderer (*pl_renderer_create_fn)(pl_log, pl_gpu);
         pl_renderer_create_fn createFn = (pl_renderer_create_fn)dlsym(context->libplaceboHandle, "pl_renderer_create");
         if (createFn && context->vulkan && context->log) {
-            struct pl_vulkan *vk = (struct pl_vulkan *)context->vulkan;
-            context->renderer = createFn((struct pl_log *)context->log, vk->gpu);
+            pl_vulkan vk = (pl_vulkan)context->vulkan;
+            context->renderer = (void *)createFn((pl_log)context->log, vk->gpu);
         }
 #endif
     }
@@ -556,10 +556,10 @@ void ChiakiPlaceboContextDestroyRenderer(ChiakiPlaceboContextRef context) {
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    typedef void (*pl_renderer_destroy_fn)(struct pl_renderer **);
+    typedef void (*pl_renderer_destroy_fn)(pl_renderer *);
     pl_renderer_destroy_fn destroyFn = (pl_renderer_destroy_fn)dlsym(context->libplaceboHandle, "pl_renderer_destroy");
     if (destroyFn) {
-        struct pl_renderer *plRenderer = (struct pl_renderer *)context->renderer;
+        pl_renderer plRenderer = (pl_renderer)context->renderer;
         destroyFn(&plRenderer);
     }
 #endif
@@ -589,7 +589,7 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
         return NULL;
     }
 
-    IOSurfaceRef surface = (__bridge IOSurfaceRef)ioSurface;
+    IOSurfaceRef surface = (IOSurfaceRef)ioSurface;
     size_t planeCount = IOSurfaceGetPlaneCount(surface);
     size_t planeIndex = (size_t)plane;
 

@@ -297,6 +297,35 @@ create_moltenvk_xcframework() {
     xcodebuild -create-xcframework "${args[@]}" -output "$OUT_MOLTENVK_XCF"
 }
 
+vendor_vulkan_headers() {
+    local vulkan_src="$MOLTENVK_SRC_DIR/MoltenVK/include/vulkan"
+    local vk_video_src="$MOLTENVK_SRC_DIR/MoltenVK/include/vk_video"
+    local vulkan_dst="$FRAMEWORKS_DIR/VulkanHeaders/include/vulkan"
+    local vk_video_dst="$FRAMEWORKS_DIR/VulkanHeaders/include/vk_video"
+
+    if [[ ! -d "$vulkan_src" ]]; then
+        error "Vulkan headers not found at $vulkan_src"
+    fi
+
+    rm -rf "$FRAMEWORKS_DIR/VulkanHeaders"
+    mkdir -p "$vulkan_dst" "$vk_video_dst"
+
+    # Copy C headers needed by libplacebo/vulkan.h
+    local headers=(vulkan.h vulkan_core.h vk_platform.h vulkan_metal.h vulkan_macos.h vulkan_ios.h vulkan_beta.h vk_icd.h vk_layer.h)
+    for h in "${headers[@]}"; do
+        if [[ -f "$vulkan_src/$h" ]]; then
+            cp "$vulkan_src/$h" "$vulkan_dst/"
+        fi
+    done
+
+    # Copy vk_video headers (required by vulkan_core.h)
+    if [[ -d "$vk_video_src" ]]; then
+        cp "$vk_video_src"/*.h "$vk_video_dst/"
+    fi
+
+    log "Vendored Vulkan headers to $FRAMEWORKS_DIR/VulkanHeaders/include"
+}
+
 validate_outputs() {
     [[ -d "$OUT_LIBPLACEBO_XCF" ]] || error "Missing output: $OUT_LIBPLACEBO_XCF"
     [[ -d "$OUT_MOLTENVK_XCF" ]] || error "Missing output: $OUT_MOLTENVK_XCF"
@@ -369,6 +398,7 @@ main() {
 
     create_libplacebo_xcframework "$macos_framework" "$ios_framework" "$ios_sim_framework"
     create_moltenvk_xcframework "$PLATFORM"
+    vendor_vulkan_headers
     validate_outputs
 }
 
