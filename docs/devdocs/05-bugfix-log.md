@@ -1217,3 +1217,132 @@ PlaceboContext.m 中的 dlsym 函数指针 typedef 使用了错误的类型：
 4. **符号可用 ≠ 运行时可用**：libplacebo 符号通过 dlsym 找到（`isRenderingReady==true`）不代表 Vulkan 设备能在所有环境创建成功，测试断言需考虑此差异。
 
 ---
+
+## BUG-023: libplacebo Vulkan 初始化失败 — 缺少 SPIR-V 编译器
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 运行时日志 |
+| **关联功能** | F-042 (libplacebo 渲染后端集成) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-13 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+libplacebo 渲染后端始终回退到 Metal Native。日志显示 `vulkan=false, renderer=false`，最终 `libplacebo init failed, falling back to Metal Native`。MoltenVK 成功创建 VkInstance 和 VkDevice，但 `pl_vulkan_create` 返回 NULL。
+
+### 复现步骤
+
+1. 选择 libplacebo 渲染后端
+2. 启动串流
+3. 观察日志：`libplacebo preflight: available=true, renderingReady=true, log=true, vulkan=false, renderer=false`
+4. 渲染回退到 Metal Native
+
+### 根因分析
+
+`build-libplacebo.sh` 第 179/183 行显式禁用了两个 SPIR-V 编译器：
+
+```bash
+-Dglslang=disabled \
+-Dshaderc=disabled \
+```
+
+libplacebo 在 `pl_vulkan_create` 内部创建 VkDevice 后，需要 SPIR-V 编译器来编译其内部 GPU 着色器。没有任何编译器时，libplacebo 输出致命错误：
+
+```
+[libplacebo:FATAL] Failed initializing any SPIR-V compiler! Maybe libplacebo was built without support for either libshaderc or glslang?
+[libplacebo:FATAL] Failed initializing vulkan device
+```
+
+由于原始构建未设置 log callback（使用 NULL params），这些错误信息在运行时被静默丢弃，无从发现根因。
+
+### 解决方案
+
+1. **构建脚本 (`build-libplacebo.sh`)**：
+   - 新增 `prepare_shaderc_static_pkgconfig()` — 创建自定义 pkg-config 文件，使 Meson 使用 Homebrew 的 `libshaderc_combined.a` 静态链接（避免运行时依赖 shaderc_shared.dylib）
+   - 为 macOS arm64 启用 `-Dshaderc=enabled`，其他平台保持禁用（回退到 Metal Native）
+   - 新增 `wrap_dylib_as_framework()` — 将 Meson 输出的 dylib 包装为 .framework 结构
+   - x86_64 构建失败改为非致命警告（Homebrew Vulkan loader 仅支持 arm64）
+   - 修复 MoltenVK 源码路径检测和 Meson/Ninja 输出重定向
+
+2. **运行时代码 (`PlaceboContext.m`)**：
+   - 新增 `chiakiPlaceboLogCallback` — 将 libplacebo 内部日志转发到 NSLog
+   - `pl_log_create` 改用 `PL_LOG_INFO` 级别 + callback（原来使用 NULL params 导致错误被静默）
+
+### 验证
+
+独立诊断程序确认修复前后行为：
+- 修复前：`[libplacebo:FATAL] Failed initializing any SPIR-V compiler!` → `pl_vulkan_create returned: 0x0`
+- 修复后：`[libplacebo:INFO] Spent 294.971 ms creating vulkan device` → `pl_vulkan_create returned: 0x1022febf0`，GPU/instance/device 全部创建成功
+
+### 回归测试
+
+- 编译测试通过：`build-for-testing` 成功
+- 运行时测试受限于已知 codesign 问题（CLAUDE.md 记录）
+
+### 修改文件清单
+
+1. `Scripts/build-libplacebo.sh` — 启用 shaderc 静态链接、framework 包装、x86_64 容错、MoltenVK 路径修复
+2. `Chiaki/Core/Video/Placebo/PlaceboContext.m` — 添加 log callback、调整日志级别、移除临时诊断代码
+
+### 经验教训
+
+1. **SPIR-V 编译器是 libplacebo Vulkan 的硬依赖**：即使 VkInstance/VkDevice 创建成功，libplacebo 仍需要 shaderc 或 glslang 来编译其内部着色器。禁用两者等于禁用整个 Vulkan 管线。
+2. **始终设置 log callback**：`pl_log_create(PL_API_VER, NULL)` 创建静默日志器，致命错误会被完全丢弃。添加 callback 是诊断 libplacebo 问题的第一步。
+3. **静态链接避免运行时依赖**：使用 `libshaderc_combined.a` 将 shaderc 静态链接到 libplacebo，避免运行时需要额外的 shaderc_shared.dylib。
+4. **独立诊断优于测试框架调试**：Xcode Swift Testing 框架无法捕获 NSLog 输出。编写独立 Objective-C 诊断程序直接测试 C API 是最有效的调试方式。
+
+---
+
+## BUG-024: libplacebo.framework 代码签名 Team ID 不匹配
+
+| 属性 | 内容 |
+|------|------|
+| **发现来源** | 运行时日志（BUG-023 修复后首次启动） |
+| **关联功能** | F-042 (libplacebo 渲染后端集成) |
+| **Issue** | N/A |
+| **严重程度** | P0 |
+| **修复日期** | 2026-02-13 |
+| **状态** | ✅ 已修复 |
+
+### 问题描述
+
+BUG-023 修复后 app 构建成功，但运行时 dyld 报错：`mapping process and mapped file (non-platform) have different Team IDs`，libplacebo.framework 无法加载。
+
+### 复现步骤
+
+1. 构建 BUG-023 修复后的 app
+2. 启动 Chiaki.app
+3. dyld 拒绝加载 libplacebo.framework
+
+### 根因分析
+
+`wrap_dylib_as_framework()` 生成的 Info.plist 缺少 `CFBundleExecutable` 键。没有这个键，macOS 的 `codesign` 无法将 Info.plist 绑定到框架二进制，导致 Xcode 的 CodeSign on Copy 步骤不能正确识别框架结构，无法用开发者身份重签名。嵌入的 libplacebo.framework 保持 ad-hoc 签名（无 TeamIdentifier），与 app 主进程的开发者签名不匹配。
+
+对比 MoltenVK.framework（能被正确重签名）：有完整 Info.plist 含 CFBundleExecutable，Xcode 的 CodeSign on Copy 能识别并用开发者证书重签。
+
+### 解决方案
+
+1. **`Scripts/build-libplacebo.sh`**：
+   - Info.plist 添加 `<key>CFBundleExecutable</key><string>libplacebo</string>`
+   - `wrap_dylib_as_framework()` 末尾添加 `codesign --force -s - "$fw_dir"` 确保 bundle 级签名完整
+2. **手动修复已有 xcframework**：`PlistBuddy` 添加 CFBundleExecutable + 重新签名 bundle
+
+### 验证
+
+构建后嵌入的 libplacebo.framework 签名：
+- `Authority=Apple Development: mason.meng.apple@outlook.com`
+- `TeamIdentifier=2Z6RCCJ7YG`（与 MoltenVK 和 app 主进程一致）
+
+### 回归测试
+
+- app 构建成功
+- 三个组件 Team ID 一致：app、libplacebo.framework、MoltenVK.framework
+
+### 经验教训
+
+macOS framework bundle 的 Info.plist **必须**包含 `CFBundleExecutable` 键，否则 Xcode 的 CodeSign on Copy 无法正确识别和重签名框架。
+
+---

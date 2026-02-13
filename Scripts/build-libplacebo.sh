@@ -129,6 +129,31 @@ cpp_link_args = ['-arch', '$arch', '-isysroot', '$sysroot', '$deployment_flag']
 CROSS
 }
 
+prepare_shaderc_static_pkgconfig() {
+    local shaderc_prefix
+    shaderc_prefix="$(brew --prefix shaderc 2>/dev/null || true)"
+    if [[ -z "$shaderc_prefix" || ! -f "$shaderc_prefix/lib/libshaderc_combined.a" ]]; then
+        return 1
+    fi
+
+    local pc_dir="$BUILD_DIR/pkgconfig_shaderc_static"
+    mkdir -p "$pc_dir"
+    cat > "$pc_dir/shaderc.pc" <<SHADERC_PC
+prefix=$shaderc_prefix
+exec_prefix=\${prefix}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: shaderc
+Description: Static shaderc (combined archive) for libplacebo
+Version: 2025.3
+Libs: \${libdir}/libshaderc_combined.a -lc++
+Cflags: -I\${includedir}
+SHADERC_PC
+
+    echo "$pc_dir"
+}
+
 build_libplacebo_slice() {
     local platform="$1"
     local arch="$2"
@@ -168,7 +193,25 @@ build_libplacebo_slice() {
         registry=$(find /opt/homebrew -name vk.xml | head -n 1)
     fi
 
+    # Enable shaderc (SPIR-V compiler) for macOS arm64 where Homebrew provides it.
+    # Without a SPIR-V compiler, pl_vulkan_create fails at runtime.
+    # Other slices (x86_64, iOS) disable shaderc and fall back to Metal Native.
+    local shaderc_opt="disabled"
+    local pkg_config_env=""
+    if [[ "$platform" == "macos" && "$arch" == "arm64" ]]; then
+        local shaderc_pc_dir
+        shaderc_pc_dir="$(prepare_shaderc_static_pkgconfig)" || true
+        if [[ -n "$shaderc_pc_dir" ]]; then
+            shaderc_opt="enabled"
+            pkg_config_env="PKG_CONFIG_PATH=$shaderc_pc_dir:${PKG_CONFIG_PATH:-}"
+            log "Enabling shaderc (static) for $platform/$arch"
+        else
+            log "WARNING: shaderc not found; libplacebo will lack SPIR-V compiler"
+        fi
+    fi
+
     log "Configuring libplacebo for $platform/$arch"
+    env $pkg_config_env \
     meson setup "$build_dir" "$LIBPLACEBO_SRC_DIR" \
         --buildtype release \
         --default-library shared \
@@ -180,13 +223,63 @@ build_libplacebo_slice() {
         -Ddemos=false \
         -Dtests=false \
         -Dlcms=disabled \
-        -Dshaderc=disabled \
-        -Dprefix="$install_dir"
+        -Dshaderc="$shaderc_opt" \
+        -Dprefix="$install_dir" >&2
 
-    ninja -C "$build_dir"
-    meson install -C "$build_dir"
+    ninja -C "$build_dir" >&2
+    meson install -C "$build_dir" >&2
+
+    # Meson installs a dylib, wrap it in a .framework for xcodebuild -create-xcframework
+    wrap_dylib_as_framework "$install_dir"
 
     echo "$install_dir"
+}
+
+wrap_dylib_as_framework() {
+    local install_dir="$1"
+    local dylib="$install_dir/lib/libplacebo.349.dylib"
+    local headers_src="$install_dir/include/libplacebo"
+    local fw_dir="$install_dir/lib/libplacebo.framework"
+
+    [[ -f "$dylib" ]] || error "dylib not found: $dylib"
+
+    rm -rf "$fw_dir"
+    mkdir -p "$fw_dir/Versions/A/Headers" "$fw_dir/Versions/A/Resources"
+    cp "$dylib" "$fw_dir/Versions/A/libplacebo"
+    cp -R "$headers_src"/* "$fw_dir/Versions/A/Headers/"
+
+    # Set framework install name
+    install_name_tool -id "@rpath/libplacebo.framework/libplacebo" "$fw_dir/Versions/A/libplacebo"
+
+    cat > "$fw_dir/Versions/A/Resources/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>libplacebo</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.videolan.libplacebo</string>
+    <key>CFBundleName</key>
+    <string>libplacebo</string>
+    <key>CFBundleVersion</key>
+    <string>${LIBPLACEBO_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${LIBPLACEBO_VERSION}</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+</dict>
+</plist>
+PLIST
+
+    # Create symlinks
+    ln -sf A "$fw_dir/Versions/Current"
+    ln -sf Versions/Current/libplacebo "$fw_dir/libplacebo"
+    ln -sf Versions/Current/Headers "$fw_dir/Headers"
+    ln -sf Versions/Current/Resources "$fw_dir/Resources"
+
+    # Ad-hoc sign the framework bundle so Xcode's CodeSign on Copy can re-sign it
+    codesign --force -s - "$fw_dir"
 }
 
 patch_libplacebo_framework_deps() {
@@ -218,7 +311,7 @@ patch_libplacebo_framework_deps() {
     fi
 
     if grep -q "libshaderc_shared.1.dylib" <<<"$deps"; then
-        error "Unexpected shaderc runtime dependency remains in libplacebo: $bin"
+        error "Unexpected shaderc dynamic dependency in libplacebo (should be statically linked): $bin"
     fi
 }
 
@@ -269,8 +362,17 @@ create_libplacebo_xcframework() {
 
 create_moltenvk_xcframework() {
     local platform="$1"
-    local macos_framework="$MOLTENVK_SRC_DIR/Package/Release/MoltenVK/dynamic/MoltenVK.xcframework/macos-arm64_x86_64/MoltenVK.framework"
-    local ios_framework="$MOLTENVK_SRC_DIR/Package/Release/MoltenVK/dynamic/MoltenVK.xcframework/ios-arm64/MoltenVK.framework"
+    # MoltenVK tar layout may vary; check both known paths
+    local mvk_base=""
+    if [[ -d "$MOLTENVK_SRC_DIR/Package/Release/MoltenVK/dynamic/MoltenVK.xcframework" ]]; then
+        mvk_base="$MOLTENVK_SRC_DIR/Package/Release/MoltenVK/dynamic/MoltenVK.xcframework"
+    elif [[ -d "$MOLTENVK_SRC_DIR/MoltenVK/dynamic/MoltenVK.xcframework" ]]; then
+        mvk_base="$MOLTENVK_SRC_DIR/MoltenVK/dynamic/MoltenVK.xcframework"
+    else
+        error "Cannot locate MoltenVK.xcframework in $MOLTENVK_SRC_DIR"
+    fi
+    local macos_framework="$mvk_base/macos-arm64_x86_64/MoltenVK.framework"
+    local ios_framework="$mvk_base/ios-arm64/MoltenVK.framework"
     local args=()
 
     case "$platform" in
@@ -333,6 +435,8 @@ validate_outputs() {
     local libplacebo_bin=""
     if [[ -f "$OUT_LIBPLACEBO_XCF/macos-arm64_x86_64/libplacebo.framework/libplacebo" ]]; then
         libplacebo_bin="$OUT_LIBPLACEBO_XCF/macos-arm64_x86_64/libplacebo.framework/libplacebo"
+    elif [[ -f "$OUT_LIBPLACEBO_XCF/macos-arm64/libplacebo.framework/libplacebo" ]]; then
+        libplacebo_bin="$OUT_LIBPLACEBO_XCF/macos-arm64/libplacebo.framework/libplacebo"
     elif [[ -f "$OUT_LIBPLACEBO_XCF/ios-arm64/libplacebo.framework/libplacebo" ]]; then
         libplacebo_bin="$OUT_LIBPLACEBO_XCF/ios-arm64/libplacebo.framework/libplacebo"
     fi
@@ -347,7 +451,7 @@ validate_outputs() {
             error "libplacebo has host-local Homebrew dylib dependency:\n$deps"
         fi
         if grep -q "libshaderc_shared.1.dylib" <<<"$deps"; then
-            error "libplacebo unexpectedly links against shaderc shared runtime:\n$deps"
+            error "libplacebo unexpectedly links against shaderc shared runtime (should be static):\n$deps"
         fi
     else
         error "No libplacebo binary found in xcframework"
@@ -379,10 +483,20 @@ main() {
 
     if [[ "$PLATFORM" == "all" || "$PLATFORM" == "macos" ]]; then
         local macos_install_arm64
-        local macos_install_x86_64
         macos_install_arm64="$(build_libplacebo_slice macos arm64)"
-        macos_install_x86_64="$(build_libplacebo_slice macos x86_64)"
-        macos_framework="$(create_universal_macos_framework "$macos_install_arm64" "$macos_install_x86_64")"
+
+        # x86_64 build requires a Vulkan loader with x86_64 support.
+        # Homebrew's vulkan-loader is arm64-only on Apple Silicon hosts,
+        # so x86_64 cross-compilation is best-effort.
+        local macos_install_x86_64=""
+        if macos_install_x86_64="$(build_libplacebo_slice macos x86_64 2>&1)"; then
+            macos_framework="$(create_universal_macos_framework "$macos_install_arm64" "$macos_install_x86_64")"
+        else
+            log "WARNING: x86_64 build failed (expected on arm64-only Vulkan host); creating arm64-only framework"
+            local arm64_framework="$macos_install_arm64/lib/libplacebo.framework"
+            patch_libplacebo_framework_deps "$arm64_framework"
+            macos_framework="$arm64_framework"
+        fi
     fi
 
     if [[ "$PLATFORM" == "all" || "$PLATFORM" == "ios" ]]; then

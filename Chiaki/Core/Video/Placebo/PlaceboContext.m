@@ -422,6 +422,16 @@ bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContextRef contex
 #endif
 }
 
+static void chiakiPlaceboLogCallback(void *priv, enum pl_log_level level, const char *msg) {
+    (void)priv;
+    static const char *levelNames[] = {
+        "NONE", "FATAL", "ERR", "WARN", "INFO", "DEBUG", "TRACE"
+    };
+    int idx = (int)level;
+    if (idx < 0 || idx > 6) idx = 0;
+    NSLog(@"[libplacebo:%s] %s", levelNames[idx], msg);
+}
+
 void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return NULL;
@@ -435,7 +445,12 @@ void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
             createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create_349");
         }
         if (createFn) {
-            context->log = (void *)createFn(PL_API_VER, NULL);
+            struct pl_log_params logParams = {
+                .log_cb = chiakiPlaceboLogCallback,
+                .log_priv = NULL,
+                .log_level = PL_LOG_INFO,
+            };
+            context->log = (void *)createFn(PL_API_VER, &logParams);
         }
 #else
         context->log = NULL;
