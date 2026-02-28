@@ -1,118 +1,49 @@
-# CLAUDE.md
+<!-- 由 /agent-memory 生成，请通过该命令更新 -->
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Chiaki Apple
 
-## Project Overview
+## 技术栈
 
-Chiaki Apple is a native PlayStation Remote Play client for iOS 17+, macOS 14+, and tvOS 17+. It streams PS5/PS4 gameplay over the network using the chiaki-ng (libchiaki) C library, with a pure SwiftUI frontend and Metal-based rendering. License: AGPL-3.0.
+- Swift 5 + SwiftUI（Observation / `@MainActor`），辅以 Objective-C/C bridge
+- 平台：iOS 17+、macOS 14+、tvOS 17+
+- 核心依赖：`chiaki-ng`（libchiaki）、Metal（默认渲染）、libplacebo + MoltenVK（可选）
+- 工程形态：单一 Xcode Scheme `Chiaki`，测试框架为 Swift Testing
 
-The nested `chiaki-ng/` directory is an upstream submodule — treat as third-party unless a task explicitly targets it.
+## 架构决策
 
-## Build Commands
+- ADR-Media-001：渲染通过 `VideoRenderer` 协议抽象，libplacebo 初始化失败时回退 Metal。
+- ADR-Bridge-001：C API 通过 ObjC 封装（`PlaceboContext.m` / `ChiakiBridge.h`）后暴露给 Swift。
+- ADR-License-001：libplacebo 以动态 framework 集成，保持 LGPL 合规。
 
-### Dependencies (must be built before the app)
-```bash
-make setup           # Initialize git submodules
-make                 # Build all xcframeworks: mbedtls → opus → libchiaki
-make libplacebo      # Build libplacebo + MoltenVK xcframeworks (optional)
-```
+## 领域术语
 
-### App Build
-```bash
-xcodebuild build -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS'
-xcodebuild build -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=iOS Simulator,name=iPhone 16'
-```
+| 术语 | 含义 |
+|------|------|
+| Host | 可连接的 PS5/PS4 主机实体 |
+| Session | 一次 Remote Play 串流会话生命周期 |
+| Renderer Backend | 视频渲染后端实现（Metal Native / libplacebo） |
+| Placebo Context | libplacebo/Vulkan 初始化与资源生命周期管理层 |
+| Fallback | 首选渲染后端失败后自动切回 Metal 的机制 |
 
-Single Xcode scheme: `Chiaki`. Three targets: `Chiaki`, `ChiakiTests`, `ChiakiUITests`.
+## 当前状态
 
-### Testing
-```bash
-# Full test suite
-xcodebuild test -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS'
+- 活跃：BUG-021 libplacebo 渲染链路修复（当前阻塞：应用启动失败 / 回退到 Metal）
+- 下一步：修复 libplacebo 初始化失败并验证日志出现 `libplacebo init success`（不再 fallback）
+- 进度：M19（T-243~T-250）已完成，后续通过 BUG 修复推进（当前至 BUG-026）
 
-# Single test class
-xcodebuild test -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS' \
-  -only-testing:ChiakiTests/PlaceboVideoRendererTests
+## 命令
 
-# Single test method
-xcodebuild test -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS' \
-  -only-testing:ChiakiTests/PlaceboVideoRendererTests/testConformsToVideoRenderer
+- 依赖构建：`make setup && make`
+- libplacebo 构建：`make libplacebo`
+- macOS 构建：`xcodebuild build -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS'`
+- macOS 测试：`xcodebuild test -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS'`
 
-# Build tests only (when test runner crashes due to signing issues)
-xcodebuild build-for-testing -project Chiaki.xcodeproj -scheme Chiaki -destination 'platform=macOS'
-```
+## 约定
 
-Tests use **Swift Testing** framework (`import Testing`, `@Test`, `#expect`), not XCTest (except some legacy log tests that still use XCTest).
+- 提交：`feat(scope):` / `fix(scope):` / `chore(scope):`，并带 `T-XXX` 或 `BUG-XXX`
+- 追溯：代码与测试使用 `@requirement/@satisfies/@verifies/@testcase`
+- 日志：统一使用 `logInfo/logWarning/logError`，避免 `print`
 
-**Known issue**: Test execution may crash with `signal abrt` due to libplacebo.framework codesign failure. Use `build-for-testing` to verify compilation.
+## 详细文档
 
-No SwiftLint/SwiftFormat is configured.
-
-## Architecture
-
-### Directory Layout
-```
-Chiaki/
-├── App/                  # Entry points (ChiakiApp, ChiakiTVApp), NavigationManager
-├── Core/
-│   ├── Bridge/           # C↔Swift bridge: ChiakiBridge.h, ChiakiSession, ChiakiDiscovery, ChiakiRegist
-│   ├── Video/            # VideoRenderer protocol, MetalVideoRenderer, PlaceboVideoRenderer
-│   │   └── Placebo/      # libplacebo C bridge: PlaceboBridge.h → PlaceboContext.m → PlaceboTypes.swift
-│   ├── Audio/            # Audio playback pipeline
-│   ├── Controllers/      # DualSense/DualShock4 HID, GameController framework, ControllerOrchestrator
-│   ├── Storage/          # SettingsStore, HostStore (UserDefaults), KeychainManager, ConsolePinManager
-│   ├── Streaming/        # StreamStatsManager
-│   └── Network/          # Network utilities
-├── Domain/
-│   ├── Models/           # ConsoleHost, StreamSettings
-│   └── Services/         # HostManager, PSNService
-├── Features/             # Feature modules, each with Views + ViewModels
-│   ├── HostList/         # Host discovery, add/edit/register hosts
-│   ├── Streaming/        # StreamingView, StreamingViewModel, controls overlay, virtual controller
-│   ├── Settings/         # Settings screens with per-section ViewModels
-│   ├── PSNLogin/         # PSN OAuth login
-│   ├── AutoConnect/      # Auto-connect flow
-│   └── Common/           # Shared UI components
-├── Shared/Protocols/     # PSNServicing, PinManaging
-├── Platforms/tvOS/       # tvOS app entry point
-└── Utilities/            # Logger, CrashReporter, ThemeManager
-```
-
-### Key Design Decisions
-
-**State management**: Swift Observation framework (`@Observable @MainActor`). Singletons for shared state: `SettingsStore.shared`, `HostStore.shared`, `ControllerOrchestrator.shared`. No Combine, no third-party state libraries.
-
-**Platform branching**: `#if os(iOS)` / `#if os(macOS)` / `#if os(tvOS)` throughout. iOS uses TabView, macOS uses NavigationSplitView, tvOS uses focus-based grid with TVHostCardView.
-
-**Video rendering pipeline**: `VideoRenderer` protocol (`Core/Video/VideoRenderer.swift`) abstracts the rendering backend. Two implementations:
-- `MetalVideoRenderer` — production Metal renderer with HDR/EDR, video filter pipeline (upscale, CAS, deband)
-- `PlaceboVideoRenderer` — libplacebo/Vulkan via MoltenVK (failable `init?`, returns nil when pipeline is stub)
-
-**Factory fallback**: `StreamingViewModel.createRenderer()` tries the selected backend first. If `PlaceboVideoRenderer()` returns nil, it falls back to Metal Native automatically.
-
-**C bridge layer**: Two separate bridge paths:
-1. **libchiaki**: `ChiakiBridge.h` (bridging header) → Swift wrappers (`ChiakiSession`, `ChiakiDiscovery`, `ChiakiRegist`, `ChiakiTypes`)
-2. **libplacebo**: `PlaceboBridge.h` → `PlaceboContext.m` (Objective-C) → `PlaceboTypes.swift` → `PlaceboVideoRenderer.swift`
-
-**Concurrency**: All UI state is `@MainActor`. Renderers are `@unchecked Sendable` with internal `NSLock`. C bridge callbacks dispatch to main via `Task { @MainActor in }`. Background queues for video decoding (`.userInteractive`), audio, file logging (`.background`).
-
-**Logging**: Use `logInfo()`, `logWarning()`, `logError()` global functions — not `print`. These route through a unified `Logger` with OSLog + file output.
-
-## Conventions
-
-- License header: `// SPDX-License-Identifier: AGPL-3.0-only` on all source files
-- Requirement traceability in doc comments: `@requirement F-XXX`, `@satisfies AC-XXX`
-- Test traceability: `@verifies AC-XXX`, `@testcase UT-XXX` / `IT-XXX`
-- Commits: `feat(scope):`, `fix(scope):`, `chore(scope):` with task/bug references (T-XXX, BUG-XXX)
-- Branch workflow: `dev` for development, `main` for PRs
-- C bridge memory: explicit symmetric lifecycle (create/destroy pairs, `Unmanaged` patterns)
-
-## Development Documentation
-
-Structured docs in `docs/devdocs/`:
-- `01-requirements.md` — Feature requirements and acceptance criteria (F-XXX, AC-XXX)
-- `02-system-design.md` — System architecture
-- `03-test-cases.md` — Test case registry (UT-XXX, IT-XXX)
-- `04-dev-tasks.md` — Development tasks (T-XXX)
-- `05-bugfix-log.md` — Bug fix records (BUG-XXX)
-- `00-progress-report.md` — Milestone tracking
+完整 DevDocs 位于 `docs/devdocs/`：`01-requirements.md`、`02-system-design.md`、`03-test-cases.md`、`04-dev-tasks.md`、`05-bugfix-log.md`。
