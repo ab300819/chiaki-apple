@@ -10,7 +10,7 @@
 #   make clean-build  - Remove build cache only (keep xcframeworks)
 #   make help         - Show this help
 
-.PHONY: all frameworks mbedtls opus libchiaki libplacebo clean clean-build setup check-patches help
+.PHONY: all frameworks mbedtls opus libchiaki libplacebo clean clean-build setup help
 
 # Directories
 BUILD_DIR := .build
@@ -83,20 +83,6 @@ setup:
 	git submodule update --init --recursive
 	@echo "✅ Setup complete"
 
-# Check if patches can be applied
-check-patches:
-	@echo "🔍 Checking patches..."
-	@cd chiaki-ng && \
-	for patch in ../Patches/*.patch; do \
-		name=$$(basename $$patch); \
-		if git apply --check "$$patch" 2>/dev/null; then \
-			echo "  ⏳ $$name - can be applied"; \
-		elif git apply --check -R "$$patch" 2>/dev/null; then \
-			echo "  ✅ $$name - already applied"; \
-		else \
-			echo "  ❌ $$name - CONFLICT (needs update)"; \
-		fi \
-	done
 
 # Help
 help:
@@ -112,7 +98,6 @@ help:
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make setup        - Initialize git submodules"
-	@echo "  make check-patches - Check if patches need updating"
 	@echo "  make clean        - Remove all build artifacts"
 	@echo "  make clean-build  - Remove build cache only"
 	@echo "  make help         - Show this help"
