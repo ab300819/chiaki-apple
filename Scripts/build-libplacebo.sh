@@ -12,7 +12,7 @@ source "$SCRIPT_DIR/build_utils.sh"
 # metal-absorb only fast-forwards (no force push), so pinning a SHA is stable.
 LIBPLACEBO_REPO="https://github.com/ab300819/libplacebo.git"
 LIBPLACEBO_COMMIT="ba3cd3da6e8a7210c543ede69c8a68f5cf37ecc2"
-MACOS_MIN="15.0"
+MACOS_MIN="26.0"
 
 LIBPLACEBO_SRC_DIR="$BUILD_DIR/libplacebo-src"
 OUT_LIBPLACEBO_XCF="$FRAMEWORKS_DIR/libplacebo.xcframework"

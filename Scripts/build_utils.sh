@@ -65,8 +65,8 @@ create_xcframework() {
 # Minimum OS version each platform's dependencies are built for
 deployment_target() {
     case $1 in
-        "ios"|"ios-simulator") echo "15.0" ;;
-        "macos") echo "13.0" ;;
+        "ios"|"ios-simulator") echo "26.0" ;;
+        "macos") echo "26.0" ;;
         "tvos") echo "17.0" ;;
         *) error "Unknown platform: $1" ;;
     esac
