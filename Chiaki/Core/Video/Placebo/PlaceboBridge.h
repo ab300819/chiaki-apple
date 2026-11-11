@@ -99,6 +99,10 @@ void * _Nullable ChiakiPlaceboContextGetLog(ChiakiPlaceboContextRef _Nullable co
 void * _Nullable ChiakiPlaceboContextGetVulkanDevice(ChiakiPlaceboContextRef _Nullable context);
 void * _Nullable ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContextRef _Nullable context);
 
+/// Blocks until all GPU operations are complete.
+/// Used during teardown to ensure textures can be safely destroyed.
+void ChiakiPlaceboContextGPUFinish(ChiakiPlaceboContextRef _Nullable context);
+
 /// Texture import and rendering pipeline (T-246)
 /// Wraps an IOSurface from CVPixelBuffer into a libplacebo texture (pl_tex).
 void * _Nullable ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef _Nullable context, void * _Nonnull ioSurface, int plane);
@@ -121,6 +125,20 @@ bool ChiakiPlaceboContextRenderFrameEx(
     void * _Nonnull targetSurface,
     void * _Nonnull srcTexY,
     void * _Nullable srcTexUV,
+    int width, int height,
+    bool isHDR,
+    const ChiakiPlaceboFrameParams * _Nullable frameParams
+);
+
+/// Combined upload + render pipeline that uploads from IOSurface and renders
+/// in a single call on the same thread. This ensures Vulkan command ordering
+/// (upload completes before render) and eliminates texture lifetime issues.
+/// Uses pl_upload_plane with persistent texture reuse (matching chiaki-ng).
+bool ChiakiPlaceboContextRenderIOSurface(
+    ChiakiPlaceboContextRef _Nullable context,
+    void * _Nonnull targetSurface,
+    void * _Nonnull ioSurface,
+    int planeCount,
     int width, int height,
     bool isHDR,
     const ChiakiPlaceboFrameParams * _Nullable frameParams

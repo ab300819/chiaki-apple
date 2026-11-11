@@ -32,12 +32,11 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     private var renderer: OpaquePointer?
     private var swapchain: OpaquePointer?
 
-    /// Current frame textures (pl_tex)
-    private var currentTexY: OpaquePointer?
-    private var currentTexUV: OpaquePointer?
-
-    /// Keep CVPixelBuffer alive during rendering to ensure IOSurface validity
+    /// Current pixel buffer for combined upload+render in render().
+    /// submitFrame() stores the buffer; render() uploads and renders it
+    /// atomically via ChiakiPlaceboContextRenderIOSurface.
     private var currentPixelBuffer: CVPixelBuffer?
+    private var currentPlaneCount: Int = 0
 
     // MARK: - VideoRenderer Protocol Compliance
 
@@ -146,11 +145,13 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     }
 
     deinit {
-        if let tex = currentTexY { context.destroyTexture(tex) }
-        if let tex = currentTexUV { context.destroyTexture(tex) }
+        // Ensure all GPU command buffers complete before teardown.
+        // Persistent upload textures are cleaned up by PlaceboContext.deinit
+        // → ChiakiPlaceboContextDestroy, which destroys uploadTex[] before
+        // the Vulkan device.
+        context.gpuFinish()
+        currentPixelBuffer = nil
         saveShaderCache()
-        // PlaceboContext.deinit → ChiakiPlaceboContextDestroy cascades
-        // renderer → vulkan → log teardown in correct order.
         logInfo("[placebo] core deinitialized")
     }
 
@@ -165,27 +166,16 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         frameSize = CGSize(width: width, height: height)
         hasFrame = true
         submittedFrameSerial &+= 1
-        
-        guard let surface = CVPixelBufferGetIOSurface(pixelBuffer)?.takeUnretainedValue() else {
-            return
-        }
-        
-        let surfacePtr = Unmanaged.passUnretained(surface).toOpaque()
-        
-        // Release previous textures before wrapping new ones
-        if let oldTex = currentTexY { context.destroyTexture(oldTex) }
-        if let oldTex = currentTexUV { context.destroyTexture(oldTex) }
 
-        currentTexY = context.wrapIOSurface(surfacePtr, plane: 0)
-
-        if CVPixelBufferGetPlaneCount(pixelBuffer) > 1 {
-            currentTexUV = context.wrapIOSurface(surfacePtr, plane: 1)
-        } else {
-            currentTexUV = nil
-        }
-        
+        // Store pixel buffer for combined upload+render in render().
+        // No texture upload here — that happens atomically in render()
+        // via RenderIOSurface, ensuring Vulkan command ordering and
+        // eliminating texture lifetime issues (BUG-025, BUG-027).
         currentPixelBuffer = pixelBuffer
-        
+        currentPlaneCount = CVPixelBufferGetPlaneCount(pixelBuffer)
+        // Single-plane buffers report 0 from GetPlaneCount
+        if currentPlaneCount == 0 { currentPlaneCount = 1 }
+
         onFrameSubmitted?(pixelBuffer)
         triggerRedraw()
     }
@@ -265,12 +255,24 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
     // MARK: - Rendering
 
     func render(to view: MTKView, descriptor: MTLRenderPassDescriptor?) {
-        guard hasFrame, let texY = currentTexY else { return }
-        
+        // Snapshot frame state under lock. The pixel buffer is retained by
+        // the local variable, keeping its IOSurface alive for upload+render.
+        lock.lock()
+        guard hasFrame, let pixelBuffer = currentPixelBuffer else {
+            lock.unlock()
+            return
+        }
         let width = Int(frameSize.width)
         let height = Int(frameSize.height)
+        let planes = currentPlaneCount
         let isHDR = hdrConfiguration.isHDR
-        
+        let params = frameParams
+        lock.unlock()
+
+        guard let surface = CVPixelBufferGetIOSurface(pixelBuffer)?.takeUnretainedValue() else {
+            return
+        }
+
         #if os(macOS)
         guard let viewLayer = view.layer else { return }
         let layerPtr = Unmanaged.passUnretained(viewLayer).toOpaque()
@@ -278,22 +280,28 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         let layerPtr = Unmanaged.passUnretained(view.layer).toOpaque()
         #endif
 
+        let surfacePtr = Unmanaged.passUnretained(surface).toOpaque()
+
+        // Combined upload + render: locks IOSurface, uploads planes via
+        // pl_upload_plane (with persistent texture reuse), renders via
+        // pl_render_image, and presents — all on this thread, ensuring
+        // Vulkan command ordering and eliminating texture lifetime issues.
         let renderStart = CACurrentMediaTime()
-        let success = context.renderFrame(
+        let success = context.renderIOSurface(
             targetSurface: layerPtr,
-            srcTexY: texY,
-            srcTexUV: currentTexUV,
+            ioSurface: surfacePtr,
+            planeCount: planes,
             width: width,
             height: height,
             isHDR: isHDR,
-            frameParams: frameParams
+            frameParams: params
         )
         let renderEnd = CACurrentMediaTime()
         let renderDurationMs = (renderEnd - renderStart) * 1000.0
         onRenderTimeRecorded?(renderDurationMs)
 
+        lock.lock()
         if success {
-            lock.lock()
             if submittedFrameSerial == lastRenderedFrameSerial, submittedFrameSerial > 0 {
                 frameRepeatCount &+= 1
             }
@@ -303,12 +311,10 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             lastRenderTimestamp = renderEnd
             lastRenderedFrameSerial = submittedFrameSerial
             frameCount += 1
-            lock.unlock()
         } else {
-            lock.lock()
             droppedFrameCount += 1
-            lock.unlock()
         }
+        lock.unlock()
     }
 
     // MARK: - Private Helpers

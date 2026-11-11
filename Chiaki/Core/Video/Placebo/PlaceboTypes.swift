@@ -110,23 +110,26 @@ struct PlaceboDebandParams: Equatable, Sendable {
 }
 
 struct PlaceboColorAdjustment: Equatable, Sendable {
-    var brightness: Float = 1.0
+    /// Additive brightness offset. 0.0 = neutral, 1.0 = solid white, -1.0 = solid black.
+    /// BUG-026: Was incorrectly defaulted to 1.0 (solid white).
+    var brightness: Float = 0.0
     var contrast: Float = 1.0
     var saturation: Float = 1.0
 
     mutating func updateBrightness(_ value: Float) {
-        brightness = clamp(value)
+        // libplacebo brightness is additive: [-1.0, 1.0], neutral = 0.0
+        brightness = max(-1.0, min(1.0, value))
     }
 
     mutating func updateContrast(_ value: Float) {
-        contrast = clamp(value)
+        contrast = clampMultiplicative(value)
     }
 
     mutating func updateSaturation(_ value: Float) {
-        saturation = clamp(value)
+        saturation = clampMultiplicative(value)
     }
 
-    private func clamp(_ value: Float) -> Float {
+    private func clampMultiplicative(_ value: Float) -> Float {
         max(0.0, min(2.0, value))
     }
 }
@@ -280,6 +283,10 @@ final class PlaceboContext {
         return wrap(ChiakiPlaceboContextGetRenderer(rawContext))
     }
 
+    func gpuFinish() {
+        ChiakiPlaceboContextGPUFinish(rawContext)
+    }
+
     func destroyTexture(_ tex: OpaquePointer) {
         ChiakiPlaceboContextDestroyTexture(rawContext, UnsafeMutableRawPointer(tex))
     }
@@ -319,6 +326,44 @@ final class PlaceboContext {
             Int32(width),
             Int32(height),
             isHDR
+        )
+    }
+
+    /// Combined upload + render: uploads IOSurface data and renders in one call.
+    /// Eliminates texture lifetime issues by keeping upload + render on the same
+    /// thread with Vulkan command ordering guarantees.
+    func renderIOSurface(
+        targetSurface: UnsafeMutableRawPointer,
+        ioSurface: UnsafeMutableRawPointer,
+        planeCount: Int,
+        width: Int,
+        height: Int,
+        isHDR: Bool,
+        frameParams: PlaceboFrameParams? = nil
+    ) -> Bool {
+        if let frameParams {
+            var bridgeParams = frameParams.bridgeValue
+            return ChiakiPlaceboContextRenderIOSurface(
+                rawContext,
+                targetSurface,
+                ioSurface,
+                Int32(planeCount),
+                Int32(width),
+                Int32(height),
+                isHDR,
+                &bridgeParams
+            )
+        }
+
+        return ChiakiPlaceboContextRenderIOSurface(
+            rawContext,
+            targetSurface,
+            ioSurface,
+            Int32(planeCount),
+            Int32(width),
+            Int32(height),
+            isHDR,
+            nil
         )
     }
 }

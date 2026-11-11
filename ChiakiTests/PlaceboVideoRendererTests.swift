@@ -234,6 +234,80 @@ struct PlaceboVideoRendererTests {
         // without GPU driver). The fallback path handles this gracefully.
     }
 
+    private func createTestPixelBuffer() -> CVPixelBuffer? {
+        var pixelBuffer: CVPixelBuffer?
+        let attrs: [String: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as [String: Any],
+        ]
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            1920, 1080,
+            kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            attrs as CFDictionary,
+            &pixelBuffer
+        )
+        return status == kCVReturnSuccess ? pixelBuffer : nil
+    }
+
+    /**
+     * @verifies AC-173, BUG-025
+     * @testcase UT-061.6
+     *
+     * BUG-025: Texture use-after-free during concurrent rendering.
+     * Exercises the deferred destruction path by rapidly submitting
+     * frames. Before the fix, each submitFrame immediately destroyed
+     * textures that GPU command buffers might still reference.
+     * The race condition itself requires Metal GPU Validation to detect;
+     * this test guards the API-level behavior.
+     */
+    @Test("BUG-025: 快速连续帧提交不会崩溃（纹理延迟销毁）")
+    func testBug025RapidFrameSubmission() throws {
+        guard let renderer = requireRenderer() else { return }
+
+        guard let pixelBuffer = createTestPixelBuffer() else { return }
+
+        // Submit many frames rapidly, exercising the deferred destruction path.
+        for _ in 0..<20 {
+            renderer.submitFrame(pixelBuffer)
+        }
+
+        #expect(renderer.hasFrame == true)
+        #expect(renderer.frameSize == CGSize(width: 1920, height: 1080))
+    }
+
+    /**
+     * @verifies AC-173, BUG-026
+     * @testcase UT-061.7
+     *
+     * BUG-026: PlaceboColorAdjustment.brightness defaults to 1.0,
+     * but libplacebo expects 0.0 for neutral (1.0 = solid white).
+     * This caused the rendered image to appear as white/yellow patterns.
+     */
+    @Test("BUG-026: 颜色调整默认值匹配 libplacebo 中性值")
+    func testBug026ColorAdjustmentNeutralDefaults() {
+        let adj = PlaceboColorAdjustment()
+
+        // libplacebo neutral values:
+        //   brightness: 0.0 (additive, 1.0 = solid white)
+        //   contrast:   1.0 (multiplicative)
+        //   saturation: 1.0 (multiplicative)
+        #expect(adj.brightness == 0.0, "brightness 默认应为 0.0（libplacebo 中性值），1.0 = 纯白")
+        #expect(adj.contrast == 1.0)
+        #expect(adj.saturation == 1.0)
+
+        // Verify PlaceboFrameParams.map preserves neutral adjustment
+        let params = PlaceboFrameParams.map(
+            filterConfig: .default,
+            hdrConfiguration: .sdr,
+            edrHeadroom: 1.0,
+            adjustment: adj,
+            colorSpace: 0
+        )
+        #expect(params.adjustment.brightness == 0.0, "frameParams 中 brightness 应为 0.0")
+        #expect(params.adjustment.contrast == 1.0)
+        #expect(params.adjustment.saturation == 1.0)
+    }
+
     /**
      * @verifies AC-190
      * @testcase UT-066.2

@@ -17,11 +17,13 @@
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <IOSurface/IOSurface.h>
+#import <Metal/Metal.h>
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
 #include <libplacebo/vulkan.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/swapchain.h>
+#include <libplacebo/utils/upload.h>
 
 #ifndef VK_EXT_METAL_SURFACE_EXTENSION_NAME
 #define VK_EXT_METAL_SURFACE_EXTENSION_NAME "VK_EXT_metal_surface"
@@ -75,6 +77,9 @@ struct ChiakiPlaceboContext {
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
     VkSurfaceKHR surface;
+    // Persistent textures reused by pl_upload_plane across frames.
+    // pl_upload_plane recreates them only when dimensions/format change.
+    pl_tex uploadTex[4];
 #endif
     void *layer;
     int swapchainWidth;
@@ -279,10 +284,15 @@ static bool chiakiEnsureSwapchain(
             return false;
         }
 
+        // BUG-027: Use swapchain_depth = 1 (matching chiaki-ng upstream).
+        // With depth 1, swap_buffers blocks until the previous frame's GPU
+        // commands complete, making single-frame deferred texture destruction
+        // safe. Depth 2 caused texture use-after-free because swap_buffers
+        // didn't guarantee the N-1th frame was done.
         struct pl_vulkan_swapchain_params swapchainParams = {
             .surface = context->surface,
             .present_mode = VK_PRESENT_MODE_FIFO_KHR,
-            .swapchain_depth = 2,
+            .swapchain_depth = 1,
         };
 
         pl_swapchain sw = pl_vulkan_create_swapchain(vk, &swapchainParams);
@@ -329,6 +339,13 @@ void ChiakiPlaceboContextDestroy(ChiakiPlaceboContextRef context) {
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    // Destroy persistent upload textures before swapchain/device teardown
+    if (context->vulkan != NULL) {
+        pl_vulkan vk = (pl_vulkan)context->vulkan;
+        for (int i = 0; i < 4; i++) {
+            pl_tex_destroy(vk->gpu, &context->uploadTex[i]);
+        }
+    }
     chiakiDestroySwapchain(context);
 #endif
     ChiakiPlaceboContextDestroyRenderer(context);
@@ -593,6 +610,19 @@ void *ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContextRef context) {
     return context != NULL ? context->renderer : NULL;
 }
 
+void ChiakiPlaceboContextGPUFinish(ChiakiPlaceboContextRef context) {
+    if (context == NULL || context->vulkan == NULL) {
+        return;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    pl_vulkan vk = (pl_vulkan)context->vulkan;
+    if (vk->gpu != NULL) {
+        pl_gpu_finish(vk->gpu);
+    }
+#endif
+}
+
 void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *ioSurface, int plane) {
     if (context == NULL || ioSurface == NULL || plane < 0) {
         return NULL;
@@ -612,24 +642,35 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
         return NULL;
     }
 
-    IOReturn lockErr = IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL);
-    if (lockErr != kIOReturnSuccess) {
-        return NULL;
-    }
-
     size_t width = planeCount > 0 ? IOSurfaceGetWidthOfPlane(surface, planeIndex) : IOSurfaceGetWidth(surface);
     size_t height = planeCount > 0 ? IOSurfaceGetHeightOfPlane(surface, planeIndex) : IOSurfaceGetHeight(surface);
-    size_t rowBytes = planeCount > 0 ? IOSurfaceGetBytesPerRowOfPlane(surface, planeIndex) : IOSurfaceGetBytesPerRow(surface);
-    void *baseAddress = planeCount > 0 ? IOSurfaceGetBaseAddressOfPlane(surface, planeIndex) : IOSurfaceGetBaseAddress(surface);
 
-    if (width == 0 || height == 0 || rowBytes == 0 || baseAddress == NULL) {
-        IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
+    if (width == 0 || height == 0) {
         return NULL;
     }
 
     int components = (planeIndex == 0) ? 1 : 2;
     pl_fmt fmt = pl_find_fmt(vk->gpu, PL_FMT_UNORM, components, 8, 8, PL_FMT_CAP_SAMPLEABLE);
     if (fmt == NULL) {
+        NSLog(@"[placebo] WrapIOSurface plane=%d: no matching format for %d components", plane, components);
+        return NULL;
+    }
+
+    // CPU staging buffer upload: lock IOSurface, copy pixel data, unlock.
+    // Note: Zero-copy import via PL_HANDLE_MTL_TEX was attempted but removed
+    // because ARC released the MTLTexture while MoltenVK command buffers still
+    // referenced it, causing Metal validation failures. The upload path copies
+    // data into a libplacebo-owned texture, avoiding lifetime issues.
+    size_t rowBytes = planeCount > 0 ? IOSurfaceGetBytesPerRowOfPlane(surface, planeIndex) : IOSurfaceGetBytesPerRow(surface);
+
+    IOReturn lockErr = IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL);
+    if (lockErr != kIOReturnSuccess) {
+        return NULL;
+    }
+
+    void *baseAddress = planeCount > 0 ? IOSurfaceGetBaseAddressOfPlane(surface, planeIndex) : IOSurfaceGetBaseAddress(surface);
+
+    if (rowBytes == 0 || baseAddress == NULL) {
         IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
         return NULL;
     }
@@ -746,7 +787,43 @@ bool ChiakiPlaceboContextRenderFrameEx(
         return false;
     }
 
-    struct pl_color_space hint = isHDR ? pl_color_space_hdr10 : pl_color_space_bt709;
+    // BUG-027: Use manually-initialized color structs instead of extern const
+    // symbols (pl_color_repr_hdtv, pl_color_space_bt709, etc.). These extern
+    // const data symbols may resolve to zeroed memory when the framework is
+    // loaded via dlopen with RTLD_LOCAL. When pl_color_repr.sys == 0
+    // (PL_COLOR_SYSTEM_UNKNOWN), libplacebo skips YCbCr→RGB conversion,
+    // causing garbled blue/green output.
+    static bool diagnosticLogged = false;
+    if (!diagnosticLogged) {
+        diagnosticLogged = true;
+        NSLog(@"[placebo] RenderFrameEx extern const diagnostics:");
+        NSLog(@"[placebo]   pl_color_repr_hdtv.sys = %d (expected %d = PL_COLOR_SYSTEM_BT_709)",
+              (int)pl_color_repr_hdtv.sys, (int)PL_COLOR_SYSTEM_BT_709);
+        NSLog(@"[placebo]   pl_color_space_bt709.primaries = %d (expected %d = PL_COLOR_PRIM_BT_709)",
+              (int)pl_color_space_bt709.primaries, (int)PL_COLOR_PRIM_BT_709);
+        NSLog(@"[placebo]   pl_color_space_bt709.transfer = %d (expected %d = PL_COLOR_TRC_BT_1886)",
+              (int)pl_color_space_bt709.transfer, (int)PL_COLOR_TRC_BT_1886);
+        void *reprSym = dlsym(RTLD_DEFAULT, "pl_color_repr_hdtv");
+        void *reprSymLib = context->libplaceboHandle ? dlsym(context->libplaceboHandle, "pl_color_repr_hdtv") : NULL;
+        NSLog(@"[placebo]   dlsym(RTLD_DEFAULT, pl_color_repr_hdtv) = %p", reprSym);
+        NSLog(@"[placebo]   dlsym(libplacebo, pl_color_repr_hdtv) = %p", reprSymLib);
+        NSLog(@"[placebo]   &pl_color_repr_hdtv = %p", &pl_color_repr_hdtv);
+        if (reprSym != NULL) {
+            NSLog(@"[placebo]   dlsym resolved .sys = %d",
+                  (int)((const struct pl_color_repr *)reprSym)->sys);
+        }
+    }
+
+    struct pl_color_space colorSpaceBT709 = {
+        .primaries = PL_COLOR_PRIM_BT_709,
+        .transfer = PL_COLOR_TRC_BT_1886,
+    };
+    struct pl_color_space colorSpaceHDR10 = {
+        .primaries = PL_COLOR_PRIM_BT_2020,
+        .transfer = PL_COLOR_TRC_PQ,
+    };
+
+    struct pl_color_space hint = isHDR ? colorSpaceHDR10 : colorSpaceBT709;
     pl_swapchain_colorspace_hint(swapchain, &hint);
 
     struct pl_swapchain_frame swFrame = {0};
@@ -774,8 +851,11 @@ bool ChiakiPlaceboContextRenderFrameEx(
         pl_chroma_location_offset(PL_CHROMA_LEFT, &image.planes[1].shift_x, &image.planes[1].shift_y);
     }
 
-    image.repr = pl_color_repr_hdtv;
-    image.color = isHDR ? pl_color_space_hdr10 : pl_color_space_bt709;
+    image.repr = (struct pl_color_repr) {
+        .sys = PL_COLOR_SYSTEM_BT_709,
+        .levels = PL_COLOR_LEVELS_TV,
+    };
+    image.color = isHDR ? colorSpaceHDR10 : colorSpaceBT709;
     image.crop = (pl_rect2df){
         .x0 = 0.0f,
         .y0 = 0.0f,
@@ -786,24 +866,53 @@ bool ChiakiPlaceboContextRenderFrameEx(
     struct pl_frame target = {0};
     pl_frame_from_swapchain(&target, &swFrame);
 
-    const struct pl_render_params *baseParams = &pl_render_default_params;
+    // Resolve render params via dlsym to avoid extern const linkage issues.
+    const struct pl_render_params *baseParams = NULL;
     if (frameParams != NULL) {
         switch (frameParams->preset) {
             case CHIAKI_PLACEBO_RENDER_PRESET_PERFORMANCE:
-                baseParams = &pl_render_fast_params;
+                baseParams = (const struct pl_render_params *)dlsym(
+                    context->libplaceboHandle, "pl_render_fast_params");
                 break;
             case CHIAKI_PLACEBO_RENDER_PRESET_HIGH_QUALITY:
-                baseParams = &pl_render_high_quality_params;
+                baseParams = (const struct pl_render_params *)dlsym(
+                    context->libplaceboHandle, "pl_render_high_quality_params");
                 break;
             case CHIAKI_PLACEBO_RENDER_PRESET_DEFAULT:
             default:
-                baseParams = &pl_render_default_params;
                 break;
         }
     }
+    if (baseParams == NULL) {
+        baseParams = (const struct pl_render_params *)dlsym(
+            context->libplaceboHandle, "pl_render_default_params");
+    }
+    if (baseParams == NULL) {
+        baseParams = (const struct pl_render_params *)dlsym(
+            RTLD_DEFAULT, "pl_render_default_params");
+    }
+    if (baseParams == NULL) {
+        // Ultimate fallback: zero-initialized params (basic rendering)
+        static const struct pl_render_params fallbackParams = {0};
+        baseParams = &fallbackParams;
+        NSLog(@"[placebo] WARNING: could not resolve pl_render_default_params via dlsym, using zero params");
+    }
 
     struct pl_render_params renderParams = *baseParams;
-    struct pl_color_adjustment adjustment = pl_color_adjustment_neutral;
+
+    // Manual neutral values instead of pl_color_adjustment_neutral extern const
+    struct pl_color_adjustment adjustment = {
+        .brightness = 0.0f,
+        .contrast = 1.0f,
+        .saturation = 1.0f,
+        .hue = 0.0f,
+        .gamma = 1.0f,
+        .temperature = 0.0f,
+    };
+
+    // Deband params storage in outer scope so pointer stays valid for pl_render_image
+    struct pl_deband_params debandStorage = {0};
+
     if (frameParams != NULL) {
         adjustment.brightness = frameParams->adjustment.brightness;
         adjustment.contrast = frameParams->adjustment.contrast;
@@ -811,17 +920,11 @@ bool ChiakiPlaceboContextRenderFrameEx(
         renderParams.color_adjustment = &adjustment;
 
         if (frameParams->deband.enabled) {
-            struct pl_deband_params deband = pl_deband_default_params;
-            deband.iterations = (int)frameParams->deband.iterations;
-            deband.threshold = frameParams->deband.threshold;
-            deband.radius = frameParams->deband.radius;
-            deband.grain = frameParams->deband.grain;
-            renderParams.deband_params = &deband;
-
-            bool ok = pl_render_image((pl_renderer)context->renderer, &image, &target, &renderParams);
-            bool submitOk = pl_swapchain_submit_frame(swapchain);
-            pl_swapchain_swap_buffers(swapchain);
-            return ok && submitOk;
+            debandStorage.iterations = (int)frameParams->deband.iterations;
+            debandStorage.threshold = frameParams->deband.threshold;
+            debandStorage.radius = frameParams->deband.radius;
+            debandStorage.grain = frameParams->deband.grain;
+            renderParams.deband_params = &debandStorage;
         }
     }
 
@@ -833,6 +936,353 @@ bool ChiakiPlaceboContextRenderFrameEx(
     (void)targetSurface;
     (void)srcTexY;
     (void)srcTexUV;
+    (void)width;
+    (void)height;
+    (void)isHDR;
+    (void)frameParams;
+    return false;
+#endif
+}
+
+bool ChiakiPlaceboContextRenderIOSurface(
+    ChiakiPlaceboContextRef context,
+    void *targetSurface,
+    void *ioSurface,
+    int planeCount,
+    int width, int height,
+    bool isHDR,
+    const ChiakiPlaceboFrameParams *frameParams
+) {
+    if (context == NULL || targetSurface == NULL || ioSurface == NULL ||
+        width <= 0 || height <= 0 || planeCount < 1) {
+        return false;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    if (context->renderer == NULL || context->vulkan == NULL) {
+        return false;
+    }
+
+    pl_vulkan vk = (pl_vulkan)context->vulkan;
+    if (vk->gpu == NULL) {
+        return false;
+    }
+
+    CAMetalLayer *layer = (__bridge CAMetalLayer *)targetSurface;
+    if (layer == nil) {
+        return false;
+    }
+
+    CGSize drawableSize = layer.drawableSize;
+    int targetWidth = (int)drawableSize.width;
+    int targetHeight = (int)drawableSize.height;
+    if (targetWidth <= 0 || targetHeight <= 0) {
+        targetWidth = width;
+        targetHeight = height;
+    }
+
+    if (!chiakiEnsureSwapchain(context, layer, targetWidth, targetHeight)) {
+        return false;
+    }
+
+    pl_swapchain swapchain = (pl_swapchain)context->swapchain;
+    if (swapchain == NULL) {
+        return false;
+    }
+
+    // --- Lock IOSurface and upload planes ---
+    IOSurfaceRef surface = (IOSurfaceRef)ioSurface;
+    IOReturn lockErr = IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL);
+    if (lockErr != kIOReturnSuccess) {
+        return false;
+    }
+
+    // Diagnostic: log IOSurface details on first frame
+    static bool iosDiagLogged = false;
+    if (!iosDiagLogged) {
+        iosDiagLogged = true;
+        OSType pixFmt = IOSurfaceGetPixelFormat(surface);
+        char fcc[5] = {
+            (char)((pixFmt >> 24) & 0xFF),
+            (char)((pixFmt >> 16) & 0xFF),
+            (char)((pixFmt >> 8) & 0xFF),
+            (char)(pixFmt & 0xFF),
+            0
+        };
+        NSLog(@"[placebo] IOSurface diagnostic:");
+        NSLog(@"[placebo]   pixelFormat = 0x%08x ('%s')", (unsigned)pixFmt, fcc);
+        NSLog(@"[placebo]   totalSize = %zu", IOSurfaceGetAllocSize(surface));
+        NSLog(@"[placebo]   planeCount = %zu", IOSurfaceGetPlaneCount(surface));
+        for (size_t dp = 0; dp < IOSurfaceGetPlaneCount(surface) && dp < 4; dp++) {
+            size_t pw = IOSurfaceGetWidthOfPlane(surface, dp);
+            size_t ph = IOSurfaceGetHeightOfPlane(surface, dp);
+            size_t pr = IOSurfaceGetBytesPerRowOfPlane(surface, dp);
+            size_t pe = IOSurfaceGetBytesPerElementOfPlane(surface, dp);
+            void *pa = IOSurfaceGetBaseAddressOfPlane(surface, dp);
+            NSLog(@"[placebo]   plane[%zu]: %zux%zu stride=%zu elemSize=%zu addr=%p",
+                  dp, pw, ph, pr, pe, pa);
+            // Dump first 32 bytes of each plane
+            if (pa != NULL && pr > 0) {
+                const uint8_t *bytes = (const uint8_t *)pa;
+                NSLog(@"[placebo]   plane[%zu] first 32 bytes: "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x",
+                      dp,
+                      bytes[0], bytes[1], bytes[2], bytes[3],
+                      bytes[4], bytes[5], bytes[6], bytes[7],
+                      bytes[8], bytes[9], bytes[10], bytes[11],
+                      bytes[12], bytes[13], bytes[14], bytes[15],
+                      bytes[16], bytes[17], bytes[18], bytes[19],
+                      bytes[20], bytes[21], bytes[22], bytes[23],
+                      bytes[24], bytes[25], bytes[26], bytes[27],
+                      bytes[28], bytes[29], bytes[30], bytes[31]);
+                // Also dump bytes at row midpoint to check for tiling
+                size_t midOff = pr * (ph / 2);
+                const uint8_t *mid = bytes + midOff;
+                NSLog(@"[placebo]   plane[%zu] mid-frame 16 bytes (row %zu): "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x "
+                      "%02x %02x %02x %02x %02x %02x %02x %02x",
+                      dp, ph / 2,
+                      mid[0], mid[1], mid[2], mid[3],
+                      mid[4], mid[5], mid[6], mid[7],
+                      mid[8], mid[9], mid[10], mid[11],
+                      mid[12], mid[13], mid[14], mid[15]);
+            }
+        }
+    }
+
+    struct pl_frame image = {0};
+    image.num_planes = planeCount > 1 ? 2 : 1;
+    bool uploadOk = true;
+
+    // --- DIAGNOSTIC: Synthetic NV12 test pattern ---
+    // Set to 1 to replace IOSurface data with a known-good green color bar.
+    // If the synthetic pattern renders correctly, the pipeline works and
+    // the issue is with IOSurface data access on Apple Silicon.
+#define PLACEBO_SYNTHETIC_TEST 0
+#if PLACEBO_SYNTHETIC_TEST
+    // BT.709 TV-range green: Y=145, Cb=54, Cr=34
+    static uint8_t *synthY = NULL;
+    static uint8_t *synthUV = NULL;
+    if (synthY == NULL) {
+        synthY = malloc(width * height);
+        memset(synthY, 145, width * height); // Y = 145 (bright green luma)
+        synthUV = malloc(width * (height / 2));
+        for (int i = 0; i < width * (height / 2); i += 2) {
+            synthUV[i] = 54;   // Cb (green has low Cb)
+            synthUV[i+1] = 34; // Cr (green has low Cr)
+        }
+        NSLog(@"[placebo] SYNTHETIC TEST: using green test pattern instead of IOSurface data");
+    }
+#endif
+
+    for (int p = 0; p < image.num_planes; p++) {
+        size_t planeW, planeH;
+        if (planeCount > 1) {
+            planeW = IOSurfaceGetWidthOfPlane(surface, (size_t)p);
+            planeH = IOSurfaceGetHeightOfPlane(surface, (size_t)p);
+        } else {
+            planeW = IOSurfaceGetWidth(surface);
+            planeH = IOSurfaceGetHeight(surface);
+        }
+
+        if (planeW == 0 || planeH == 0) {
+            uploadOk = false;
+            break;
+        }
+
+        void *baseAddress;
+        size_t rowBytes;
+        if (planeCount > 1) {
+            baseAddress = IOSurfaceGetBaseAddressOfPlane(surface, (size_t)p);
+            rowBytes = IOSurfaceGetBytesPerRowOfPlane(surface, (size_t)p);
+        } else {
+            baseAddress = IOSurfaceGetBaseAddress(surface);
+            rowBytes = IOSurfaceGetBytesPerRow(surface);
+        }
+
+        if (baseAddress == NULL || rowBytes == 0) {
+            uploadOk = false;
+            break;
+        }
+
+#if PLACEBO_SYNTHETIC_TEST
+        // Override with synthetic data (tightly packed, no padding)
+        if (p == 0) {
+            baseAddress = synthY;
+            rowBytes = (size_t)width;
+        } else {
+            baseAddress = synthUV;
+            rowBytes = (size_t)width; // CbCr: 2 bytes per pixel pair, width/2 pairs = width bytes
+        }
+#endif
+
+        // Set up pl_plane_data for this plane (NV12: plane 0 = Y, plane 1 = CbCr)
+        struct pl_plane_data data = {0};
+        data.type = PL_FMT_UNORM;
+        data.width = (int)planeW;
+        data.height = (int)planeH;
+        data.row_stride = rowBytes;
+        data.pixels = baseAddress;
+
+        if (p == 0) {
+            // Y plane: single 8-bit component
+            data.component_size[0] = 8;
+            data.component_pad[0] = 0;
+            data.component_map[0] = PL_CHANNEL_Y;
+            data.pixel_stride = 1;
+        } else {
+            // CbCr plane: two interleaved 8-bit components
+            data.component_size[0] = 8;
+            data.component_size[1] = 8;
+            data.component_pad[0] = 0;
+            data.component_pad[1] = 0;
+            data.component_map[0] = PL_CHANNEL_CB;
+            data.component_map[1] = PL_CHANNEL_CR;
+            data.pixel_stride = 2;
+        }
+
+        // pl_upload_plane handles format finding, texture creation/reuse, upload,
+        // and populates image.planes[p] with correct component_mapping.
+        if (!pl_upload_plane(vk->gpu, &image.planes[p], &context->uploadTex[p], &data)) {
+            NSLog(@"[placebo] pl_upload_plane failed for plane %d (%dx%d stride=%zu)",
+                  p, (int)planeW, (int)planeH, rowBytes);
+            uploadOk = false;
+            break;
+        }
+
+        // Diagnostic: log pl_upload_plane results on first frame
+        static bool uploadDiagLogged = false;
+        if (!uploadDiagLogged && p == image.num_planes - 1) {
+            uploadDiagLogged = true;
+            for (int dp = 0; dp < image.num_planes; dp++) {
+                NSLog(@"[placebo] pl_upload_plane result plane[%d]: "
+                      "tex=%p components=%d mapping=[%d,%d,%d,%d]",
+                      dp, (void *)image.planes[dp].texture,
+                      image.planes[dp].components,
+                      image.planes[dp].component_mapping[0],
+                      image.planes[dp].component_mapping[1],
+                      image.planes[dp].component_mapping[2],
+                      image.planes[dp].component_mapping[3]);
+            }
+        }
+    }
+
+    IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
+
+    if (!uploadOk) {
+        return false;
+    }
+
+    // Set chroma location for subsampled UV plane (matching chiaki-ng)
+    if (image.num_planes > 1) {
+        pl_frame_set_chroma_location(&image, PL_CHROMA_LEFT);
+    }
+
+    // --- Set up color metadata ---
+    struct pl_color_space colorSpaceBT709 = {
+        .primaries = PL_COLOR_PRIM_BT_709,
+        .transfer = PL_COLOR_TRC_BT_1886,
+    };
+    struct pl_color_space colorSpaceHDR10 = {
+        .primaries = PL_COLOR_PRIM_BT_2020,
+        .transfer = PL_COLOR_TRC_PQ,
+    };
+
+    image.repr = (struct pl_color_repr) {
+        .sys = PL_COLOR_SYSTEM_BT_709,
+        .levels = PL_COLOR_LEVELS_TV,
+        .bits = {
+            .sample_depth = 8,
+            .color_depth = 8,
+            .bit_shift = 0,
+        },
+    };
+    image.color = isHDR ? colorSpaceHDR10 : colorSpaceBT709;
+    image.crop = (pl_rect2df){
+        .x0 = 0.0f,
+        .y0 = 0.0f,
+        .x1 = (float)width,
+        .y1 = (float)height,
+    };
+
+    // --- Swapchain + render ---
+    struct pl_color_space hint = isHDR ? colorSpaceHDR10 : colorSpaceBT709;
+    pl_swapchain_colorspace_hint(swapchain, &hint);
+
+    struct pl_swapchain_frame swFrame = {0};
+    if (!pl_swapchain_start_frame(swapchain, &swFrame)) {
+        return false;
+    }
+
+    struct pl_frame target = {0};
+    pl_frame_from_swapchain(&target, &swFrame);
+
+    // Resolve render params
+    const struct pl_render_params *baseParams = NULL;
+    if (frameParams != NULL) {
+        switch (frameParams->preset) {
+            case CHIAKI_PLACEBO_RENDER_PRESET_PERFORMANCE:
+                baseParams = (const struct pl_render_params *)dlsym(
+                    context->libplaceboHandle, "pl_render_fast_params");
+                break;
+            case CHIAKI_PLACEBO_RENDER_PRESET_HIGH_QUALITY:
+                baseParams = (const struct pl_render_params *)dlsym(
+                    context->libplaceboHandle, "pl_render_high_quality_params");
+                break;
+            default:
+                break;
+        }
+    }
+    if (baseParams == NULL) {
+        baseParams = (const struct pl_render_params *)dlsym(
+            context->libplaceboHandle, "pl_render_default_params");
+    }
+    if (baseParams == NULL) {
+        baseParams = (const struct pl_render_params *)dlsym(
+            RTLD_DEFAULT, "pl_render_default_params");
+    }
+    if (baseParams == NULL) {
+        static const struct pl_render_params fallbackParams = {0};
+        baseParams = &fallbackParams;
+    }
+
+    struct pl_render_params renderParams = *baseParams;
+    struct pl_color_adjustment adjustment = {
+        .brightness = 0.0f,
+        .contrast = 1.0f,
+        .saturation = 1.0f,
+        .hue = 0.0f,
+        .gamma = 1.0f,
+        .temperature = 0.0f,
+    };
+    struct pl_deband_params debandStorage = {0};
+
+    if (frameParams != NULL) {
+        adjustment.brightness = frameParams->adjustment.brightness;
+        adjustment.contrast = frameParams->adjustment.contrast;
+        adjustment.saturation = frameParams->adjustment.saturation;
+        renderParams.color_adjustment = &adjustment;
+
+        if (frameParams->deband.enabled) {
+            debandStorage.iterations = (int)frameParams->deband.iterations;
+            debandStorage.threshold = frameParams->deband.threshold;
+            debandStorage.radius = frameParams->deband.radius;
+            debandStorage.grain = frameParams->deband.grain;
+            renderParams.deband_params = &debandStorage;
+        }
+    }
+
+    bool ok = pl_render_image((pl_renderer)context->renderer, &image, &target, &renderParams);
+    bool submitOk = pl_swapchain_submit_frame(swapchain);
+    pl_swapchain_swap_buffers(swapchain);
+    return ok && submitOk;
+#else
+    (void)targetSurface;
+    (void)ioSurface;
+    (void)planeCount;
     (void)width;
     (void)height;
     (void)isHDR;
