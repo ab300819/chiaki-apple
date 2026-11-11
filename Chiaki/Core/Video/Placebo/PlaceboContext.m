@@ -16,7 +16,7 @@
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CAMetalLayer.h>
-#import <IOSurface/IOSurface.h>
+#import <IOSurface/IOSurfaceRef.h>
 #import <Metal/Metal.h>
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
@@ -262,6 +262,7 @@ bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef context) {
 #endif
 }
 
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
 static void chiakiPlaceboLogCallback(void *priv, enum pl_log_level level, const char *msg) {
     (void)priv;
     static const char *levelNames[] = {
@@ -271,6 +272,7 @@ static void chiakiPlaceboLogCallback(void *priv, enum pl_log_level level, const 
     if (idx < 0 || idx > 6) idx = 0;
     NSLog(@"[libplacebo:%s] %s", levelNames[idx], msg);
 }
+#endif
 
 void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
