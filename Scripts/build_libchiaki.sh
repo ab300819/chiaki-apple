@@ -8,9 +8,13 @@ JSONC_VERSION="0.16"
 JSONC_URL="https://s3.amazonaws.com/json-c_releases/releases/json-c-${JSONC_VERSION}.tar.gz"
 MINIUPNPC_VERSION="2.2.3"
 MINIUPNPC_URL="http://miniupnp.free.fr/files/miniupnpc-${MINIUPNPC_VERSION}.tar.gz"
+# chiaki-ng's holepunch.c links libevent (lib/CMakeLists.txt pkg_search_module(libevent))
+LIBEVENT_VERSION="2.1.12-stable"
+LIBEVENT_URL="https://github.com/libevent/libevent/releases/download/release-${LIBEVENT_VERSION}/libevent-${LIBEVENT_VERSION}.tar.gz"
 
 download_and_extract "$JSONC_URL" "json-c-${JSONC_VERSION}"
 download_and_extract "$MINIUPNPC_URL" "miniupnpc-${MINIUPNPC_VERSION}"
+download_and_extract "$LIBEVENT_URL" "libevent-${LIBEVENT_VERSION}"
 
 miniuppnc_cmake="$BUILD_DIR/miniupnpc-${MINIUPNPC_VERSION}/CMakeLists.txt"
 if ! grep -q "include/miniupnpc.h" "$miniuppnc_cmake"; then
@@ -61,6 +65,8 @@ TARGETS=(
     "tvos arm64"
 )
 
+ORIG_PATH="$PATH"
+
 # Build for each target
 for target in "${TARGETS[@]}"; do
     read -r platform arch <<< "$target"
@@ -101,6 +107,19 @@ for target in "${TARGETS[@]}"; do
         "-DCMAKE_C_FLAGS=-D_DARWIN_C_SOURCE"
     cmake --build "$BUILD_DIR/miniupnpc_build_${platform}_${arch}" --target install
 
+    # 2b. Build libevent (installed into deps_install so pkg-config finds it before Homebrew's)
+    log "Building libevent..."
+    configure_cmake "$platform" "$arch" "$BUILD_DIR/libevent-${LIBEVENT_VERSION}" \
+        "$BUILD_DIR/libevent_build_${platform}_${arch}" "$deps_install" \
+        "-DEVENT__LIBRARY_TYPE=STATIC" \
+        "-DEVENT__DISABLE_OPENSSL=ON" \
+        "-DEVENT__DISABLE_MBEDTLS=ON" \
+        "-DEVENT__DISABLE_TESTS=ON" \
+        "-DEVENT__DISABLE_REGRESS=ON" \
+        "-DEVENT__DISABLE_SAMPLES=ON" \
+        "-DEVENT__DISABLE_BENCHMARK=ON"
+    cmake --build "$BUILD_DIR/libevent_build_${platform}_${arch}" --target install
+
     # 3. Build libchiaki
     log "Building libchiaki..."
 
@@ -116,6 +135,19 @@ for target in "${TARGETS[@]}"; do
     # We need to pass paths to mbedtls and opus
     # We use CMAKE_PREFIX_PATH
     
+    # shortcut: chiaki-ng 729359fc force-sets CMAKE_OSX_DEPLOYMENT_TARGET to the build host's
+    # `sw_vers -productVersion` major for every Apple platform, so iOS/tvOS slices came out as 27.0.
+    # Answer that query with our per-platform minimum; drop once upstream skips it when cross-compiling.
+    sw_vers_shim="$BUILD_DIR/sw_vers_shim_${platform}"
+    mkdir -p "$sw_vers_shim"
+    cat > "$sw_vers_shim/sw_vers" <<SHIM
+#!/bin/sh
+[ "\$1" = "-productVersion" ] && { echo "$(deployment_target "$platform")"; exit 0; }
+exec /usr/bin/sw_vers "\$@"
+SHIM
+    chmod +x "$sw_vers_shim/sw_vers"
+    export PATH="$sw_vers_shim:$ORIG_PATH"
+
     configure_cmake "$platform" "$arch" "$PROJECT_ROOT/chiaki-ng" "$build_dir" "$deps_install" \
         "-DCHIAKI_ENABLE_CLI=OFF" \
         "-DCHIAKI_ENABLE_GUI=OFF" \
@@ -147,8 +179,9 @@ for target in "${TARGETS[@]}"; do
         "-DCMAKE_C_FLAGS=-I$mbedtls_install/include -DGESTALT_WORKAROUND=1" \
         "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
-    # Build only chiaki-lib target
+    # Build only chiaki-lib target (still under the shim: a re-configure would query sw_vers again)
     cmake --build "$build_dir" --target chiaki-lib
+    export PATH="$ORIG_PATH"
 done
 
 # Merge all static libraries for each platform
@@ -169,6 +202,7 @@ merge_libs() {
         "$chiaki_build/third-party/libgf_complete.a"
         "$deps_install/lib/libjson-c.a"
         "$deps_install/lib/libminiupnpc.a"
+        "$deps_install/lib/libevent_core.a"
     )
 
     log "Merging libraries for $platform $arch..."

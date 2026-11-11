@@ -62,6 +62,16 @@ create_xcframework() {
     xcodebuild -create-xcframework $args -output "$output_path"
 }
 
+# Minimum OS version each platform's dependencies are built for
+deployment_target() {
+    case $1 in
+        "ios"|"ios-simulator") echo "15.0" ;;
+        "macos") echo "13.0" ;;
+        "tvos") echo "17.0" ;;
+        *) error "Unknown platform: $1" ;;
+    esac
+}
+
 # Helper to configure CMake for Apple platforms
 # Usage: configure_cmake <platform> <arch> <source_dir> <build_dir> <install_dir> [extra_flags...]
 configure_cmake() {
@@ -78,25 +88,22 @@ configure_cmake() {
         "-DCMAKE_BUILD_TYPE=Release"
         "-DCMAKE_OSX_ARCHITECTURES=$arch"
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+        "-DCMAKE_OSX_DEPLOYMENT_TARGET=$(deployment_target "$platform")"
     )
 
     case $platform in
         "ios")
             cmake_flags+=("-DCMAKE_SYSTEM_NAME=iOS")
-            cmake_flags+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0")
             ;;
         "ios-simulator")
             cmake_flags+=("-DCMAKE_SYSTEM_NAME=iOS")
             cmake_flags+=("-DCMAKE_OSX_SYSROOT=iphonesimulator")
-            cmake_flags+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0")
             ;;
         "macos")
             cmake_flags+=("-DCMAKE_SYSTEM_NAME=Darwin")
-            cmake_flags+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0")
             ;;
         "tvos")
             cmake_flags+=("-DCMAKE_SYSTEM_NAME=tvOS")
-            cmake_flags+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=17.0")
             ;;
         *)
             error "Unknown platform: $platform"
