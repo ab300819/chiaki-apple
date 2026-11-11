@@ -3,7 +3,7 @@
 // PlaceboContext.m
 // Chiaki - PlayStation Remote Play Client for Apple Platforms
 //
-// C bridge lifecycle layer for libplacebo/Vulkan resources.
+// C bridge lifecycle layer for libplacebo/Metal resources.
 //
 // @requirement F-042 - libplacebo 渲染后端集成
 // @satisfies AC-173 - PlaceboVideoRenderer 协议实现（桥接前置）
@@ -20,63 +20,27 @@
 #import <Metal/Metal.h>
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-#include <libplacebo/vulkan.h>
+#include <libplacebo/metal.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/swapchain.h>
 #include <libplacebo/utils/upload.h>
 
-#ifndef VK_EXT_METAL_SURFACE_EXTENSION_NAME
-#define VK_EXT_METAL_SURFACE_EXTENSION_NAME "VK_EXT_metal_surface"
-#endif
-
-#ifndef VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT
-#define VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT ((VkStructureType)1000217000)
-#endif
-
-#ifndef VK_EXT_METAL_OBJECTS_EXTENSION_NAME
-#define VK_EXT_METAL_OBJECTS_EXTENSION_NAME "VK_EXT_metal_objects"
-#endif
-
-#ifndef VK_MVK_MACOS_SURFACE_EXTENSION_NAME
-#define VK_MVK_MACOS_SURFACE_EXTENSION_NAME "VK_MVK_macos_surface"
-#endif
-
-#ifndef VK_KHR_SWAPCHAIN_EXTENSION_NAME
-#define VK_KHR_SWAPCHAIN_EXTENSION_NAME "VK_KHR_swapchain"
-#endif
-
-#ifndef VK_KHR_SURFACE_EXTENSION_NAME
-#define VK_KHR_SURFACE_EXTENSION_NAME "VK_KHR_surface"
-#endif
-
-typedef VkFlags VkMetalSurfaceCreateFlagsEXT;
-typedef struct VkMetalSurfaceCreateInfoEXT {
-    VkStructureType sType;
-    const void *pNext;
-    VkMetalSurfaceCreateFlagsEXT flags;
-    const void *pLayer;
-} VkMetalSurfaceCreateInfoEXT;
-
-typedef VkResult (VKAPI_PTR *PFN_chiakiVkCreateMetalSurfaceEXT)(
-    VkInstance instance,
-    const VkMetalSurfaceCreateInfoEXT *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator,
-    VkSurfaceKHR *pSurface
-);
+#define CHIAKI_STR_(x) #x
+#define CHIAKI_STR(x) CHIAKI_STR_(x)
+// pl_log_create is a macro over the API-versioned export, e.g. pl_log_create_392.
+#define CHIAKI_PL_LOG_CREATE_VERSIONED "pl_log_create_" CHIAKI_STR(PL_API_VER)
 #endif
 
 struct ChiakiPlaceboContext {
     void *libplaceboHandle;
-    void *moltenVKHandle;
 
     // libplacebo objects
     void *log;      // pl_log
-    void *vulkan;   // pl_vulkan
+    void *metal;    // pl_metal
     void *renderer; // pl_renderer
     void *swapchain;// pl_swapchain
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    VkSurfaceKHR surface;
     // Persistent textures reused by pl_upload_plane across frames.
     // pl_upload_plane recreates them only when dimensions/format change.
     pl_tex uploadTex[4];
@@ -134,20 +98,7 @@ static void chiakiEnsureLibraries(struct ChiakiPlaceboContext *context) {
         }
     }
 
-    if (context->moltenVKHandle == NULL) {
-        context->moltenVKHandle = chiakiOpenLibrary("@rpath/MoltenVK.framework/MoltenVK");
-        if (context->moltenVKHandle == NULL) {
-            context->moltenVKHandle = chiakiOpenLibrary("@loader_path/../Frameworks/MoltenVK.framework/MoltenVK");
-        }
-        if (context->moltenVKHandle == NULL) {
-            context->moltenVKHandle = chiakiOpenLibrary("@executable_path/../Frameworks/MoltenVK.framework/MoltenVK");
-        }
-        if (context->moltenVKHandle == NULL) {
-            context->moltenVKHandle = chiakiOpenFrameworkFromBundle(@"MoltenVK", @"MoltenVK");
-        }
-    }
-
-    NSLog(@"[placebo] library handles: libplacebo=%p moltenvk=%p", context->libplaceboHandle, context->moltenVKHandle);
+    NSLog(@"[placebo] library handles: libplacebo=%p", context->libplaceboHandle);
 }
 
 static bool chiakiHasSymbol(struct ChiakiPlaceboContext *context, const char *symbol) {
@@ -169,60 +120,23 @@ static bool chiakiHasSymbol(struct ChiakiPlaceboContext *context, const char *sy
         return true;
     }
 
-    if (context->moltenVKHandle != NULL && dlsym(context->moltenVKHandle, symbol) != NULL) {
-        return true;
-    }
-
-    // libplacebo may version some exported symbols (e.g. pl_log_create_349).
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
     if (strcmp(symbol, "pl_log_create") == 0) {
-        if (dlsym(RTLD_DEFAULT, "pl_log_create_349") != NULL) {
+        if (dlsym(RTLD_DEFAULT, CHIAKI_PL_LOG_CREATE_VERSIONED) != NULL) {
             return true;
         }
-        if (context->libplaceboHandle != NULL && dlsym(context->libplaceboHandle, "pl_log_create_349") != NULL) {
+        if (context->libplaceboHandle != NULL && dlsym(context->libplaceboHandle, CHIAKI_PL_LOG_CREATE_VERSIONED) != NULL) {
             return true;
         }
     }
+#endif
 
     return false;
 }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-static pl_vulkan chiakiGetVulkan(struct ChiakiPlaceboContext *context) {
-    return context != NULL ? (pl_vulkan)context->vulkan : NULL;
-}
-
-static PFN_vkDestroySurfaceKHR chiakiGetDestroySurfaceFn(struct ChiakiPlaceboContext *context, pl_vulkan vk) {
-    if (context == NULL || vk == NULL || vk->get_proc_addr == NULL) {
-        return NULL;
-    }
-
-    PFN_vkDestroySurfaceKHR fn =
-        (PFN_vkDestroySurfaceKHR)vk->get_proc_addr(vk->instance, "vkDestroySurfaceKHR");
-    if (fn != NULL) {
-        return fn;
-    }
-
-    if (context->moltenVKHandle != NULL) {
-        fn = (PFN_vkDestroySurfaceKHR)dlsym(context->moltenVKHandle, "vkDestroySurfaceKHR");
-    }
-    return fn;
-}
-
-static PFN_chiakiVkCreateMetalSurfaceEXT chiakiGetCreateMetalSurfaceFn(struct ChiakiPlaceboContext *context, pl_vulkan vk) {
-    if (context == NULL || vk == NULL || vk->get_proc_addr == NULL) {
-        return NULL;
-    }
-
-    PFN_chiakiVkCreateMetalSurfaceEXT fn =
-        (PFN_chiakiVkCreateMetalSurfaceEXT)vk->get_proc_addr(vk->instance, "vkCreateMetalSurfaceEXT");
-    if (fn != NULL) {
-        return fn;
-    }
-
-    if (context->moltenVKHandle != NULL) {
-        fn = (PFN_chiakiVkCreateMetalSurfaceEXT)dlsym(context->moltenVKHandle, "vkCreateMetalSurfaceEXT");
-    }
-    return fn;
+static pl_gpu chiakiGetGPU(struct ChiakiPlaceboContext *context) {
+    return context != NULL && context->metal != NULL ? ((pl_metal)context->metal)->gpu : NULL;
 }
 
 static void chiakiDestroySwapchain(struct ChiakiPlaceboContext *context) {
@@ -236,15 +150,6 @@ static void chiakiDestroySwapchain(struct ChiakiPlaceboContext *context) {
         context->swapchain = NULL;
     }
 
-    pl_vulkan vk = chiakiGetVulkan(context);
-    if (context->surface != VK_NULL_HANDLE && vk != NULL) {
-        PFN_vkDestroySurfaceKHR destroyFn = chiakiGetDestroySurfaceFn(context, vk);
-        if (destroyFn != NULL) {
-            destroyFn(vk->instance, context->surface, NULL);
-        }
-        context->surface = VK_NULL_HANDLE;
-    }
-
     context->layer = NULL;
     context->swapchainWidth = 0;
     context->swapchainHeight = 0;
@@ -256,46 +161,17 @@ static bool chiakiEnsureSwapchain(
     int width,
     int height
 ) {
-    if (context == NULL || context->vulkan == NULL || layer == nil) {
+    if (context == NULL || context->metal == NULL || layer == nil) {
         return false;
     }
-
-    pl_vulkan vk = (pl_vulkan)context->vulkan;
 
     if (context->swapchain != NULL && context->layer != (__bridge void *)layer) {
         chiakiDestroySwapchain(context);
     }
 
     if (context->swapchain == NULL) {
-        PFN_chiakiVkCreateMetalSurfaceEXT createSurfaceFn = chiakiGetCreateMetalSurfaceFn(context, vk);
-        if (createSurfaceFn == NULL) {
-            return false;
-        }
-
-        VkMetalSurfaceCreateInfoEXT surfaceInfo = {
-            .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
-            .pNext = NULL,
-            .flags = 0,
-            .pLayer = (__bridge const void *)layer,
-        };
-
-        VkResult err = createSurfaceFn(vk->instance, &surfaceInfo, NULL, &context->surface);
-        if (err != VK_SUCCESS || context->surface == VK_NULL_HANDLE) {
-            return false;
-        }
-
-        // BUG-027: Use swapchain_depth = 1 (matching chiaki-ng upstream).
-        // With depth 1, swap_buffers blocks until the previous frame's GPU
-        // commands complete, making single-frame deferred texture destruction
-        // safe. Depth 2 caused texture use-after-free because swap_buffers
-        // didn't guarantee the N-1th frame was done.
-        struct pl_vulkan_swapchain_params swapchainParams = {
-            .surface = context->surface,
-            .present_mode = VK_PRESENT_MODE_FIFO_KHR,
-            .swapchain_depth = 1,
-        };
-
-        pl_swapchain sw = pl_vulkan_create_swapchain(vk, &swapchainParams);
+        pl_swapchain sw = pl_metal_create_swapchain((pl_metal)context->metal,
+            pl_metal_swapchain_params(.layer = (__bridge void *)layer));
         if (sw == NULL) {
             chiakiDestroySwapchain(context);
             return false;
@@ -340,26 +216,21 @@ void ChiakiPlaceboContextDestroy(ChiakiPlaceboContextRef context) {
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
     // Destroy persistent upload textures before swapchain/device teardown
-    if (context->vulkan != NULL) {
-        pl_vulkan vk = (pl_vulkan)context->vulkan;
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (gpu != NULL) {
         for (int i = 0; i < 4; i++) {
-            pl_tex_destroy(vk->gpu, &context->uploadTex[i]);
+            pl_tex_destroy(gpu, &context->uploadTex[i]);
         }
     }
     chiakiDestroySwapchain(context);
 #endif
     ChiakiPlaceboContextDestroyRenderer(context);
-    ChiakiPlaceboContextDestroyVulkanDevice(context);
+    ChiakiPlaceboContextDestroyGPU(context);
     ChiakiPlaceboContextDestroyLog(context);
 
     if (context->libplaceboHandle != NULL) {
         dlclose(context->libplaceboHandle);
         context->libplaceboHandle = NULL;
-    }
-
-    if (context->moltenVKHandle != NULL) {
-        dlclose(context->moltenVKHandle);
-        context->moltenVKHandle = NULL;
     }
 
     free(context);
@@ -372,7 +243,7 @@ bool ChiakiPlaceboContextIsAvailable(ChiakiPlaceboContextRef context) {
 
     return chiakiHasSymbol(context, "pl_log_create") &&
            chiakiHasSymbol(context, "pl_renderer_create") &&
-           chiakiHasSymbol(context, "pl_vulkan_create");
+           chiakiHasSymbol(context, "pl_metal_create");
 }
 
 bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef context) {
@@ -383,56 +254,8 @@ bool ChiakiPlaceboContextIsRenderingReady(ChiakiPlaceboContextRef context) {
 
     return chiakiHasSymbol(context, "pl_render_image") &&
            chiakiHasSymbol(context, "pl_swapchain_start_frame") &&
-           chiakiHasSymbol(context, "pl_vulkan_create_swapchain") &&
+           chiakiHasSymbol(context, "pl_metal_create_swapchain") &&
            chiakiHasSymbol(context, "pl_tex_create");
-#else
-    (void)context;
-    return false;
-#endif
-}
-
-bool ChiakiPlaceboContextHasMetalObjectsExtension(ChiakiPlaceboContextRef context) {
-#if CHIAKI_HAS_VULKAN_HEADERS
-    if (context == NULL || !chiakiHasSymbol(context, "vkEnumerateInstanceExtensionProperties")) {
-        return false;
-    }
-
-    PFN_vkEnumerateInstanceExtensionProperties enumerateFn =
-        (PFN_vkEnumerateInstanceExtensionProperties)dlsym(RTLD_DEFAULT, "vkEnumerateInstanceExtensionProperties");
-
-    if (enumerateFn == NULL && context->moltenVKHandle != NULL) {
-        enumerateFn = (PFN_vkEnumerateInstanceExtensionProperties)dlsym(context->moltenVKHandle, "vkEnumerateInstanceExtensionProperties");
-    }
-
-    if (enumerateFn == NULL) {
-        return false;
-    }
-
-    uint32_t count = 0;
-    VkResult result = enumerateFn(NULL, &count, NULL);
-    if (result != VK_SUCCESS || count == 0) {
-        return false;
-    }
-
-    VkExtensionProperties *extensions = calloc(count, sizeof(VkExtensionProperties));
-    if (extensions == NULL) {
-        return false;
-    }
-
-    result = enumerateFn(NULL, &count, extensions);
-    bool found = false;
-
-    if (result == VK_SUCCESS) {
-        for (uint32_t i = 0; i < count; i++) {
-            if (strncmp(extensions[i].extensionName, VK_EXT_METAL_OBJECTS_EXTENSION_NAME, VK_MAX_EXTENSION_NAME_SIZE) == 0) {
-                found = true;
-                break;
-            }
-        }
-    }
-
-    free(extensions);
-    return found;
 #else
     (void)context;
     return false;
@@ -459,7 +282,7 @@ void *ChiakiPlaceboContextCreateLog(ChiakiPlaceboContextRef context) {
         typedef pl_log (*pl_log_create_fn)(int api_ver, const struct pl_log_params *params);
         pl_log_create_fn createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create");
         if (createFn == NULL) {
-            createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, "pl_log_create_349");
+            createFn = (pl_log_create_fn)dlsym(context->libplaceboHandle, CHIAKI_PL_LOG_CREATE_VERSIONED);
         }
         if (createFn) {
             struct pl_log_params logParams = {
@@ -493,7 +316,7 @@ void ChiakiPlaceboContextDestroyLog(ChiakiPlaceboContextRef context) {
     context->log = NULL;
 }
 
-void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
+void *ChiakiPlaceboContextCreateGPU(ChiakiPlaceboContextRef context) {
     if (context == NULL) {
         return NULL;
     }
@@ -502,61 +325,36 @@ void *ChiakiPlaceboContextCreateVulkanDevice(ChiakiPlaceboContextRef context) {
         (void)ChiakiPlaceboContextCreateLog(context);
     }
 
-    if (context->vulkan == NULL) {
+    if (context->metal == NULL) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-        typedef pl_vulkan (*pl_vulkan_create_fn)(pl_log, const struct pl_vulkan_params *);
-        pl_vulkan_create_fn createFn = (pl_vulkan_create_fn)dlsym(context->libplaceboHandle, "pl_vulkan_create");
+        // Returns NULL on pre-Apple7 GPUs (Intel Macs, A12/A13); callers fall back to Metal Native.
+        typedef pl_metal (*pl_metal_create_fn)(pl_log, const struct pl_metal_params *);
+        pl_metal_create_fn createFn = (pl_metal_create_fn)dlsym(context->libplaceboHandle, "pl_metal_create");
         if (createFn && context->log) {
-            static const char *requiredInstanceExts[] = {
-                VK_KHR_SURFACE_EXTENSION_NAME,
-                VK_EXT_METAL_SURFACE_EXTENSION_NAME,
-            };
-            static const char *optionalInstanceExts[] = {
-                VK_EXT_METAL_OBJECTS_EXTENSION_NAME,
-                VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
-            };
-            static const char *deviceExts[] = {
-                VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            };
-
-            struct pl_vk_inst_params instParams = pl_vk_inst_default_params;
-            instParams.extensions = requiredInstanceExts;
-            instParams.num_extensions = (int)(sizeof(requiredInstanceExts) / sizeof(requiredInstanceExts[0]));
-            instParams.opt_extensions = optionalInstanceExts;
-            instParams.num_opt_extensions = (int)(sizeof(optionalInstanceExts) / sizeof(optionalInstanceExts[0]));
-
-            struct pl_vulkan_params params = pl_vulkan_default_params;
-            params.instance_params = &instParams;
-            params.extensions = deviceExts;
-            params.num_extensions = (int)(sizeof(deviceExts) / sizeof(deviceExts[0]));
-            params.get_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr");
-            if (params.get_proc_addr == NULL && context->moltenVKHandle != NULL) {
-                params.get_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(context->moltenVKHandle, "vkGetInstanceProcAddr");
-            }
-            context->vulkan = (void *)createFn((pl_log)context->log, &params);
+            context->metal = (void *)createFn((pl_log)context->log, NULL);
         }
 #endif
     }
 
-    return context->vulkan;
+    return context->metal;
 }
 
-void ChiakiPlaceboContextDestroyVulkanDevice(ChiakiPlaceboContextRef context) {
-    if (context == NULL || context->vulkan == NULL) {
+void ChiakiPlaceboContextDestroyGPU(ChiakiPlaceboContextRef context) {
+    if (context == NULL || context->metal == NULL) {
         return;
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
     chiakiDestroySwapchain(context);
 
-    typedef void (*pl_vulkan_destroy_fn)(pl_vulkan *);
-    pl_vulkan_destroy_fn destroyFn = (pl_vulkan_destroy_fn)dlsym(context->libplaceboHandle, "pl_vulkan_destroy");
+    typedef void (*pl_metal_destroy_fn)(pl_metal *);
+    pl_metal_destroy_fn destroyFn = (pl_metal_destroy_fn)dlsym(context->libplaceboHandle, "pl_metal_destroy");
     if (destroyFn) {
-        pl_vulkan plVk = (pl_vulkan)context->vulkan;
-        destroyFn(&plVk);
+        pl_metal plMetal = (pl_metal)context->metal;
+        destroyFn(&plMetal);
     }
 #endif
-    context->vulkan = NULL;
+    context->metal = NULL;
 }
 
 void *ChiakiPlaceboContextCreateRenderer(ChiakiPlaceboContextRef context) {
@@ -564,17 +362,16 @@ void *ChiakiPlaceboContextCreateRenderer(ChiakiPlaceboContextRef context) {
         return NULL;
     }
 
-    if (context->vulkan == NULL) {
-        (void)ChiakiPlaceboContextCreateVulkanDevice(context);
+    if (context->metal == NULL) {
+        (void)ChiakiPlaceboContextCreateGPU(context);
     }
 
     if (context->renderer == NULL) {
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
         typedef pl_renderer (*pl_renderer_create_fn)(pl_log, pl_gpu);
         pl_renderer_create_fn createFn = (pl_renderer_create_fn)dlsym(context->libplaceboHandle, "pl_renderer_create");
-        if (createFn && context->vulkan && context->log) {
-            pl_vulkan vk = (pl_vulkan)context->vulkan;
-            context->renderer = (void *)createFn((pl_log)context->log, vk->gpu);
+        if (createFn && context->metal && context->log) {
+            context->renderer = (void *)createFn((pl_log)context->log, chiakiGetGPU(context));
         }
 #endif
     }
@@ -602,8 +399,8 @@ void *ChiakiPlaceboContextGetLog(ChiakiPlaceboContextRef context) {
     return context != NULL ? context->log : NULL;
 }
 
-void *ChiakiPlaceboContextGetVulkanDevice(ChiakiPlaceboContextRef context) {
-    return context != NULL ? context->vulkan : NULL;
+void *ChiakiPlaceboContextGetGPU(ChiakiPlaceboContextRef context) {
+    return context != NULL ? context->metal : NULL;
 }
 
 void *ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContextRef context) {
@@ -611,14 +408,14 @@ void *ChiakiPlaceboContextGetRenderer(ChiakiPlaceboContextRef context) {
 }
 
 void ChiakiPlaceboContextGPUFinish(ChiakiPlaceboContextRef context) {
-    if (context == NULL || context->vulkan == NULL) {
+    if (context == NULL || context->metal == NULL) {
         return;
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    pl_vulkan vk = (pl_vulkan)context->vulkan;
-    if (vk->gpu != NULL) {
-        pl_gpu_finish(vk->gpu);
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (gpu != NULL) {
+        pl_gpu_finish(gpu);
     }
 #endif
 }
@@ -629,8 +426,8 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    pl_vulkan vk = (pl_vulkan)context->vulkan;
-    if (vk == NULL || vk->gpu == NULL) {
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (gpu == NULL) {
         return NULL;
     }
 
@@ -650,7 +447,7 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
     }
 
     int components = (planeIndex == 0) ? 1 : 2;
-    pl_fmt fmt = pl_find_fmt(vk->gpu, PL_FMT_UNORM, components, 8, 8, PL_FMT_CAP_SAMPLEABLE);
+    pl_fmt fmt = pl_find_fmt(gpu, PL_FMT_UNORM, components, 8, 8, PL_FMT_CAP_SAMPLEABLE);
     if (fmt == NULL) {
         NSLog(@"[placebo] WrapIOSurface plane=%d: no matching format for %d components", plane, components);
         return NULL;
@@ -675,7 +472,7 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
         return NULL;
     }
 
-    pl_tex tex = pl_tex_create(vk->gpu, pl_tex_params(
+    pl_tex tex = pl_tex_create(gpu, pl_tex_params(
         .w = (int)width,
         .h = (int)height,
         .format = fmt,
@@ -694,11 +491,11 @@ void *ChiakiPlaceboContextWrapIOSurface(ChiakiPlaceboContextRef context, void *i
         .ptr = baseAddress,
     };
 
-    bool uploaded = pl_tex_upload(vk->gpu, &upload);
+    bool uploaded = pl_tex_upload(gpu, &upload);
     IOSurfaceUnlock(surface, kIOSurfaceLockReadOnly, NULL);
 
     if (!uploaded) {
-        pl_tex_destroy(vk->gpu, &tex);
+        pl_tex_destroy(gpu, &tex);
         return NULL;
     }
 
@@ -717,10 +514,10 @@ void ChiakiPlaceboContextDestroyTexture(ChiakiPlaceboContextRef context, void *t
     }
 
 #if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    if (context != NULL && context->vulkan != NULL) {
-        pl_vulkan vk = (pl_vulkan)context->vulkan;
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (gpu != NULL) {
         pl_tex plTex = (pl_tex)tex;
-        pl_tex_destroy(vk->gpu, &plTex);
+        pl_tex_destroy(gpu, &plTex);
         return;
     }
 #endif
@@ -944,52 +741,18 @@ bool ChiakiPlaceboContextRenderFrameEx(
 #endif
 }
 
-bool ChiakiPlaceboContextRenderIOSurface(
-    ChiakiPlaceboContextRef context,
-    void *targetSurface,
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+// Uploads an NV12 (or single-plane) IOSurface into the persistent upload
+// textures and fills in the frame's planes and BT.709 / HDR10 color metadata.
+static bool chiakiUploadIOSurfaceFrame(
+    struct ChiakiPlaceboContext *context,
+    pl_gpu gpu,
     void *ioSurface,
     int planeCount,
     int width, int height,
     bool isHDR,
-    const ChiakiPlaceboFrameParams *frameParams
+    struct pl_frame *outImage
 ) {
-    if (context == NULL || targetSurface == NULL || ioSurface == NULL ||
-        width <= 0 || height <= 0 || planeCount < 1) {
-        return false;
-    }
-
-#if CHIAKI_HAS_LIBPLACEBO_HEADERS
-    if (context->renderer == NULL || context->vulkan == NULL) {
-        return false;
-    }
-
-    pl_vulkan vk = (pl_vulkan)context->vulkan;
-    if (vk->gpu == NULL) {
-        return false;
-    }
-
-    CAMetalLayer *layer = (__bridge CAMetalLayer *)targetSurface;
-    if (layer == nil) {
-        return false;
-    }
-
-    CGSize drawableSize = layer.drawableSize;
-    int targetWidth = (int)drawableSize.width;
-    int targetHeight = (int)drawableSize.height;
-    if (targetWidth <= 0 || targetHeight <= 0) {
-        targetWidth = width;
-        targetHeight = height;
-    }
-
-    if (!chiakiEnsureSwapchain(context, layer, targetWidth, targetHeight)) {
-        return false;
-    }
-
-    pl_swapchain swapchain = (pl_swapchain)context->swapchain;
-    if (swapchain == NULL) {
-        return false;
-    }
-
     // --- Lock IOSurface and upload planes ---
     IOSurfaceRef surface = (IOSurfaceRef)ioSurface;
     IOReturn lockErr = IOSurfaceLock(surface, kIOSurfaceLockReadOnly, NULL);
@@ -1146,7 +909,7 @@ bool ChiakiPlaceboContextRenderIOSurface(
 
         // pl_upload_plane handles format finding, texture creation/reuse, upload,
         // and populates image.planes[p] with correct component_mapping.
-        if (!pl_upload_plane(vk->gpu, &image.planes[p], &context->uploadTex[p], &data)) {
+        if (!pl_upload_plane(gpu, &image.planes[p], &context->uploadTex[p], &data)) {
             NSLog(@"[placebo] pl_upload_plane failed for plane %d (%dx%d stride=%zu)",
                   p, (int)planeW, (int)planeH, rowBytes);
             uploadOk = false;
@@ -1208,9 +971,60 @@ bool ChiakiPlaceboContextRenderIOSurface(
         .y1 = (float)height,
     };
 
+    *outImage = image;
+    return true;
+}
+#endif
+
+bool ChiakiPlaceboContextRenderIOSurface(
+    ChiakiPlaceboContextRef context,
+    void *targetSurface,
+    void *ioSurface,
+    int planeCount,
+    int width, int height,
+    bool isHDR,
+    const ChiakiPlaceboFrameParams *frameParams
+) {
+    if (context == NULL || targetSurface == NULL || ioSurface == NULL ||
+        width <= 0 || height <= 0 || planeCount < 1) {
+        return false;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (context->renderer == NULL || gpu == NULL) {
+        return false;
+    }
+
+    CAMetalLayer *layer = (__bridge CAMetalLayer *)targetSurface;
+    if (layer == nil) {
+        return false;
+    }
+
+    CGSize drawableSize = layer.drawableSize;
+    int targetWidth = (int)drawableSize.width;
+    int targetHeight = (int)drawableSize.height;
+    if (targetWidth <= 0 || targetHeight <= 0) {
+        targetWidth = width;
+        targetHeight = height;
+    }
+
+    if (!chiakiEnsureSwapchain(context, layer, targetWidth, targetHeight)) {
+        return false;
+    }
+
+    pl_swapchain swapchain = (pl_swapchain)context->swapchain;
+    if (swapchain == NULL) {
+        return false;
+    }
+
+    struct pl_frame image = {0};
+    if (!chiakiUploadIOSurfaceFrame(context, gpu, ioSurface, planeCount, width, height, isHDR, &image)) {
+        return false;
+    }
+
     // --- Swapchain + render ---
-    struct pl_color_space hint = isHDR ? colorSpaceHDR10 : colorSpaceBT709;
-    pl_swapchain_colorspace_hint(swapchain, &hint);
+    pl_swapchain_colorspace_hint(swapchain, &image.color);
 
     struct pl_swapchain_frame swFrame = {0};
     if (!pl_swapchain_start_frame(swapchain, &swFrame)) {
@@ -1287,6 +1101,74 @@ bool ChiakiPlaceboContextRenderIOSurface(
     (void)height;
     (void)isHDR;
     (void)frameParams;
+    return false;
+#endif
+}
+
+bool ChiakiPlaceboContextRenderIOSurfaceToRGBA(
+    ChiakiPlaceboContextRef context,
+    void *ioSurface,
+    int planeCount,
+    int width, int height,
+    uint8_t *rgbaOut
+) {
+    if (context == NULL || ioSurface == NULL || rgbaOut == NULL ||
+        width <= 0 || height <= 0 || planeCount < 1) {
+        return false;
+    }
+
+#if CHIAKI_HAS_LIBPLACEBO_HEADERS
+    (void)ChiakiPlaceboContextCreateRenderer(context);
+    pl_gpu gpu = chiakiGetGPU(context);
+    if (context->renderer == NULL || gpu == NULL) {
+        return false;
+    }
+
+    struct pl_frame image = {0};
+    if (!chiakiUploadIOSurfaceFrame(context, gpu, ioSurface, planeCount, width, height, false, &image)) {
+        return false;
+    }
+
+    pl_fmt fmt = pl_find_named_fmt(gpu, "rgba8");
+    pl_tex tex = fmt != NULL ? pl_tex_create(gpu, pl_tex_params(
+        .w = width,
+        .h = height,
+        .format = fmt,
+        .renderable = true,
+        .host_readable = true
+    )) : NULL;
+    if (tex == NULL) {
+        return false;
+    }
+
+    // Same color space as the source, so the output is the plain YCbCr -> RGB matrix result.
+    struct pl_frame target = {
+        .num_planes = 1,
+        .planes[0] = {
+            .texture = tex,
+            .components = 4,
+            .component_mapping = {0, 1, 2, 3},
+        },
+        .repr = {
+            .sys = PL_COLOR_SYSTEM_RGB,
+            .levels = PL_COLOR_LEVELS_FULL,
+            .bits = { .sample_depth = 8, .color_depth = 8 },
+        },
+        .color = image.color,
+    };
+
+    // Zeroed params: no deband grain or dithering, so pixel values are deterministic.
+    struct pl_render_params params = {0};
+    bool ok = pl_render_image((pl_renderer)context->renderer, &image, &target, &params) &&
+              pl_tex_download(gpu, &(struct pl_tex_transfer_params) {
+                  .tex = tex,
+                  .row_pitch = (size_t)width * 4,
+                  .ptr = rgbaOut,
+              });
+    pl_tex_destroy(gpu, &tex);
+    return ok;
+#else
+    (void)rgbaOut;
     return false;
 #endif
 }

@@ -23,7 +23,6 @@ MBEDX509_XCF := $(FRAMEWORKS_DIR)/mbedx509.xcframework
 OPUS_XCF := $(FRAMEWORKS_DIR)/opus.xcframework
 LIBCHIAKI_XCF := $(FRAMEWORKS_DIR)/libchiaki.xcframework
 LIBPLACEBO_XCF := $(FRAMEWORKS_DIR)/libplacebo.xcframework
-MOLTENVK_XCF := $(FRAMEWORKS_DIR)/MoltenVK.xcframework
 
 # Default target
 all: frameworks
@@ -57,11 +56,11 @@ $(LIBCHIAKI_XCF): | $(MBEDCRYPTO_XCF) $(OPUS_XCF)
 	@echo "🔨 Building libchiaki..."
 	@./Scripts/build_libchiaki.sh
 
-# libplacebo + MoltenVK (T-243, built independently from libchiaki stack)
-libplacebo: $(LIBPLACEBO_XCF) $(MOLTENVK_XCF)
+# libplacebo with native Metal backend (T-243, built independently from libchiaki stack)
+libplacebo: $(LIBPLACEBO_XCF)
 
-$(LIBPLACEBO_XCF) $(MOLTENVK_XCF):
-	@echo "🔨 Building libplacebo + MoltenVK..."
+$(LIBPLACEBO_XCF):
+	@echo "🔨 Building libplacebo (Metal)..."
 	@./Scripts/build-libplacebo.sh
 
 # Clean everything
@@ -94,7 +93,7 @@ help:
 	@echo "  make mbedtls      - Build mbedtls xcframeworks only"
 	@echo "  make opus         - Build opus xcframework only"
 	@echo "  make libchiaki    - Build libchiaki xcframework only"
-	@echo "  make libplacebo   - Build libplacebo + MoltenVK xcframeworks"
+	@echo "  make libplacebo   - Build libplacebo xcframework (Metal backend)"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make setup        - Initialize git submodules"

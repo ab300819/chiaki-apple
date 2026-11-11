@@ -107,19 +107,23 @@ struct StreamingViewModelRenderBackendTests {
      * @verifies BUG-021
      * @testcase UT-064.7
      */
-    @Test("生产工厂：libplacebo stub 自动回退 Metal Native")
+    @Test("生产工厂：libplacebo 可用则启用，否则自动回退 Metal Native")
     func testProductionFallbackWhenPlaceboStub() {
         let viewModel = makeViewModel()
         let metal = DummyRenderer()
+        // Real PlaceboVideoRenderer() succeeds on Apple7+ GPUs (Metal backend) and returns nil elsewhere.
+        let placeboAvailable = PlaceboVideoRenderer() != nil
 
-        // Use real PlaceboVideoRenderer() as placebo factory (returns nil when stub)
-        // and a DummyRenderer as the metal factory to verify fallback activates.
         let renderer = viewModel.createRenderer(
             renderBackend: .libplacebo,
             placeboFactory: { PlaceboVideoRenderer() },
             metalFactory: { metal }
         )
 
-        #expect(renderer as AnyObject === metal, "Should fall back to Metal when PlaceboVideoRenderer init returns nil")
+        if placeboAvailable {
+            #expect(renderer is PlaceboVideoRenderer)
+        } else {
+            #expect(renderer as AnyObject === metal, "Should fall back to Metal when PlaceboVideoRenderer init returns nil")
+        }
     }
 }

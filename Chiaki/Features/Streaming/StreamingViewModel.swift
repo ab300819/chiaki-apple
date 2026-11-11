@@ -320,20 +320,18 @@ final class StreamingViewModel {
             let frameworksPath = Bundle.main.privateFrameworksPath ?? ""
             let fm = FileManager.default
             let libplaceboPath = (frameworksPath as NSString).appendingPathComponent("libplacebo.framework/libplacebo")
-            let moltenVKPath = (frameworksPath as NSString).appendingPathComponent("MoltenVK.framework/MoltenVK")
             Logger.video.info(
                 "framework preflight: frameworksPath=\(frameworksPath), " +
-                "libplaceboExists=\(fm.fileExists(atPath: libplaceboPath)), " +
-                "moltenvkExists=\(fm.fileExists(atPath: moltenVKPath))"
+                "libplaceboExists=\(fm.fileExists(atPath: libplaceboPath))"
             )
 
             if let ctx = PlaceboContext() {
                 let preLog = ctx.createLog() != nil
-                let preVk = ctx.createVulkanDevice() != nil
+                let preGPU = ctx.createGPU() != nil
                 let preRenderer = ctx.createRenderer() != nil
                 Logger.video.info(
                     "libplacebo preflight: available=\(ctx.isAvailable), renderingReady=\(ctx.isRenderingReady), " +
-                    "log=\(preLog), vulkan=\(preVk), renderer=\(preRenderer)"
+                    "log=\(preLog), gpu=\(preGPU), renderer=\(preRenderer)"
                 )
             } else {
                 Logger.video.warning("libplacebo preflight: failed to create context")

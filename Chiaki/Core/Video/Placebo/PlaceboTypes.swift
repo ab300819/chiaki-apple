@@ -191,24 +191,10 @@ struct PlaceboFrameParams: Equatable, Sendable {
     }
 }
 
-/// Vulkan bootstrap parameters used by bridge init.
-/// Includes mandatory extension for MoltenVK interop path in Phase 1.
-struct PlaceboVulkanConfig: Equatable, Sendable {
-    var requiredInstanceExtensions: [String]
-
-    static let `default` = PlaceboVulkanConfig(
-        requiredInstanceExtensions: [
-            "VK_KHR_surface",
-            "VK_EXT_metal_surface",
-            "VK_EXT_metal_objects"
-        ]
-    )
-}
-
 /// Swift lifecycle owner for C bridge resources.
 ///
 /// This wrapper intentionally keeps bridge calls minimal:
-/// - T-244: context/log/vulkan/renderer handle lifecycle
+/// - T-244: context/log/gpu/renderer handle lifecycle
 /// - T-245+: replace token handles with real libplacebo object pointers
 ///
 /// @requirement F-042
@@ -237,10 +223,6 @@ final class PlaceboContext {
         ChiakiPlaceboContextIsAvailable(rawContext)
     }
 
-    var hasMetalObjectsExtension: Bool {
-        ChiakiPlaceboContextHasMetalObjectsExtension(rawContext)
-    }
-
     /// True only when the rendering pipeline (WrapIOSurface + RenderFrameEx)
     /// is fully implemented, not in stub/token-handle mode.
     var isRenderingReady: Bool {
@@ -251,8 +233,8 @@ final class PlaceboContext {
         return wrap(ChiakiPlaceboContextCreateLog(rawContext))
     }
 
-    func createVulkanDevice() -> OpaquePointer? {
-        return wrap(ChiakiPlaceboContextCreateVulkanDevice(rawContext))
+    func createGPU() -> OpaquePointer? {
+        return wrap(ChiakiPlaceboContextCreateGPU(rawContext))
     }
 
     func createRenderer() -> OpaquePointer? {
@@ -263,8 +245,8 @@ final class PlaceboContext {
         ChiakiPlaceboContextDestroyRenderer(rawContext)
     }
 
-    func destroyVulkanDevice() {
-        ChiakiPlaceboContextDestroyVulkanDevice(rawContext)
+    func destroyGPU() {
+        ChiakiPlaceboContextDestroyGPU(rawContext)
     }
 
     func destroyLog() {
@@ -275,8 +257,8 @@ final class PlaceboContext {
         return wrap(ChiakiPlaceboContextGetLog(rawContext))
     }
 
-    var vulkanHandle: OpaquePointer? {
-        return wrap(ChiakiPlaceboContextGetVulkanDevice(rawContext))
+    var gpuHandle: OpaquePointer? {
+        return wrap(ChiakiPlaceboContextGetGPU(rawContext))
     }
 
     var rendererHandle: OpaquePointer? {
@@ -329,9 +311,20 @@ final class PlaceboContext {
         )
     }
 
+    /// Offscreen render + readback of an IOSurface; returns width * height RGBA8 bytes.
+    func renderIOSurfaceToRGBA(ioSurface: UnsafeMutableRawPointer, planeCount: Int, width: Int, height: Int) -> [UInt8]? {
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let ok = pixels.withUnsafeMutableBufferPointer { buffer in
+            ChiakiPlaceboContextRenderIOSurfaceToRGBA(
+                rawContext, ioSurface, Int32(planeCount), Int32(width), Int32(height), buffer.baseAddress!
+            )
+        }
+        return ok ? pixels : nil
+    }
+
     /// Combined upload + render: uploads IOSurface data and renders in one call.
     /// Eliminates texture lifetime issues by keeping upload + render on the same
-    /// thread with Vulkan command ordering guarantees.
+    /// thread with GPU command ordering guarantees.
     func renderIOSurface(
         targetSurface: UnsafeMutableRawPointer,
         ioSurface: UnsafeMutableRawPointer,

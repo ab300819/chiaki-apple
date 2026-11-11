@@ -3,7 +3,7 @@
 //  PlaceboVideoRenderer.swift
 //  Chiaki
 //
-//  High-performance video renderer using libplacebo with MoltenVK (Vulkan) backend.
+//  High-performance video renderer using libplacebo with its native Metal backend.
 //
 //  @requirement F-042 - libplacebo 渲染后端集成
 //  @satisfies AC-173, AC-176
@@ -15,7 +15,7 @@ import MetalKit
 import CoreVideo
 import QuartzCore
 
-/// High-performance video renderer using libplacebo with MoltenVK (Vulkan) backend.
+/// High-performance video renderer using libplacebo with its native Metal backend.
 ///
 /// [requirement] F-042
 /// [satisfies] AC-173, AC-176
@@ -28,7 +28,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
     /// libplacebo handle pointers (managed via PlaceboContext)
     private var log: OpaquePointer?
-    private var vulkan: OpaquePointer?
+    private var gpu: OpaquePointer?
     private var renderer: OpaquePointer?
     private var swapchain: OpaquePointer?
 
@@ -107,7 +107,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             return nil
         }
 
-        logInfo("[placebo] context available=\(ctx.isAvailable) metalObjectsExt=\(ctx.hasMetalObjectsExtension) renderingReady=\(ctx.isRenderingReady)")
+        logInfo("[placebo] context available=\(ctx.isAvailable) renderingReady=\(ctx.isRenderingReady)")
 
         // BUG-021: Verify the rendering pipeline is fully implemented
         // before proceeding. When WrapIOSurface/RenderFrameEx are stubs,
@@ -125,8 +125,8 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             logWarning("[placebo] createLog failed, fallback to Metal Native")
             return nil
         }
-        guard let vulkan = ctx.createVulkanDevice() else {
-            logWarning("[placebo] createVulkanDevice failed, fallback to Metal Native")
+        guard let gpu = ctx.createGPU() else {
+            logWarning("[placebo] createGPU failed (pl_metal_create needs an Apple7+ GPU), fallback to Metal Native")
             return nil
         }
         guard let renderer = ctx.createRenderer() else {
@@ -135,7 +135,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         }
 
         self.log = log
-        self.vulkan = vulkan
+        self.gpu = gpu
         self.renderer = renderer
 
         super.init()
@@ -148,7 +148,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         // Ensure all GPU command buffers complete before teardown.
         // Persistent upload textures are cleaned up by PlaceboContext.deinit
         // → ChiakiPlaceboContextDestroy, which destroys uploadTex[] before
-        // the Vulkan device.
+        // the Metal device.
         context.gpuFinish()
         currentPixelBuffer = nil
         saveShaderCache()
@@ -169,7 +169,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
 
         // Store pixel buffer for combined upload+render in render().
         // No texture upload here — that happens atomically in render()
-        // via RenderIOSurface, ensuring Vulkan command ordering and
+        // via RenderIOSurface, ensuring GPU command ordering and
         // eliminating texture lifetime issues (BUG-025, BUG-027).
         currentPixelBuffer = pixelBuffer
         currentPlaneCount = CVPixelBufferGetPlaneCount(pixelBuffer)
@@ -285,7 +285,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
         // Combined upload + render: locks IOSurface, uploads planes via
         // pl_upload_plane (with persistent texture reuse), renders via
         // pl_render_image, and presents — all on this thread, ensuring
-        // Vulkan command ordering and eliminating texture lifetime issues.
+        // GPU command ordering and eliminating texture lifetime issues.
         let renderStart = CACurrentMediaTime()
         let success = context.renderIOSurface(
             targetSurface: layerPtr,
@@ -324,7 +324,7 @@ final class PlaceboVideoRenderer: NSObject, VideoRenderer, @unchecked Sendable {
             // TODO(T-245): destroy swapchain
             return
         }
-        // TODO(T-245): create pl_swapchain from CAMetalLayer (MoltenVK VkSurfaceKHR)
+        // TODO(T-245): create pl_swapchain from CAMetalLayer
     }
 
     private func triggerRedraw() {
