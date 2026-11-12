@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" color-interpolation="sRGB">
+  <defs>
+    <!-- PRD direction: lower left to upper right, independent of CSS angle conventions. -->
+    <linearGradient id="background" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#68A220"/>
+      <stop offset="1" stop-color="#0E8EB7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#background)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="88" stroke-opacity="1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 244 264 A 379.01 379.01 0 0 1 780 264"/>
+    <path d="M 350 370 A 229.1 229.1 0 0 1 674 370"/>
+    <path d="M 512 476 L 840 852 L 184 852 Z"/>
+  </g>
+</svg>
